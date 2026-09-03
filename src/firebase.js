@@ -4,13 +4,13 @@ import { getDatabase, ref, get, set, remove } from 'firebase/database';
 // Configuração gerada em console.firebase.google.com
 // Projeto → Configurações → Seus apps → SDK Firebase
 const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  databaseURL: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI",
+  apiKey: "AIzaSyB4Z2xoYedpMmH49RGFVN00WR_gn4R5LSI",
+  authDomain: "torneio-sesi-20de0.firebaseapp.com",
+  databaseURL: "https://torneio-sesi-20de0-default-rtdb.firebaseio.com",
+  projectId: "torneio-sesi-20de0",
+  storageBucket: "torneio-sesi-20de0.firebasestorage.app",
+  messagingSenderId: "440964283604",
+  appId: "1:440964283604:web:6650e9da0e88ef32484f41",
 };
 
 const app = initializeApp(firebaseConfig);
