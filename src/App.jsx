@@ -563,6 +563,65 @@ function TelaoView() {
         })}
       </div>
 
+      {/* Vencedores por rodada */}
+      <div>
+        <h2 className="text-lg font-bold mb-3" style={{ color: AZUL }}>
+          🥇 Vencedor por rodada
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {roundResults.map((rr) => {
+            // Find winner(s): team(s) with highest round points
+            let winners = [];
+            let maxPts = 0;
+            if (rr.complete) {
+              TEAMS.forEach((t) => {
+                const pts = (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
+                if (pts > maxPts) { maxPts = pts; winners = [t]; }
+                else if (pts === maxPts) { winners.push(t); }
+              });
+            }
+            const isTie = winners.length > 1;
+            return (
+              <div
+                key={rr.round}
+                className="rounded-2xl overflow-hidden shadow-sm border border-gray-200"
+              >
+                <div
+                  className="px-3 py-1.5 text-xs font-bold text-white text-center"
+                  style={{ backgroundColor: AZUL }}
+                >
+                  Rodada {rr.round}
+                </div>
+                {rr.complete ? (
+                  <div
+                    className="p-3 flex flex-col items-center gap-1"
+                    style={{ backgroundColor: winners[0]?.color + "22" }}
+                  >
+                    <div className="text-2xl">{isTie ? "🤝" : "🏆"}</div>
+                    <div className="font-extrabold text-sm text-center" style={{ color: AZUL }}>
+                      {isTie
+                        ? winners.map((w) => w.label).join(" · ")
+                        : winners[0]?.label}
+                    </div>
+                    <div
+                      className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: isTie ? "#6B7280" : winners[0]?.color }}
+                    >
+                      {maxPts} pts
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 flex flex-col items-center gap-1 bg-gray-50">
+                    <div className="text-xl text-gray-300">⏳</div>
+                    <div className="text-xs text-gray-400 text-center">aguardando</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-bold" style={{ color: AZUL }}>
           Detalhe por rodada
