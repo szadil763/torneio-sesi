@@ -1,145 +1,174 @@
-/* Insígnias por Área — estilos visuais */
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap');
+
 :root {
-  --azul: #004B8D;
-  --azul-escuro: #002B52;
-  --laranja: #F5821F;
-  --bg: #f3f4f6;
-  --radius: 1.25rem;
+  --bg: #12141b;
+  --card: #1a1d27;
+  --card-line: #2a2e3c;
+  --text: #f2f0e9;
+  --muted: #8b90a5;
+  --team: #888;
+  --team-dark: #333;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; }
 
-body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
+html, body {
+  margin: 0;
+  min-height: 100%;
   background: var(--bg);
-  color: #1f2937;
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, .headline {
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-weight: 800;
+  margin: 0;
+}
+
+button, input { font-family: inherit; }
+
+.screen {
   min-height: 100vh;
-}
-
-/* ── Barra de navegação ── */
-.navbar {
-  background: var(--azul-escuro);
-  padding: .75rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,.3);
-}
-.navbar-title { color: #fff; font-weight: 800; font-size: 1rem; }
-.navbar-back {
-  color: rgba(255,255,255,.75);
-  text-decoration: none;
-  font-size: .85rem;
-  transition: color .2s;
-}
-.navbar-back:hover { color: #fff; }
-
-/* ── Conteúdo principal ── */
-.container {
-  max-width: 900px;
+  padding: 32px 20px 64px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
 }
 
-h1.page-title {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--azul);
-  margin-bottom: 1.5rem;
-}
-
-/* ── Grade de áreas ── */
-.areas-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2.5rem;
-}
-
-.area-card {
-  background: #fff;
-  border-radius: var(--radius);
-  box-shadow: 0 1px 6px rgba(0,0,0,.08);
-  overflow: hidden;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: transform .15s, border-color .15s, box-shadow .15s;
-  text-align: center;
-}
-.area-card:hover { transform: translateY(-3px); box-shadow: 0 4px 16px rgba(0,0,0,.12); }
-.area-card.ativa { border-color: var(--laranja); }
-
-.area-card-topo {
-  background: var(--azul);
-  color: #fff;
-  padding: .6rem .75rem;
-  font-weight: 700;
-  font-size: .9rem;
-}
-.area-card-emoji { font-size: 2.5rem; padding: 1rem .5rem .75rem; display: block; }
-.area-card-nome { font-weight: 600; font-size: .85rem; color: #374151; padding: 0 .5rem .75rem; }
-
-/* ── Estojo ── */
-.estojo-wrapper { display: none; }
-.estojo-wrapper.visivel { display: block; }
-
-.estojo {
-  background: #fff;
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,.1);
-}
-
-.estojo-topo {
-  background: var(--azul);
-  color: #fff;
-  padding: .75rem 1.25rem;
-  font-size: 1.1rem;
-  font-weight: 800;
+/* ---------- Cabeçalho ---------- */
+.topbar {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
-.estojo-corpo {
-  padding: 1.25rem;
+.topbar .voltar {
+  background: none;
+  border: 1px solid var(--card-line);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.topbar .voltar:hover { color: var(--text); border-color: var(--muted); }
+
+.marca {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.titulo-principal {
+  font-size: 28px;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+.subtitulo {
+  color: var(--muted);
+  font-size: 15px;
+  max-width: 46ch;
+}
+
+/* ---------- Grade de áreas ---------- */
+.grade-areas {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
 }
 
-@media (min-width: 560px) {
-  .estojo-corpo { grid-template-columns: repeat(4, 1fr); }
-}
-
-/* ── Slot ── */
-.slot {
-  border-radius: 1rem;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+.area-tile {
+  border: 1px solid var(--card-line);
+  border-radius: 16px;
+  padding: 18px 16px;
+  background: var(--card);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.12s ease, border-color 0.15s;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+}
+.area-tile:active { transform: scale(0.97); }
+.area-tile.ativa { border-color: #4b9fff; }
+
+.area-tile .emoji { font-size: 2rem; line-height: 1; }
+.area-tile .area-nome { font-weight: 700; font-size: 15px; color: var(--text); }
+.area-tile .area-hint { font-size: 12px; color: var(--muted); }
+
+/* ---------- Estojo (caixa com slots) ---------- */
+.estojo {
+  --c: var(--team);
+  --cd: var(--team-dark);
+  margin-top: 20px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--card-line);
+  background: var(--card);
+  display: none;
+}
+.estojo.visivel { display: block; }
+
+.estojo-topo {
+  background: linear-gradient(180deg, var(--c), var(--cd));
+  padding: 20px;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Grid de 4 slots lado a lado — um por equipe */
+.estojo-corpo {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 14px);
+}
+
+@media (max-width: 480px) {
+  .estojo-corpo { grid-template-columns: repeat(2, 1fr); }
+  .grade-areas  { grid-template-columns: 1fr; }
+}
+
+/* ---------- Slot ---------- */
+.slot {
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px dashed var(--card-line);
 }
 
 .slot-label {
-  padding: .4rem .5rem;
-  font-size: .75rem;
-  font-weight: 800;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
   text-align: center;
-  letter-spacing: .02em;
+  letter-spacing: 0.02em;
+  background: var(--c, var(--card-line));
+  color: var(--ct, #fff);
 }
 
 .slot-corpo {
   flex: 1;
+  min-height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 110px;
-  position: relative;
-  overflow: hidden;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  color: var(--muted);
 }
 
 /* Slot não conquistado */
@@ -147,124 +176,117 @@ h1.page-title {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .4rem;
-  opacity: .55;
-  padding: .75rem;
+  gap: 5px;
+  opacity: 0.45;
 }
-.slot-cadeado span { font-size: .7rem; font-weight: 600; }
+.slot-cadeado .icone { width: 28px; height: 28px; }
+.slot-cadeado span  { font-size: 10px; text-align: center; }
 
-/* Slot conquistado — imagem da insígnia */
+/* Slot conquistado */
+.slot.conquistada {
+  border-style: solid;
+  border-color: var(--c, #888);
+}
+
 .slot-insignia {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  min-height: 90px;
 }
 
 /* Animação de entrada */
-.recem-conquistada {
-  animation: entrar-insignia .55s cubic-bezier(.22,1,.36,1) both;
-}
+.recem-conquistada { animation: entrar-insignia 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+
 @keyframes entrar-insignia {
-  from { opacity: 0; transform: scale(.6) rotate(-8deg); }
-  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+  0%   { transform: scale(0.3) rotate(-25deg); opacity: 0; }
+  60%  { transform: scale(1.12) rotate(6deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);     opacity: 1; }
 }
 
-/* ── Admin ── */
-.pin-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-.pin-box {
-  background: #fff;
-  border-radius: var(--radius);
-  padding: 2rem;
-  min-width: 280px;
+.rodape-nota {
+  margin-top: 20px;
+  font-size: 12.5px;
+  color: var(--muted);
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,.2);
 }
-.pin-box h2 { font-size: 1.1rem; font-weight: 700; color: var(--azul); margin-bottom: 1rem; }
-.pin-box input {
-  border: 2px solid #d1d5db;
-  border-radius: .6rem;
-  padding: .6rem 1rem;
-  font-size: 1.4rem;
-  letter-spacing: .3em;
+
+/* ---------- Admin ---------- */
+.pin-caixa {
+  max-width: 320px;
+  margin: 120px auto;
   text-align: center;
+}
+
+.pin-caixa input {
   width: 100%;
-  margin-bottom: .75rem;
-  outline: none;
-  transition: border-color .2s;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--card-line);
+  background: var(--card);
+  color: var(--text);
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  text-align: center;
 }
-.pin-box input:focus { border-color: var(--azul); }
-.pin-erro { color: #dc2626; font-size: .85rem; margin-top: .25rem; }
 
-.btn {
-  display: inline-block;
-  padding: .6rem 1.5rem;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: .9rem;
+.pin-caixa button, .acao-primaria {
+  margin-top: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
   border: none;
-  cursor: pointer;
-  transition: opacity .15s, transform .1s;
-}
-.btn:active { transform: scale(.97); }
-.btn-primario { background: var(--azul); color: #fff; }
-.btn-primario:hover { opacity: .9; }
-.btn-perigo { background: #dc2626; color: #fff; }
-.btn-perigo:hover { opacity: .9; }
-
-.admin-section { margin-bottom: 2rem; }
-.admin-area-titulo {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--azul);
-  margin-bottom: .75rem;
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-}
-
-.admin-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: .6rem;
-}
-@media (min-width: 560px) {
-  .admin-checkboxes { grid-template-columns: repeat(4, 1fr); }
-}
-
-.admin-check-label {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .6rem .75rem;
-  border-radius: .75rem;
-  font-size: .85rem;
+  background: var(--text);
+  color: var(--bg);
   font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.erro { color: #e5484d; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+.tabela-admin { margin-top: 10px; }
+
+.linha-area-admin {
+  border: 1px solid var(--card-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.linha-area-admin .cabecalho-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  padding: 6px 10px 6px 8px;
+  font-size: 13px;
   cursor: pointer;
   user-select: none;
-  border: 2px solid transparent;
-  transition: background .15s, border-color .15s;
-}
-.admin-check-label input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
-  cursor: pointer;
-  accent-color: var(--azul);
-  flex-shrink: 0;
 }
 
-.save-bar {
-  position: sticky;
-  bottom: 1rem;
-  display: flex;
-  justify-content: center;
-  margin-top: 2rem;
+.check-pill.ativo {
+  background: color-mix(in srgb, var(--pill-c, #888) 22%, var(--card));
+  border-color: var(--pill-c, #888);
 }
+
+.check-pill input { accent-color: var(--pill-c, #888); }
