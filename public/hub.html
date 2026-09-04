@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SESI · Torneio Infantil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #0e1017;
+      --card:     #181b26;
+      --line:     #252839;
+      --text:     #f2f0e9;
+      --muted:    #7a7f96;
+      --azul:     #004B8D;
+      --azul-l:   #2F8FE0;
+      --laranja:  #F5821F;
+      --laranja-l:#ffaa55;
+      --gold:     #E0B23C;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── layout ── */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px 60px;
+      gap: 0;
+    }
+
+    /* ── hero ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .logo-ring {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--azul) 0%, var(--azul-l) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 0 0 6px rgba(47,143,224,.15), 0 8px 32px rgba(0,0,0,.5);
+      font-size: 36px;
+      line-height: 1;
+    }
+
+    .label-sesi {
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .titulo {
+      font-family: 'Baloo 2', sans-serif;
+      font-size: clamp(28px, 6vw, 42px);
+      font-weight: 800;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 30%, var(--azul-l));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitulo {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 36ch;
+      margin-inline: auto;
+      line-height: 1.55;
+    }
+
+    /* ── grade de módulos ── */
+    .grade {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    @media (max-width: 420px) {
+      .grade { grid-template-columns: 1fr; }
+    }
+
+    /* ── card de módulo ── */
+    .modulo {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      text-decoration: none;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .modulo:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    }
+    .modulo:active { transform: scale(.97); }
+
+    /* faixa superior colorida */
+    .modulo-topo {
+      padding: 22px 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .modulo-topo::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--grad);
+      opacity: .92;
+    }
+    .modulo-topo * { position: relative; z-index: 1; }
+
+    .modulo-icone {
+      font-size: 32px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
+    }
+
+    .modulo-nome {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,.35);
+      line-height: 1.2;
+    }
+
+    .modulo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0,0,0,.25);
+      color: rgba(255,255,255,.85);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      width: fit-content;
+      letter-spacing: .03em;
+    }
+
+    /* parte inferior do card */
+    .modulo-corpo {
+      padding: 14px 18px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modulo-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .modulo-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cor-cta, var(--muted));
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      transition: color .15s;
+    }
+    .modulo:hover .modulo-cta { color: #fff; }
+
+    .modulo-cta-arrow {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--grad);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+      transition: transform .2s;
+    }
+    .modulo:hover .modulo-cta-arrow { transform: translateX(3px); }
+
+    /* ── Cores específicas por módulo ── */
+    .mod-propulsao {
+      --grad: linear-gradient(135deg, #004B8D 0%, #2F8FE0 100%);
+      --cor-cta: #2F8FE0;
+    }
+    .mod-propulsao:hover { border-color: #2F8FE0; }
+
+    .mod-insignias {
+      --grad: linear-gradient(135deg, #7A5D14 0%, #E0B23C 100%);
+      --cor-cta: #E0B23C;
+    }
+    .mod-insignias:hover { border-color: #E0B23C; }
+
+    /* ── Linha do admin ── */
+    .admin-row {
+      width: 100%;
+      max-width: 540px;
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .admin-link {
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      transition: color .15s, border-color .15s;
+    }
+    .admin-link:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ── Rodapé ── */
+    .rodape {
+      margin-top: 48px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      opacity: .6;
+    }
+
+    /* ── Partícula de decoração ── */
+    .decos {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .deco {
+      position: absolute;
+      border-radius: 50%;
+      opacity: .04;
+      filter: blur(60px);
+    }
+    .deco-1 {
+      width: 400px; height: 400px;
+      background: var(--azul);
+      top: -120px; left: -120px;
+    }
+    .deco-2 {
+      width: 300px; height: 300px;
+      background: var(--gold);
+      bottom: -80px; right: -80px;
+    }
+    .page { position: relative; z-index: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- blobs de fundo -->
+  <div class="decos" aria-hidden="true">
+    <div class="deco deco-1"></div>
+    <div class="deco deco-2"></div>
+  </div>
+
+  <main class="page">
+
+    <!-- hero -->
+    <div class="hero">
+      <div class="logo-ring">🏆</div>
+      <p class="label-sesi">SESI · Torneio Infantil</p>
+      <h1 class="titulo">Painel do Torneio</h1>
+      <p class="subtitulo">Escolha a modalidade que deseja acessar.</p>
+    </div>
+
+    <!-- cards de módulos -->
+    <div class="grade">
+
+      <!-- Módulo 1: Propulsão -->
+      <a href="/index.html" class="modulo mod-propulsao">
+        <div class="modulo-topo">
+          <span class="modulo-icone">🚀</span>
+          <span class="modulo-nome">Prova da<br>Propulsão</span>
+          <span class="modulo-badge">⏱ Cronômetro + Placar</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Cronometrage das rodadas e placar em tempo real para as 4 equipes.</p>
+          <div class="modulo-cta">
+            Abrir
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+
+      <!-- Módulo 2: Insígnias -->
+      <a href="/insignias/areas.html" class="modulo mod-insignias">
+        <div class="modulo-topo">
+          <span class="modulo-icone">🏅</span>
+          <span class="modulo-nome">Insígnias<br>por Área</span>
+          <span class="modulo-badge">🎯 4 áreas · 4 equipes</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Estojos individuais por equipe com as insígnias conquistadas em cada área.</p>
+          <div class="modulo-cta">
+            Abrir
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- links de admin -->
+    <div class="admin-row">
+      <a href="/insignias/admin-areas.html" class="admin-link">🔐 Admin · Insígnias</a>
+    </div>
+
+    <p class="rodape">SESI · Serviço Social da Indústria</p>
+
+  </main>
+
+</body>
+</html>

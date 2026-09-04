@@ -30,21 +30,51 @@ function tentarEntrar() {
   }
 }
 
-function alternarConquistaArea(areaId, teamId, marcado) {
+function alternarConquistaArea(areaId, teamId, marcado, el) {
+  // Confirmação antes de remover
+  if (!marcado) {
+    const areaNome   = (AREAS.find(a => a.id === areaId)  || {}).nome || areaId;
+    const equipeNome = (TEAMS.find(t => t.id === teamId)  || {}).nome || teamId;
+    if (!confirm(`Remover a insígnia "${areaNome}" da ${equipeNome}?\n\nEssa ação pode ser desfeita desmarcando e depois remarcando.`)) {
+      el.checked = true; // reverte checkbox
+      return;
+    }
+  }
+
   const estado = lerEstadoAreas();
-  if (!estado.conquistas[areaId]) estado.conquistas[areaId] = {};
+  if (!estado.conquistas[areaId])  estado.conquistas[areaId]  = {};
+  if (!estado.timestamps)          estado.timestamps           = {};
+
   estado.conquistas[areaId][teamId] = marcado;
+
+  const tsKey = areaId + ':' + teamId;
+  if (marcado) {
+    estado.timestamps[tsKey] = Date.now();
+  } else {
+    delete estado.timestamps[tsKey];
+  }
+
   salvarEstadoAreas(estado);
+  renderPainel();
+}
+
+function formatarData(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 function renderPainel() {
-  const app = document.getElementById("admin-app");
+  const app    = document.getElementById("admin-app");
   const estado = lerEstadoAreas();
+  const ts     = estado.timestamps || {};
 
   app.innerHTML = `
     <div class="topbar">
       <button class="voltar" onclick="sair()">Sair</button>
       <a href="areas.html" class="voltar" style="text-decoration:none">Ver estojo →</a>
+      <a href="/hub.html"  class="voltar" style="text-decoration:none;margin-left:auto">⬅ Painel</a>
     </div>
     <div class="marca">Painel do professor</div>
     <h1 class="titulo-principal">Liberar insígnias por área</h1>
@@ -57,28 +87,30 @@ function renderPainel() {
             <div class="cabecalho-linha">
               <span class="bolinha-cor" style="background:${equipe.cor}"></span>
               <strong>${equipe.nome}</strong>
-              <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;font-weight:400">
-                ${conquistadas}/${AREAS.length} insígnias
-              </span>
+              <span class="admin-contagem">${conquistadas}/${AREAS.length} insígnias</span>
             </div>
             <div class="checks">
               ${AREAS.map(area => {
                 const ativo = conquistouArea(estado, area.id, equipe.id);
+                const quando = ts[area.id + ':' + equipe.id];
                 return `
-                  <label class="check-pill ${ativo ? "ativo" : ""}" style="--pill-c:${equipe.cor}">
-                    <input type="checkbox" ${ativo ? "checked" : ""}
-                      onchange="alternarConquistaArea('${area.id}','${equipe.id}', this.checked); renderPainel();">
-                    ${area.emoji} ${area.nome}
+                  <label class="check-pill ${ativo ? 'ativo' : ''}" style="--pill-c:${equipe.cor}">
+                    <input type="checkbox" ${ativo ? 'checked' : ''}
+                      onchange="alternarConquistaArea('${area.id}','${equipe.id}', this.checked, this);">
+                    <span class="pill-conteudo">
+                      <span>${area.emoji} ${area.nome}</span>
+                      ${ativo && quando ? `<span class="pill-ts">${formatarData(quando)}</span>` : ''}
+                    </span>
                   </label>
                 `;
-              }).join("")}
+              }).join('')}
             </div>
           </div>
         `;
-      }).join("")}
+      }).join('')}
     </div>
     <p class="rodape-nota">
-      <a href="../" style="color:var(--muted);text-decoration:none">← Prova da Propulsão</a>
+      <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
     </p>
   `;
 }

@@ -469,14 +469,26 @@ button, input { font-family: inherit; }
   padding: 12px;
 }
 
-.slot-cadeado {
+/* slot vazio melhorado */
+.slot-vazio {
   display: flex; flex-direction: column;
-  align-items: center; gap: 6px;
-  opacity: .4;
+  align-items: center; gap: 8px;
   padding: 10px;
 }
-.slot-cadeado .nome-insignia {
-  font-size: 10px; text-align: center; line-height: 1.3;
+.slot-vazio-circulo {
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  border: 2px dashed color-mix(in srgb, var(--c, #888) 40%, transparent);
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--c, #888) 6%, transparent);
+  animation: slot-pulsa 2.8s ease-in-out infinite;
+}
+.slot-vazio-lock { width: 24px; height: 24px; opacity: .35; display: block; }
+.slot-vazio-nome { font-size: 10px; text-align: center; line-height: 1.3; color: var(--muted); opacity: .6; }
+
+@keyframes slot-pulsa {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%       { opacity: .85; transform: scale(1.05); }
 }
 
 /* ================================================================
@@ -585,3 +597,198 @@ button, input { font-family: inherit; }
   border-color: var(--pill-c, #888);
 }
 .check-pill input { accent-color: var(--pill-c, #888); }
+
+/* pill com timestamp */
+.pill-conteudo { display: flex; flex-direction: column; gap: 1px; }
+.pill-ts { font-size: 10px; opacity: .6; font-family: 'Inter', sans-serif; font-weight: 400; }
+
+/* contagem no admin */
+.admin-contagem { margin-left: auto; font-size: 12px; color: var(--muted); font-family: 'Inter', sans-serif; font-weight: 400; }
+
+/* ================================================================
+   BARRA DE PROGRESSO (home cards e estojo)
+   ================================================================ */
+.prog-bar {
+  height: 4px;
+  background: var(--card-line);
+  margin: 0 12px 2px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.prog-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width .6s cubic-bezier(.4,0,.2,1);
+}
+
+/* dentro do estojo */
+.estojo-prog {
+  height: 5px;
+  background: rgba(255,255,255,.08);
+  margin: 10px 16px 4px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.estojo-prog-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width .8s cubic-bezier(.4,0,.2,1) 1.8s;
+  opacity: .85;
+}
+
+/* mini-imagem nos cards da home */
+.mini-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+  display: block;
+}
+
+/* card completo — brilho especial */
+.equipe-btn.completo .equipe-btn-topo {
+  box-shadow: inset 0 -2px 10px rgba(255,215,0,.25);
+}
+.equipe-btn.completo { border-color: var(--c) !important; }
+
+/* links secundários na home */
+.home-links {
+  display: flex; gap: 10px; justify-content: center;
+  margin-top: 24px;
+}
+.link-sec {
+  font-size: 13px; color: var(--muted); text-decoration: none;
+  padding: 7px 14px; border: 1px solid var(--card-line); border-radius: 10px;
+  transition: color .15s, border-color .15s;
+}
+.link-sec:hover { color: var(--text); border-color: var(--muted); }
+
+/* ================================================================
+   BANNER ESTOJO COMPLETO
+   ================================================================ */
+.banner-completo {
+  background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 60%, #000));
+  color: #fff;
+  text-align: center;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  margin: 0 0 16px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--c) 40%, transparent);
+  animation: banner-entra .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes banner-entra {
+  from { transform: translateY(-8px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ================================================================
+   MODAL DE INSÍGNIA
+   ================================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: fade-in .2s ease;
+}
+.modal-overlay.hidden { display: none; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 24px;
+  padding: 28px 24px 24px;
+  max-width: 300px;
+  width: 100%;
+  text-align: center;
+  animation: modal-entra .3s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes modal-entra {
+  from { transform: scale(.88) translateY(12px); opacity: 0; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+
+.modal-fechar {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--muted);
+  font-size: 20px; cursor: pointer; line-height: 1;
+  padding: 4px 6px; border-radius: 6px;
+  transition: color .15s;
+}
+.modal-fechar:hover { color: var(--text); }
+
+.modal-img-wrap {
+  position: relative;
+  width: 180px; height: 180px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  perspective: 500px;
+}
+.modal-img-grande {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  transform: rotateX(8deg) rotateY(-3deg);
+  box-shadow:
+    0 4px 0 2px rgba(0,0,0,.5),
+    0 10px 0 3px rgba(0,0,0,.35),
+    0 20px 30px 6px rgba(0,0,0,.6);
+}
+
+.modal-nome {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800; font-size: 22px;
+  margin-bottom: 4px;
+}
+.modal-equipe-nome {
+  font-size: 13px; color: var(--muted);
+}
+
+/* ================================================================
+   RANKING
+   ================================================================ */
+.ranking-lista { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+
+.ranking-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  transition: border-color .2s;
+}
+.ranking-card:hover { border-color: var(--c, #888); }
+.ranking-card.rank-lider {
+  border-color: var(--c, #888);
+  background: color-mix(in srgb, var(--c, #888) 8%, var(--card));
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--c, #888) 20%, transparent);
+}
+
+.rank-pos { font-size: 28px; width: 36px; text-align: center; flex-shrink: 0; }
+
+.rank-info { flex: 1; min-width: 0; }
+.rank-nome { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+
+.rank-barra { height: 5px; background: var(--card-line); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+.rank-barra-fill { height: 100%; border-radius: 999px; transition: width .8s ease; }
+
+.rank-areas { display: flex; flex-wrap: wrap; gap: 5px; }
+.rank-area-chip {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--card-line); color: var(--muted);
+}
+.rank-area-chip.sim { font-weight: 600; }
+
+.rank-total { text-align: right; flex-shrink: 0; }
+.rank-num { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1; display: block; }
+.rank-de  { font-size: 12px; color: var(--muted); }
