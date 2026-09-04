@@ -93,10 +93,13 @@ function renderEstojoEquipe(teamId) {
         <div class="slot-label" style="background:${equipe.cor}">${area.nome}</div>
         <div class="slot-corpo">
           ${ganhou
-            ? `<img src="${area.imagem}"
-                    alt="Insígnia ${area.nome}"
-                    class="slot-insignia ${nova ? 'recem-conquistada' : ''}"
-                    onerror="this.parentNode.innerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">`
+            ? `<div class="badge-3d-wrap ${nova ? 'recem-conquistada' : ''}">
+                 <img src="${area.imagem}"
+                      alt="Insígnia ${area.nome}"
+                      class="slot-insignia"
+                      onerror="this.closest('.badge-3d-wrap').outerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">
+                 <div class="badge-gloss"></div>
+               </div>`
             : `<div class="slot-cadeado" style="color:${equipe.cor}">
                  <span class="icone" style="width:30px;height:30px;display:block">${ICONS.cadeado}</span>
                  <span class="nome-insignia">${area.nome}</span>
