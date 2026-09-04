@@ -40,19 +40,31 @@ function renderHome() {
     <div class="marca">SESI · Torneio Infantil — Insígnias por Área</div>
     <h1 class="titulo-principal">Estojo de Insígnias</h1>
     <p class="subtitulo">Toque na sua equipe para abrir o estojo e ver as insígnias conquistadas.</p>
-    <div class="grade-equipes">
+
+    <div class="grade-equipes-btn">
       ${TEAMS.map(t => {
         const total = totalConquistadoEquipe(estado, t.id);
+        const slots = AREAS.map(a => {
+          const ganhou = conquistouArea(estado, a.id, t.id);
+          return `<span class="mini-slot ${ganhou ? 'conquistado' : ''}"
+                        style="${ganhou ? `background:${t.cor}22;border-color:${t.cor}` : ''}">
+                    ${ganhou ? a.emoji : '🔒'}
+                  </span>`;
+        }).join("");
         return `
-          <button class="equipe-tile"
+          <button class="equipe-btn"
                   style="--c:${t.cor}; --cd:${t.corEscura}"
                   onclick="location.hash='#/equipe/${t.id}'">
-            <span class="selo">${ICONS.selo}</span>
-            <span class="progresso-mini">${total}/${AREAS.length} insígnias</span>
-            <span class="rotulo">${t.nome}</span>
+            <div class="equipe-btn-topo" style="background:linear-gradient(135deg,${t.cor},${t.corEscura})">
+              <span class="equipe-btn-nome">${t.nome}</span>
+              <span class="equipe-btn-badge">${total}/${AREAS.length}</span>
+            </div>
+            <div class="equipe-btn-slots">${slots}</div>
+            <div class="equipe-btn-cta">Abrir estojo →</div>
           </button>`;
       }).join("")}
     </div>
+
     <p class="rodape-nota" style="margin-top:32px">
       <a href="../" style="color:var(--muted);text-decoration:none">← Prova da Propulsão</a>
     </p>`;

@@ -57,7 +57,99 @@ button, input { font-family: inherit; }
 .titulo-principal { font-size: 28px; line-height: 1.15; margin-bottom: 6px; }
 .subtitulo { color: var(--muted); font-size: 15px; max-width: 46ch; }
 
-/* ---------- Seleção de equipe ---------- */
+/* ---------- Botões de equipe (home) ---------- */
+.grade-equipes-btn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+@media (min-width: 500px) {
+  .grade-equipes-btn { grid-template-columns: repeat(2, 1fr); }
+}
+
+.equipe-btn {
+  --c: var(--team);
+  --cd: var(--team-dark);
+  border: none;
+  border-radius: 18px;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  text-align: left;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  display: flex;
+  flex-direction: column;
+}
+.equipe-btn:hover {
+  transform: translateY(-3px);
+  border-color: var(--c);
+  box-shadow: 0 6px 24px rgba(0,0,0,.4);
+}
+.equipe-btn:active { transform: scale(.97); }
+
+.equipe-btn-topo {
+  padding: 14px 14px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+.equipe-btn-nome {
+  color: #fff;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.3);
+  line-height: 1.2;
+}
+.equipe-btn-badge {
+  background: rgba(0,0,0,.25);
+  color: rgba(255,255,255,.9);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.equipe-btn-slots {
+  display: flex;
+  gap: 5px;
+  padding: 10px 12px;
+  flex-wrap: wrap;
+}
+
+.mini-slot {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1.5px dashed var(--card-line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  transition: transform .2s;
+}
+.mini-slot.conquistado {
+  border-style: solid;
+}
+
+.equipe-btn-cta {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border-top: 1px solid var(--card-line);
+  transition: color .15s;
+  letter-spacing: .01em;
+}
+.equipe-btn:hover .equipe-btn-cta {
+  color: var(--c);
+}
+
+/* ---------- Seleção de equipe (estilo antigo, mantido) ---------- */
 .grade-equipes {
   display: grid;
   grid-template-columns: 1fr 1fr;

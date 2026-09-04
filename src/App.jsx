@@ -687,6 +687,31 @@ function TelaoView() {
           Atualizado às {lastUpdate.toLocaleTimeString("pt-BR")}
         </div>
       )}
+
+      {/* Acesso rápido aos estojos de insígnias */}
+      <div className="border-t border-gray-200 pt-6">
+        <h2 className="text-base font-bold mb-3" style={{ color: AZUL }}>
+          🏅 Estojos de Insígnias — acesso rápido
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { id: "vermelha", nome: "Turma A · Vermelha", cor: "#E5484D" },
+            { id: "azul",     nome: "Turma B · Azul",     cor: "#2F8FE0" },
+            { id: "verde",    nome: "Turma C · Verde",     cor: "#3C9A5F" },
+            { id: "amarela",  nome: "Turma D · Amarela",   cor: "#E0B23C" },
+          ].map(t => (
+            <a
+              key={t.id}
+              href={`/insignias/areas.html#/equipe/${t.id}`}
+              className="flex items-center justify-between gap-2 rounded-xl px-4 py-3 font-bold text-sm text-white no-underline"
+              style={{ backgroundColor: t.cor, textDecoration: "none" }}
+            >
+              <span>{t.nome}</span>
+              <span style={{ opacity: .75 }}>→</span>
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
