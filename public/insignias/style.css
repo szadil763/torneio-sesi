@@ -889,6 +889,104 @@ button, input { font-family: inherit; }
 
 .area-counter-ts { font-size: 10px; color: var(--muted); text-align: center; }
 
+/* ================================================================
+   ABAS DO ADMIN
+   ================================================================ */
+.admin-abas {
+  display: flex; gap: 8px;
+  margin: 16px 0 0;
+}
+.admin-aba {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1.5px solid var(--card-line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+  font-family: inherit;
+}
+.admin-aba.ativa {
+  border-color: var(--text);
+  color: var(--text);
+  background: var(--card-line);
+}
+.admin-aba:hover:not(.ativa) { color: var(--text); border-color: var(--muted); }
+
+/* ================================================================
+   VISÃO GERAL DO PROFESSOR — TABELA
+   ================================================================ */
+.visao-wrap {
+  overflow-x: auto;
+  margin-bottom: 24px;
+  border: 1px solid var(--card-line);
+  border-radius: 14px;
+}
+.visao-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.visao-tabela th, .visao-tabela td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--card-line);
+}
+.visao-tabela th { color: var(--muted); font-weight: 600; font-size: 12px; background: rgba(255,255,255,.03); }
+.vt-equipe, .vt-equipe-cell { text-align: left !important; }
+.vt-equipe-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.vt-num-cell { border-radius: 6px; }
+.vt-num-cell.vt-ativo { font-weight: 700; }
+.vt-total-cell { font-weight: 700; font-size: 15px; }
+.vt-foot-label { text-align: left; color: var(--muted); font-size: 12px; padding-top: 12px; }
+.vt-foot-num   { color: var(--muted); font-weight: 600; padding-top: 12px; }
+.vt-foot-grand { font-weight: 800; font-size: 16px; padding-top: 12px; }
+tfoot tr { border-top: 2px solid var(--card-line); }
+
+/* Barras de progresso por equipe */
+.visao-barras { margin-bottom: 24px; }
+.visao-barras-titulo {
+  font-family: 'Baloo 2', sans-serif; font-weight: 700;
+  font-size: 15px; margin: 0 0 12px;
+}
+.visao-barra-linha { margin-bottom: 10px; }
+.visao-barra-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 4px;
+  font-size: 13px; font-weight: 600;
+}
+.visao-barra-info { font-size: 11px; color: var(--muted); font-weight: 400; }
+.visao-barra-track {
+  height: 8px; background: var(--card-line); border-radius: 999px; overflow: hidden;
+}
+.visao-barra-fill { height: 100%; border-radius: 999px; transition: width .6s ease; }
+
+/* Destaque por área */
+.visao-por-area { margin-bottom: 24px; }
+.visao-area-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 480px) {
+  .visao-area-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.visao-area-card {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  padding: 12px 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.visao-area-emoji { font-size: 24px; text-align: center; }
+.visao-area-nome  { font-size: 11px; color: var(--muted); text-align: center; font-weight: 600; }
+.visao-area-rows  { display: flex; flex-direction: column; gap: 4px; }
+.visao-area-row   { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+.visao-area-row.lider .visao-area-team { font-weight: 700; }
+.visao-area-qtd   { font-weight: 700; }
+
 /* resumo geral no topo do admin */
 .admin-resumo {
   display: flex; align-items: center; justify-content: space-between;

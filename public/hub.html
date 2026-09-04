@@ -224,6 +224,18 @@
     }
     .mod-insignias:hover { border-color: #E0B23C; }
 
+    .mod-professor {
+      --grad: linear-gradient(135deg, #2d3561 0%, #5563de 100%);
+      --cor-cta: #7b8ef0;
+    }
+    .mod-professor:hover { border-color: #7b8ef0; }
+
+    .mod-ranking {
+      --grad: linear-gradient(135deg, #7A1F22 0%, #E5484D 100%);
+      --cor-cta: #E5484D;
+    }
+    .mod-ranking:hover { border-color: #E5484D; }
+
     /* ── Linha do admin ── */
     .admin-row {
       width: 100%;
@@ -318,17 +330,17 @@
         </div>
       </a>
 
-      <!-- Módulo 2: Insígnias -->
-      <a href="/insignias/areas.html" class="modulo mod-insignias">
+      <!-- Módulo 2: Insígnias — Alunos/Pais -->
+      <a href="/insignias/alunos.html" class="modulo mod-insignias">
         <div class="modulo-topo">
           <span class="modulo-icone">🏅</span>
-          <span class="modulo-nome">Insígnias<br>por Área</span>
-          <span class="modulo-badge">🎯 4 áreas · 4 equipes</span>
+          <span class="modulo-nome">Estojos<br>de Insígnias</span>
+          <span class="modulo-badge">🎒 Alunos e Pais</span>
         </div>
         <div class="modulo-corpo">
-          <p class="modulo-desc">Estojos individuais por equipe com as insígnias conquistadas em cada área.</p>
+          <p class="modulo-desc">Abra o estojo da sua equipe e veja as insígnias conquistadas com animação!</p>
           <div class="modulo-cta">
-            Abrir
+            Abrir estojo
             <div class="modulo-cta-arrow">→</div>
           </div>
         </div>
@@ -336,9 +348,41 @@
 
     </div>
 
-    <!-- links de admin -->
-    <div class="admin-row">
-      <a href="/insignias/admin-areas.html" class="admin-link">🔐 Admin · Insígnias</a>
+    <!-- segunda linha: professor -->
+    <div class="grade" style="margin-top:12px">
+
+      <!-- Professor: gerenciar -->
+      <a href="/insignias/admin-areas.html" class="modulo mod-professor">
+        <div class="modulo-topo">
+          <span class="modulo-icone">✏️</span>
+          <span class="modulo-nome">Gerenciar<br>Insígnias</span>
+          <span class="modulo-badge">🔐 Professor</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Adicione ou remova insígnias por equipe e área. Requer PIN.</p>
+          <div class="modulo-cta">
+            Entrar
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+
+      <!-- Ranking -->
+      <a href="/insignias/ranking.html" class="modulo mod-ranking">
+        <div class="modulo-topo">
+          <span class="modulo-icone">🏆</span>
+          <span class="modulo-nome">Ranking<br>das Equipes</span>
+          <span class="modulo-badge">📊 Placar geral</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Veja o ranking das equipes por número de insígnias conquistadas.</p>
+          <div class="modulo-cta">
+            Ver ranking
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+
     </div>
 
     <p class="rodape">SESI · Serviço Social da Indústria</p>

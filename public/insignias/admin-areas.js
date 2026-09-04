@@ -66,33 +66,61 @@ function formatarData(ts) {
     + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Qual aba está ativa: 'gerenciar' | 'visao-geral'
+let abaAtiva = 'gerenciar';
+
+function trocarAba(aba) {
+  abaAtiva = aba;
+  renderPainel();
+}
+
 function renderPainel() {
   const app    = document.getElementById("admin-app");
   const estado = lerEstadoAreas();
   const ts     = estado.timestamps || {};
-
-  // Total geral de insígnias (soma de todos os contadores)
   const totalGeral = TEAMS.reduce((sum, t) =>
     sum + AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, t.id), 0), 0);
+
+  const abas = `
+    <div class="admin-abas">
+      <button class="admin-aba ${abaAtiva === 'gerenciar'   ? 'ativa' : ''}" onclick="trocarAba('gerenciar')">
+        ✏️ Gerenciar insígnias
+      </button>
+      <button class="admin-aba ${abaAtiva === 'visao-geral' ? 'ativa' : ''}" onclick="trocarAba('visao-geral')">
+        📊 Visão geral
+      </button>
+    </div>`;
 
   app.innerHTML = `
     <div class="topbar">
       <button class="voltar" onclick="sair()">Sair</button>
-      <a href="areas.html" class="voltar" style="text-decoration:none">Ver estojos →</a>
-      <a href="/hub.html"  class="voltar" style="text-decoration:none;margin-left:auto">⬅ Painel</a>
+      <a href="alunos.html" class="voltar" style="text-decoration:none">Ver estojos →</a>
+      <a href="/hub.html"   class="voltar" style="text-decoration:none;margin-left:auto">⬅ Painel</a>
     </div>
     <div class="marca">Painel do professor</div>
-    <h1 class="titulo-principal">Liberar insígnias por área</h1>
-    <p class="subtitulo">Use + para adicionar insígnias e − para remover. A quantidade aparece no estojo público em tempo real.</p>
+    <h1 class="titulo-principal">Insígnias por Área</h1>
+
+    ${abas}
 
     <div class="admin-resumo">
       <span>Total de insígnias concedidas:</span>
       <strong>${totalGeral}</strong>
     </div>
 
+    ${abaAtiva === 'gerenciar' ? renderAbaGerenciar(estado, ts) : renderAbaVisaoGeral(estado)}
+
+    <p class="rodape-nota">
+      <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
+    </p>
+  `;
+}
+
+function renderAbaGerenciar(estado, ts) {
+  return `
+    <p class="subtitulo" style="margin-bottom:12px">Use + para adicionar insígnias e − para remover. A quantidade aparece no estojo em tempo real.</p>
     <div class="tabela-admin">
       ${TEAMS.map(equipe => {
-        const totalEquipe = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
+        const totalEquipe      = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
         const areasComInsignia = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
         return `
           <div class="linha-area-admin">
@@ -128,11 +156,105 @@ function renderPainel() {
           </div>
         `;
       }).join('')}
+    </div>`;
+}
+
+function renderAbaVisaoGeral(estado) {
+  // Totais por área (coluna)
+  const totaisPorArea = AREAS.map(a =>
+    TEAMS.reduce((s, t) => s + quantidadeInsignia(estado, a.id, t.id), 0));
+  const totalGeralTabela = totaisPorArea.reduce((s, n) => s + n, 0);
+
+  return `
+    <p class="subtitulo" style="margin-bottom:16px">Resumo de todas as equipes e áreas. Atualiza automaticamente ao gerenciar.</p>
+
+    <div class="visao-wrap">
+      <table class="visao-tabela">
+        <thead>
+          <tr>
+            <th class="vt-equipe">Equipe</th>
+            ${AREAS.map(a => `<th class="vt-area">${a.emoji}<br>${a.nome}</th>`).join('')}
+            <th class="vt-total">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${TEAMS.map(t => {
+            const totalT = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, t.id), 0);
+            return `
+              <tr>
+                <td class="vt-equipe-cell">
+                  <span class="bolinha-cor" style="background:${t.cor}"></span>
+                  ${t.nome}
+                </td>
+                ${AREAS.map(a => {
+                  const qtd = quantidadeInsignia(estado, a.id, t.id);
+                  return `<td class="vt-num-cell ${qtd > 0 ? 'vt-ativo' : ''}"
+                              style="${qtd > 0 ? `color:${t.cor};background:${t.cor}12` : ''}">
+                            ${qtd > 0 ? `<strong>${qtd}</strong>` : '—'}
+                          </td>`;
+                }).join('')}
+                <td class="vt-total-cell" style="${totalT > 0 ? `color:${t.cor}` : ''}">
+                  <strong>${totalT}</strong>
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="vt-foot-label">Total por área</td>
+            ${totaisPorArea.map(n => `<td class="vt-foot-num">${n}</td>`).join('')}
+            <td class="vt-foot-grand">${totalGeralTabela}</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
-    <p class="rodape-nota">
-      <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
-    </p>
-  `;
+
+    <!-- Barras de progresso por equipe -->
+    <div class="visao-barras">
+      <h3 class="visao-barras-titulo">Progresso por equipe</h3>
+      ${TEAMS.map(t => {
+        const totalT  = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, t.id), 0);
+        const areasT  = AREAS.filter(a => conquistouArea(estado, a.id, t.id)).length;
+        const maxPoss = AREAS.length * Math.max(1, ...TEAMS.map(tt =>
+          AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, tt.id), 0)));
+        const pct     = totalGeralTabela > 0
+          ? Math.round((totalT / totalGeralTabela) * 100) : 0;
+        return `
+          <div class="visao-barra-linha">
+            <div class="visao-barra-label">
+              <span style="color:${t.cor}">${t.nome}</span>
+              <span class="visao-barra-info">${areasT}/${AREAS.length} áreas · ${totalT} insígnias (${pct}%)</span>
+            </div>
+            <div class="visao-barra-track">
+              <div class="visao-barra-fill" style="width:${pct}%;background:${t.cor}"></div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Ranking por área -->
+    <div class="visao-por-area">
+      <h3 class="visao-barras-titulo">Destaque por área</h3>
+      <div class="visao-area-grid">
+        ${AREAS.map(area => {
+          const counts  = TEAMS.map(t => ({ t, qtd: quantidadeInsignia(estado, area.id, t.id) }))
+                               .sort((a, b) => b.qtd - a.qtd);
+          const lider   = counts[0];
+          return `
+            <div class="visao-area-card">
+              <div class="visao-area-emoji">${area.emoji}</div>
+              <div class="visao-area-nome">${area.nome}</div>
+              <div class="visao-area-rows">
+                ${counts.map((c, i) => `
+                  <div class="visao-area-row ${i === 0 && c.qtd > 0 ? 'lider' : ''}">
+                    <span class="visao-area-team" style="${c.qtd > 0 ? `color:${c.t.cor}` : 'opacity:.4'}">${c.t.nome.split('·')[1]?.trim() || c.t.nome}</span>
+                    <span class="visao-area-qtd" style="${c.qtd > 0 ? `color:${c.t.cor}` : 'opacity:.3'}">${c.qtd}</span>
+                  </div>`).join('')}
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 function sair() {
