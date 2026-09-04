@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Insígnias por Área</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Overlay de PIN -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-box">
+    <h2>🔐 Acesso do Professor</h2>
+    <input
+      type="password"
+      id="pin-input"
+      maxlength="8"
+      placeholder="PIN"
+      autocomplete="off"
+    />
+    <div class="pin-erro" id="pin-erro" style="display:none">PIN incorreto.</div>
+    <br />
+    <button class="btn btn-primario" id="pin-btn">Entrar</button>
+  </div>
+</div>
+
+<!-- Painel admin (oculto até validar PIN) -->
+<div id="admin-app" style="display:none">
+  <nav class="navbar">
+    <span class="navbar-title">⚙️ Admin — Insígnias por Área</span>
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <a class="navbar-back" href="areas.html">Ver público</a>
+      <a class="navbar-back" href="../">← Propulsão</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1 class="page-title">Gerenciar conquistas por área</h1>
+    <p style="color:#6b7280;font-size:.875rem;margin-bottom:1.5rem">
+      Marque a equipe quando ela vencer a competição daquela área.
+      As alterações ficam salvas localmente no navegador e aparecem
+      instantaneamente na página pública deste dispositivo.
+    </p>
+
+    <div id="admin-body"></div>
+
+    <div class="save-bar">
+      <button class="btn btn-primario" id="btn-salvar">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<script src="areas-data.js"></script>
+<script src="admin-areas.js"></script>
+</body>
+</html>

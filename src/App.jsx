@@ -698,8 +698,15 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-3">
-          <div className="text-white font-bold text-sm md:text-base">
-            🌀 Prova da Propulsão
+          <div className="flex items-center gap-3">
+            <span className="text-white font-bold text-sm md:text-base">🌀 Prova da Propulsão</span>
+            <a
+              href="/insignias/areas.html"
+              className="text-xs px-2.5 py-1 rounded-full font-semibold"
+              style={{ background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.85)" }}
+            >
+              🏅 Insígnias por área
+            </a>
           </div>
           <div className="flex gap-1 bg-white bg-opacity-10 rounded-full p-1">
             <button
