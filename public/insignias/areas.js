@@ -118,8 +118,13 @@ function idsJaVistosEquipe(teamId) {
   catch { return []; }
 }
 
-function totalConquistadoEquipe(estado, teamId) {
+// Número de áreas ÚNICAS com pelo menos 1 insígnia
+function totalAreasEquipe(estado, teamId) {
   return AREAS.filter(a => conquistouArea(estado, a.id, teamId)).length;
+}
+// Total somado de insígnias (todas as áreas)
+function totalInsigniasEquipe(estado, teamId) {
+  return AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, teamId), 0);
 }
 
 // ── Tela inicial ──────────────────────────────────────────────────
@@ -134,15 +139,18 @@ function renderHome() {
 
     <div class="grade-equipes-btn">
       ${TEAMS.map(t => {
-        const total   = totalConquistadoEquipe(estado, t.id);
-        const pct     = Math.round((total / AREAS.length) * 100);
-        const completo = total === AREAS.length;
-        const slots   = AREAS.map(a => {
-          const ganhou = conquistouArea(estado, a.id, t.id);
+        const areas    = totalAreasEquipe(estado, t.id);
+        const total    = totalInsigniasEquipe(estado, t.id);
+        const pct      = Math.round((areas / AREAS.length) * 100);
+        const completo = areas === AREAS.length;
+        const slots    = AREAS.map(a => {
+          const qtd    = quantidadeInsignia(estado, a.id, t.id);
+          const ganhou = qtd > 0;
           return `<span class="mini-slot ${ganhou ? 'conquistado' : ''}"
                         style="${ganhou ? `background:${t.cor}28;border-color:${t.cor}` : ''}">
-                    ${ganhou ? `<img src="${a.imagem}" class="mini-img"
-                                     onerror="this.outerHTML='${a.emoji}'">` : '🔒'}
+                    ${ganhou
+                      ? `<img src="${a.imagem}" class="mini-img" onerror="this.outerHTML='${a.emoji}'">${qtd > 1 ? `<span class="mini-count">${qtd}</span>` : ''}`
+                      : '🔒'}
                   </span>`;
         }).join('');
         return `
@@ -151,7 +159,7 @@ function renderHome() {
                   onclick="location.hash='#/equipe/${t.id}'">
             <div class="equipe-btn-topo" style="background:linear-gradient(135deg,${t.cor},${t.corEscura})">
               <span class="equipe-btn-nome">${completo ? '⭐ ' : ''}${t.nome}</span>
-              <span class="equipe-btn-badge">${total}/${AREAS.length}</span>
+              <span class="equipe-btn-badge">${total} insígnia${total !== 1 ? 's' : ''}</span>
             </div>
             <div class="equipe-btn-slots">${slots}</div>
             <div class="prog-bar"><div class="prog-bar-fill" style="width:${pct}%;background:${t.cor}"></div></div>
@@ -175,14 +183,16 @@ function renderEstojoEquipe(teamId) {
   const estado          = lerEstadoAreas();
   const vistosAntes     = new Set(idsJaVistosEquipe(teamId));
   const conquistadasAgora = AREAS.filter(a => conquistouArea(estado, a.id, teamId)).map(a => a.id);
-  const total           = conquistadasAgora.length;
-  const completo        = total === AREAS.length;
+  const areas           = conquistadasAgora.length;
+  const totalInsignias  = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, teamId), 0);
+  const completo        = areas === AREAS.length;
   const eraCompleto     = vistosAntes.size === AREAS.length;
   const ficouCompleto   = completo && !eraCompleto;
   const temNovas        = conquistadasAgora.some(id => !vistosAntes.has(id));
 
   const slots = AREAS.map(area => {
-    const ganhou = conquistouArea(estado, area.id, teamId);
+    const qtd    = quantidadeInsignia(estado, area.id, teamId);
+    const ganhou = qtd > 0;
     const nova   = ganhou && !vistosAntes.has(area.id);
     return `
       <div class="slot ${ganhou ? 'conquistada' : ''} ${nova ? 'recem-aberta' : ''}"
@@ -198,6 +208,7 @@ function renderEstojoEquipe(teamId) {
                       class="slot-insignia"
                       onerror="this.closest('.badge-3d-wrap').outerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">
                  <div class="badge-gloss"></div>
+                 ${qtd > 1 ? `<div class="slot-qtd-badge" style="background:${equipe.cor}">×${qtd}</div>` : ''}
                </div>`
             : `<div class="slot-vazio">
                  <div class="slot-vazio-circulo" style="--c:${equipe.cor}">
@@ -225,11 +236,11 @@ function renderEstojoEquipe(teamId) {
         <div class="case-base">
           <div class="estojo-topo">
             <span class="equipe-nome-estojo" style="color:${equipe.cor}">${equipe.nome}</span>
-            <span class="contagem-badge">${total}/${AREAS.length}</span>
+            <span class="contagem-badge">${totalInsignias} insígnia${totalInsignias !== 1 ? 's' : ''}</span>
           </div>
           <div class="estojo-corpo">${slots}</div>
           <div class="estojo-prog">
-            <div class="estojo-prog-fill" style="width:${Math.round(total/AREAS.length*100)}%;background:${equipe.cor}"></div>
+            <div class="estojo-prog-fill" style="width:${Math.round(areas/AREAS.length*100)}%;background:${equipe.cor}"></div>
           </div>
         </div>
         <div class="case-lid" style="--c:${equipe.cor}; --cd:${equipe.corEscura}">

@@ -8,11 +8,12 @@ function renderRanking() {
 
   const ranking = TEAMS.map(t => ({
     ...t,
-    total: AREAS.filter(a => conquistouArea(estado, a.id, t.id)).length,
-    areas: AREAS.map(a => ({ ...a, conquistou: conquistouArea(estado, a.id, t.id) })),
-  })).sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
+    totalInsignias: AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, t.id), 0),
+    areasUnicas:    AREAS.filter(a => conquistouArea(estado, a.id, t.id)).length,
+    areas: AREAS.map(a => ({ ...a, qtd: quantidadeInsignia(estado, a.id, t.id) })),
+  })).sort((a, b) => b.totalInsignias - a.totalInsignias || a.nome.localeCompare(b.nome));
 
-  const lider = ranking[0].total;
+  const liderInsignias = ranking[0].totalInsignias || 1;
 
   app.innerHTML = `
     <div class="topbar">
@@ -25,9 +26,9 @@ function renderRanking() {
 
     <div class="ranking-lista">
       ${ranking.map((t, i) => {
-        const pos   = i + 1;
-        const pct   = lider > 0 ? Math.round((t.total / AREAS.length) * 100) : 0;
-        const empate = i > 0 && ranking[i - 1].total === t.total;
+        const pos    = i + 1;
+        const pct    = Math.round((t.totalInsignias / liderInsignias) * 100);
+        const empate = i > 0 && ranking[i - 1].totalInsignias === t.totalInsignias;
         return `
           <div class="ranking-card ${pos === 1 ? 'rank-lider' : ''}"
                style="--c:${t.cor};--cd:${t.corEscura}">
@@ -39,15 +40,15 @@ function renderRanking() {
               </div>
               <div class="rank-areas">
                 ${t.areas.map(a => `
-                  <span class="rank-area-chip ${a.conquistou ? 'sim' : 'nao'}"
-                        style="${a.conquistou ? `background:${t.cor}22;border-color:${t.cor};color:${t.cor}` : ''}">
-                    ${a.emoji} ${a.nome}
+                  <span class="rank-area-chip ${a.qtd > 0 ? 'sim' : 'nao'}"
+                        style="${a.qtd > 0 ? `background:${t.cor}22;border-color:${t.cor};color:${t.cor}` : ''}">
+                    ${a.emoji} ${a.nome}${a.qtd > 1 ? ` ×${a.qtd}` : ''}
                   </span>`).join('')}
               </div>
             </div>
             <div class="rank-total">
-              <span class="rank-num">${t.total}</span>
-              <span class="rank-de">/${AREAS.length}</span>
+              <span class="rank-num">${t.totalInsignias}</span>
+              <span class="rank-de">${t.areasUnicas}/${AREAS.length} áreas</span>
             </div>
           </div>`;
       }).join('')}

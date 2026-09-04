@@ -1,5 +1,5 @@
 // Painel do professor — Insígnias por Área.
-// Organizado por EQUIPE (professor marca quais áreas cada equipe conquistou).
+// Organizado por EQUIPE; cada área tem um contador +/− de insígnias.
 
 const CHAVE_SESSAO_AREAS = "torneio-insignias-areas:admin-ok";
 
@@ -14,7 +14,7 @@ function renderLoginAdmin() {
       <div class="erro" id="erro-pin"></div>
     </div>
   `;
-  document.getElementById("campo-pin").addEventListener("keydown", function (e) {
+  document.getElementById("campo-pin").addEventListener("keydown", e => {
     if (e.key === "Enter") tentarEntrar();
   });
   document.getElementById("campo-pin").focus();
@@ -30,28 +30,29 @@ function tentarEntrar() {
   }
 }
 
-function alternarConquistaArea(areaId, teamId, marcado, el) {
-  // Confirmação antes de remover
-  if (!marcado) {
-    const areaNome   = (AREAS.find(a => a.id === areaId)  || {}).nome || areaId;
-    const equipeNome = (TEAMS.find(t => t.id === teamId)  || {}).nome || teamId;
-    if (!confirm(`Remover a insígnia "${areaNome}" da ${equipeNome}?\n\nEssa ação pode ser desfeita desmarcando e depois remarcando.`)) {
-      el.checked = true; // reverte checkbox
-      return;
-    }
-  }
-
+// Incrementa ou decrementa a quantidade de insígnias de uma área/equipe
+function alterarQuantidade(areaId, teamId, delta) {
   const estado = lerEstadoAreas();
   if (!estado.conquistas[areaId])  estado.conquistas[areaId]  = {};
   if (!estado.timestamps)          estado.timestamps           = {};
 
-  estado.conquistas[areaId][teamId] = marcado;
+  const atual = quantidadeInsignia(estado, areaId, teamId);
+  const nova  = Math.max(0, atual + delta);
 
-  const tsKey = areaId + ':' + teamId;
-  if (marcado) {
-    estado.timestamps[tsKey] = Date.now();
+  // Confirmação ao remover a última insígnia
+  if (nova === 0 && atual > 0) {
+    const areaNome   = (AREAS.find(a => a.id === areaId)  || {}).nome || areaId;
+    const equipeNome = (TEAMS.find(t => t.id === teamId)  || {}).nome || teamId;
+    if (!confirm(`Remover todas as insígnias de "${areaNome}" da ${equipeNome}?`)) return;
+  }
+
+  if (nova === 0) {
+    delete estado.conquistas[areaId][teamId];
+    delete estado.timestamps[areaId + ':' + teamId];
   } else {
-    delete estado.timestamps[tsKey];
+    estado.conquistas[areaId][teamId] = nova;
+    // Registra timestamp apenas na primeira insígnia adicionada
+    if (atual === 0) estado.timestamps[areaId + ':' + teamId] = Date.now();
   }
 
   salvarEstadoAreas(estado);
@@ -70,38 +71,57 @@ function renderPainel() {
   const estado = lerEstadoAreas();
   const ts     = estado.timestamps || {};
 
+  // Total geral de insígnias (soma de todos os contadores)
+  const totalGeral = TEAMS.reduce((sum, t) =>
+    sum + AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, t.id), 0), 0);
+
   app.innerHTML = `
     <div class="topbar">
       <button class="voltar" onclick="sair()">Sair</button>
-      <a href="areas.html" class="voltar" style="text-decoration:none">Ver estojo →</a>
+      <a href="areas.html" class="voltar" style="text-decoration:none">Ver estojos →</a>
       <a href="/hub.html"  class="voltar" style="text-decoration:none;margin-left:auto">⬅ Painel</a>
     </div>
     <div class="marca">Painel do professor</div>
     <h1 class="titulo-principal">Liberar insígnias por área</h1>
-    <p class="subtitulo">Marque a área assim que a equipe vencer a competição. A insígnia aparece na hora no estojo público.</p>
+    <p class="subtitulo">Use + para adicionar insígnias e − para remover. A quantidade aparece no estojo público em tempo real.</p>
+
+    <div class="admin-resumo">
+      <span>Total de insígnias concedidas:</span>
+      <strong>${totalGeral}</strong>
+    </div>
+
     <div class="tabela-admin">
       ${TEAMS.map(equipe => {
-        const conquistadas = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
+        const totalEquipe = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
+        const areasComInsignia = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
         return `
           <div class="linha-area-admin">
             <div class="cabecalho-linha">
               <span class="bolinha-cor" style="background:${equipe.cor}"></span>
               <strong>${equipe.nome}</strong>
-              <span class="admin-contagem">${conquistadas}/${AREAS.length} insígnias</span>
+              <span class="admin-contagem">${areasComInsignia}/${AREAS.length} áreas · ${totalEquipe} insígnias</span>
             </div>
-            <div class="checks">
+            <div class="counters-grid">
               ${AREAS.map(area => {
-                const ativo = conquistouArea(estado, area.id, equipe.id);
+                const qtd    = quantidadeInsignia(estado, area.id, equipe.id);
                 const quando = ts[area.id + ':' + equipe.id];
                 return `
-                  <label class="check-pill ${ativo ? 'ativo' : ''}" style="--pill-c:${equipe.cor}">
-                    <input type="checkbox" ${ativo ? 'checked' : ''}
-                      onchange="alternarConquistaArea('${area.id}','${equipe.id}', this.checked, this);">
-                    <span class="pill-conteudo">
-                      <span>${area.emoji} ${area.nome}</span>
-                      ${ativo && quando ? `<span class="pill-ts">${formatarData(quando)}</span>` : ''}
-                    </span>
-                  </label>
+                  <div class="area-counter ${qtd > 0 ? 'ativo' : ''}" style="--pill-c:${equipe.cor}">
+                    <div class="area-counter-top">
+                      <span class="area-counter-emoji">${area.emoji}</span>
+                      <span class="area-counter-nome">${area.nome}</span>
+                    </div>
+                    <div class="area-counter-controles">
+                      <button class="counter-btn minus"
+                              onclick="alterarQuantidade('${area.id}','${equipe.id}',-1)"
+                              ${qtd === 0 ? 'disabled' : ''}>−</button>
+                      <span class="counter-num" style="${qtd > 0 ? `color:${equipe.cor}` : ''}">${qtd}</span>
+                      <button class="counter-btn plus"
+                              onclick="alterarQuantidade('${area.id}','${equipe.id}',+1)"
+                              style="${qtd > 0 ? `background:${equipe.cor}` : ''}">+</button>
+                    </div>
+                    ${qtd > 0 && quando ? `<div class="area-counter-ts">desde ${formatarData(quando)}</div>` : ''}
+                  </div>
                 `;
               }).join('')}
             </div>

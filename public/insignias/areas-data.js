@@ -34,6 +34,15 @@ function salvarEstadoAreas(estado) {
   localStorage.setItem(STORAGE_KEY_AREAS, JSON.stringify(estado));
 }
 
+// Retorna a quantidade de insígnias que a equipe tem nessa área (0 = nenhuma)
+function quantidadeInsignia(estado, areaId, teamId) {
+  const val = estado.conquistas[areaId] && estado.conquistas[areaId][teamId];
+  if (!val) return 0;
+  if (val === true) return 1; // compatibilidade com dados antigos (boolean)
+  return typeof val === 'number' ? Math.max(0, val) : 0;
+}
+
+// Retorna true se a equipe tem pelo menos 1 insígnia nessa área
 function conquistouArea(estado, areaId, teamId) {
-  return !!(estado.conquistas[areaId] && estado.conquistas[areaId][teamId]);
+  return quantidadeInsignia(estado, areaId, teamId) > 0;
 }
