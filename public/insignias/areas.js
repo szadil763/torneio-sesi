@@ -1,96 +1,147 @@
 // Página pública — Insígnias por Área.
-// Lógica: seleciona uma área, abre estojo com 4 slots (um por equipe).
+// Cada equipe tem seu estojo com 4 slots (um por área).
+// Ao abrir o estojo: tampa 3D se abre e insígnias encaixam nos slots.
 
-function chaveVistosAreas(areaId) {
-  return `torneio-insignias-areas:vistos:${areaId}`;
+// SVG do emblema na tampa — círculo tipo Pokéball com estrela dourada
+function emblemaLid(corEquipe) {
+  return `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="40" stroke="rgba(0,0,0,0.5)" stroke-width="4"/>
+    <rect x="10" y="47" width="80" height="6" fill="rgba(0,0,0,0.4)" rx="3"/>
+    <circle cx="50" cy="50" r="13" fill="rgba(0,0,0,0.3)" stroke="rgba(0,0,0,0.5)" stroke-width="4"/>
+    <path d="M50 16 L60 47 L50 42 L40 47 Z"
+          fill="rgba(220,168,0,0.75)" stroke="rgba(180,130,0,0.6)" stroke-width="1"/>
+    <circle cx="50" cy="50" r="5" fill="rgba(220,168,0,0.8)"/>
+    <circle cx="50" cy="50" r="2.5" fill="rgba(255,220,80,0.9)"/>
+  </svg>`;
 }
 
-function marcarVistosArea(areaId, teamIds) {
-  localStorage.setItem(chaveVistosAreas(areaId), JSON.stringify(teamIds));
+// Chave "vistos" para detectar insígnias novas (animação extra)
+function chaveVistosEquipe(teamId) {
+  return `torneio-insignias-areas:vistos:${teamId}`;
+}
+function marcarVistosEquipe(teamId, areaIds) {
+  localStorage.setItem(chaveVistosEquipe(teamId), JSON.stringify(areaIds));
+}
+function idsJaVistosEquipe(teamId) {
+  try { return JSON.parse(localStorage.getItem(chaveVistosEquipe(teamId)) || "[]"); }
+  catch { return []; }
 }
 
-function idsJaVistosArea(areaId) {
-  try {
-    return JSON.parse(localStorage.getItem(chaveVistosAreas(areaId)) || "[]");
-  } catch {
-    return [];
-  }
+function totalConquistadoEquipe(estado, teamId) {
+  return AREAS.filter(a => conquistouArea(estado, a.id, teamId)).length;
 }
 
+// ── Tela inicial: grade das 4 equipes ────────────────────────────
 function renderHome() {
   const app = document.getElementById("app");
   const estado = lerEstadoAreas();
 
   app.innerHTML = `
     <div class="marca">SESI · Torneio Infantil — Insígnias por Área</div>
-    <h1 class="titulo-principal">Insígnias por Área</h1>
-    <p class="subtitulo">Toque em uma área para ver quais equipes já conquistaram a insígnia.</p>
-    <div class="grade-areas">
-      ${AREAS.map(a => {
-        const conquistadas = TEAMS.filter(t => conquistouArea(estado, a.id, t.id)).length;
+    <h1 class="titulo-principal">Estojo de Insígnias</h1>
+    <p class="subtitulo">Toque na sua equipe para abrir o estojo e ver as insígnias conquistadas.</p>
+    <div class="grade-equipes">
+      ${TEAMS.map(t => {
+        const total = totalConquistadoEquipe(estado, t.id);
         return `
-          <button class="area-tile" onclick="location.hash='#/area/${a.id}'">
-            <span class="emoji">${a.emoji}</span>
-            <span class="area-nome">${a.nome}</span>
-            <span class="area-hint">${conquistadas}/${TEAMS.length} equipes</span>
-          </button>
-        `;
+          <button class="equipe-tile"
+                  style="--c:${t.cor}; --cd:${t.corEscura}"
+                  onclick="location.hash='#/equipe/${t.id}'">
+            <span class="selo">${ICONS.selo}</span>
+            <span class="progresso-mini">${total}/${AREAS.length} insígnias</span>
+            <span class="rotulo">${t.nome}</span>
+          </button>`;
       }).join("")}
     </div>
     <p class="rodape-nota" style="margin-top:32px">
       <a href="../" style="color:var(--muted);text-decoration:none">← Prova da Propulsão</a>
-    </p>
-  `;
+    </p>`;
 }
 
-function renderEstojoArea(areaId) {
-  const area = AREAS.find(a => a.id === areaId);
+// ── Estojo da equipe: tampa 3D abre → slots aparecem ─────────────
+function renderEstojoEquipe(teamId) {
+  const equipe = TEAMS.find(t => t.id === teamId);
   const app = document.getElementById("app");
-  if (!area) { location.hash = "#/"; return; }
+  if (!equipe) { location.hash = "#/"; return; }
 
   const estado = lerEstadoAreas();
-  const vistosAntes = new Set(idsJaVistosArea(areaId));
-  const conquistadasAgora = TEAMS.filter(t => conquistouArea(estado, areaId, t.id)).map(t => t.id);
+  const vistosAntes = new Set(idsJaVistosEquipe(teamId));
+  const conquistadasAgora = AREAS
+    .filter(a => conquistouArea(estado, a.id, teamId))
+    .map(a => a.id);
+  const total = conquistadasAgora.length;
+
+  // Gera os 4 slots (um por área)
+  const slots = AREAS.map(area => {
+    const ganhou = conquistouArea(estado, area.id, teamId);
+    const nova   = ganhou && !vistosAntes.has(area.id);
+    return `
+      <div class="slot ${ganhou ? 'conquistada' : ''} ${nova ? 'recem-aberta' : ''}"
+           style="--c:${equipe.cor}">
+        <div class="slot-label" style="background:${equipe.cor}">${area.nome}</div>
+        <div class="slot-corpo">
+          ${ganhou
+            ? `<img src="${area.imagem}"
+                    alt="Insígnia ${area.nome}"
+                    class="slot-insignia ${nova ? 'recem-conquistada' : ''}"
+                    onerror="this.parentNode.innerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">`
+            : `<div class="slot-cadeado" style="color:${equipe.cor}">
+                 <span class="icone" style="width:30px;height:30px;display:block">${ICONS.cadeado}</span>
+                 <span class="nome-insignia">${area.nome}</span>
+               </div>`
+          }
+        </div>
+      </div>`;
+  }).join("");
 
   app.innerHTML = `
     <div class="topbar">
-      <button class="voltar" onclick="location.hash='#/'">← Áreas</button>
+      <button class="voltar" onclick="location.hash='#/'">← Equipes</button>
     </div>
-    <div class="estojo visivel" style="--c:${AREAS.indexOf(area) % 2 === 0 ? '#2F8FE0' : '#3C9A5F'}; --cd:#12141b">
-      <div class="estojo-topo">${area.emoji} ${area.nome}</div>
-      <div class="estojo-corpo">
-        ${TEAMS.map(t => {
-          const ganhou = conquistouArea(estado, areaId, t.id);
-          const novaAgora = ganhou && !vistosAntes.has(t.id);
-          return `
-            <div class="slot ${ganhou ? 'conquistada' : ''}"
-                 style="--c:${t.cor}; --ct:#fff; border-color:${ganhou ? t.cor : 'var(--card-line)'}">
-              <div class="slot-label" style="background:${t.cor}">${t.nome}</div>
-              <div class="slot-corpo">
-                ${ganhou
-                  ? `<img src="${area.imagem}" alt="Insígnia ${area.nome}" class="slot-insignia ${novaAgora ? 'recem-conquistada' : ''}"
-                         onerror="this.parentNode.innerHTML='<div style=\\'font-size:3rem;text-align:center\\'>${area.emoji}</div>'">`
-                  : `<div class="slot-cadeado" style="color:${t.cor}">
-                       <span class="icone" style="width:28px;height:28px">${ICONS.cadeado}</span>
-                       <span>não conquistada</span>
-                     </div>`
-                }
-              </div>
-            </div>
-          `;
-        }).join("")}
-      </div>
-    </div>
-    <p class="rodape-nota">As insígnias são liberadas pelo professor após cada competição.</p>
-  `;
 
-  marcarVistosArea(areaId, conquistadasAgora);
+    <!-- Cena 3D -->
+    <div class="case-scene">
+      <div class="case-3d">
+
+        <!-- Base: sempre visível, contém os slots -->
+        <div class="case-base">
+          <div class="estojo-topo">
+            <span class="equipe-nome-estojo" style="color:${equipe.cor}">${equipe.nome}</span>
+            <span class="contagem-badge">${total}/${AREAS.length}</span>
+          </div>
+          <div class="estojo-corpo">${slots}</div>
+        </div>
+
+        <!-- Tampa: cobre a base, anima para abrir em 3D -->
+        <div class="case-lid" style="--c:${equipe.cor}; --cd:${equipe.corEscura}">
+
+          <!-- Face exterior da tampa (design da capa) -->
+          <div class="lid-front">
+            <div class="lid-emblem">${emblemaLid(equipe.cor)}</div>
+          </div>
+
+          <!-- Face interior da tampa (visível enquanto abre) -->
+          <div class="lid-back">
+            <span class="lid-back-mark">SESI</span>
+          </div>
+
+        </div><!-- /case-lid -->
+      </div><!-- /case-3d -->
+    </div><!-- /case-scene -->
+
+    <p class="rodape-nota">
+      As insígnias são liberadas pelo professor após cada competição por área.
+    </p>`;
+
+  // Marca as insígnias como vistas (para remover animação em próximas visitas)
+  marcarVistosEquipe(teamId, conquistadasAgora);
 }
 
+// ── Roteador por hash ─────────────────────────────────────────────
 function rotear() {
   const partes = location.hash.replace(/^#\//, "").split("/");
-  if (partes[0] === "area" && partes[1]) {
-    renderEstojoArea(partes[1]);
+  if (partes[0] === "equipe" && partes[1]) {
+    renderEstojoEquipe(partes[1]);
   } else {
     renderHome();
   }

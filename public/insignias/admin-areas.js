@@ -1,5 +1,5 @@
 // Painel do professor — Insígnias por Área.
-// Mesmo padrão de PIN e estrutura do admin.js do torneio-insignias.
+// Organizado por EQUIPE (professor marca quais áreas cada equipe conquistou).
 
 const CHAVE_SESSAO_AREAS = "torneio-insignias-areas:admin-ok";
 
@@ -44,32 +44,38 @@ function renderPainel() {
   app.innerHTML = `
     <div class="topbar">
       <button class="voltar" onclick="sair()">Sair</button>
-      <a href="areas.html" class="voltar" style="text-decoration:none">Ver público</a>
+      <a href="areas.html" class="voltar" style="text-decoration:none">Ver estojo →</a>
     </div>
     <div class="marca">Painel do professor</div>
-    <h1 class="titulo-principal">Insígnias por Área</h1>
-    <p class="subtitulo">Marque a equipe assim que ela vencer a competição daquela área. A insígnia aparece na hora no estojo público.</p>
+    <h1 class="titulo-principal">Liberar insígnias por área</h1>
+    <p class="subtitulo">Marque a área assim que a equipe vencer a competição. A insígnia aparece na hora no estojo público.</p>
     <div class="tabela-admin">
-      ${AREAS.map(area => `
-        <div class="linha-area-admin">
-          <div class="cabecalho-linha">
-            <span style="font-size:1.4rem">${area.emoji}</span>
-            <strong>${area.nome}</strong>
+      ${TEAMS.map(equipe => {
+        const conquistadas = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
+        return `
+          <div class="linha-area-admin">
+            <div class="cabecalho-linha">
+              <span class="bolinha-cor" style="background:${equipe.cor}"></span>
+              <strong>${equipe.nome}</strong>
+              <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:'Inter',sans-serif;font-weight:400">
+                ${conquistadas}/${AREAS.length} insígnias
+              </span>
+            </div>
+            <div class="checks">
+              ${AREAS.map(area => {
+                const ativo = conquistouArea(estado, area.id, equipe.id);
+                return `
+                  <label class="check-pill ${ativo ? "ativo" : ""}" style="--pill-c:${equipe.cor}">
+                    <input type="checkbox" ${ativo ? "checked" : ""}
+                      onchange="alternarConquistaArea('${area.id}','${equipe.id}', this.checked); renderPainel();">
+                    ${area.emoji} ${area.nome}
+                  </label>
+                `;
+              }).join("")}
+            </div>
           </div>
-          <div class="checks">
-            ${TEAMS.map(t => {
-              const ativo = !!(estado.conquistas[area.id] && estado.conquistas[area.id][t.id]);
-              return `
-                <label class="check-pill ${ativo ? "ativo" : ""}" style="--pill-c:${t.cor}">
-                  <input type="checkbox" ${ativo ? "checked" : ""}
-                    onchange="alternarConquistaArea('${area.id}','${t.id}', this.checked); renderPainel();">
-                  ${t.nome}
-                </label>
-              `;
-            }).join("")}
-          </div>
-        </div>
-      `).join("")}
+        `;
+      }).join("")}
     </div>
     <p class="rodape-nota">
       <a href="../" style="color:var(--muted);text-decoration:none">← Prova da Propulsão</a>

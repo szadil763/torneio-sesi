@@ -31,18 +31,17 @@ button, input { font-family: inherit; }
 .screen {
   min-height: 100vh;
   padding: 32px 20px 64px;
-  max-width: 680px;
+  max-width: 540px;
   margin: 0 auto;
 }
 
-/* ---------- Cabeçalho ---------- */
+/* ---------- Topbar ---------- */
 .topbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
-
 .topbar .voltar {
   background: none;
   border: 1px solid var(--card-line);
@@ -54,99 +53,249 @@ button, input { font-family: inherit; }
 }
 .topbar .voltar:hover { color: var(--text); border-color: var(--muted); }
 
-.marca {
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
+.marca { font-size: 13px; letter-spacing: .02em; color: var(--muted); margin-bottom: 4px; }
+.titulo-principal { font-size: 28px; line-height: 1.15; margin-bottom: 6px; }
+.subtitulo { color: var(--muted); font-size: 15px; max-width: 46ch; }
 
-.titulo-principal {
-  font-size: 28px;
-  line-height: 1.15;
-  margin-bottom: 6px;
-}
-
-.subtitulo {
-  color: var(--muted);
-  font-size: 15px;
-  max-width: 46ch;
-}
-
-/* ---------- Grade de áreas ---------- */
-.grade-areas {
+/* ---------- Seleção de equipe ---------- */
+.grade-equipes {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
   margin-top: 24px;
 }
 
-.area-tile {
-  border: 1px solid var(--card-line);
-  border-radius: 16px;
-  padding: 18px 16px;
-  background: var(--card);
-  cursor: pointer;
-  text-align: left;
-  transition: transform 0.12s ease, border-color 0.15s;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.area-tile:active { transform: scale(0.97); }
-.area-tile.ativa { border-color: #4b9fff; }
-
-.area-tile .emoji { font-size: 2rem; line-height: 1; }
-.area-tile .area-nome { font-weight: 700; font-size: 15px; color: var(--text); }
-.area-tile .area-hint { font-size: 12px; color: var(--muted); }
-
-/* ---------- Estojo (caixa com slots) ---------- */
-.estojo {
+.equipe-tile {
   --c: var(--team);
   --cd: var(--team-dark);
-  margin-top: 20px;
-  border-radius: 22px;
+  position: relative;
+  border: none;
+  border-radius: 18px;
+  padding: 0;
+  height: 148px;
+  cursor: pointer;
   overflow: hidden;
-  border: 1px solid var(--card-line);
-  background: var(--card);
-  display: none;
+  background: linear-gradient(180deg, var(--c) 0%, var(--c) 42%, var(--cd) 42%, var(--cd) 100%);
+  text-align: left;
+  transition: transform .15s ease, filter .15s;
 }
-.estojo.visivel { display: block; }
+.equipe-tile:hover  { filter: brightness(1.1); }
+.equipe-tile:active { transform: scale(0.97); }
 
-.estojo-topo {
-  background: linear-gradient(180deg, var(--c), var(--cd));
-  padding: 20px;
+.equipe-tile .selo {
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  width: 46px; height: 46px;
+  opacity: .3;
+}
+.equipe-tile .rotulo {
+  position: absolute;
+  left: 14px; bottom: 14px;
+  color: #fff;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+.equipe-tile .progresso-mini {
+  position: absolute;
+  left: 14px;
+  transform: translateY(-30px);
+  bottom: 0;
+  font-size: 12px;
+  color: rgba(255,255,255,.8);
+}
+
+/* ================================================================
+   ESTOJO 3D — caixa com tampa que abre
+   ================================================================ */
+
+/* Contentor da cena 3D */
+.case-scene {
+  perspective: 900px;
+  perspective-origin: 50% 15%;
+  margin: 8px auto 24px;
+  max-width: 480px;
+}
+
+/* Caixa: tampa + base lado a lado no eixo Z */
+.case-3d {
+  position: relative;
+  /* Entra em cena deslizando de baixo */
+  animation: case-enter .6s cubic-bezier(.22,1,.36,1) both;
+}
+
+@keyframes case-enter {
+  from { opacity: 0; transform: translateY(40px) rotateX(-4deg); }
+  to   { opacity: 1; transform: translateY(0)    rotateX(0deg);  }
+}
+
+/* === BASE === */
+.case-base {
+  background: #111318;
+  border-radius: 20px;
+  border: 3px solid #252838;
+  padding: 18px;
+  box-shadow:
+    0 4px 0 #0a0c10,
+    0 8px 0 #07090d,
+    0 12px 28px rgba(0,0,0,.7);
+  position: relative;
+}
+
+/* Iluminação interna da base */
+.case-base::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.06), transparent 65%);
+  pointer-events: none;
+}
+
+/* === TAMPA === */
+.case-lid {
+  position: absolute;
+  inset: -3px; /* 3px extra p/ compensar border da base */
+  transform-origin: top center;
+  transform-style: preserve-3d;
+  border-radius: 20px;
+  z-index: 5;
+  animation: lid-open 1.1s cubic-bezier(.4,0,.2,1) .5s both;
+}
+
+@keyframes lid-open {
+  0%   { transform: rotateX(0deg);    }
+  80%  { transform: rotateX(-115deg); }
+  100% { transform: rotateX(-112deg); } /* leve recuo final */
+}
+
+/* Face exterior da tampa */
+.lid-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  backface-visibility: hidden;
+  overflow: hidden;
+  /* Metade superior = cor da equipe | inferior = preto */
+  background: linear-gradient(180deg, var(--c) 52%, #1a1a1a 52%);
+  border: 3px solid rgba(0,0,0,.4);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+/* Linha divisória */
+.lid-front::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: calc(52% - 3px);
+  height: 6px;
+  background: rgba(0,0,0,.5);
+}
+
+/* Face interior da tampa (fica visível enquanto abre) */
+.lid-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  backface-visibility: hidden;
+  background: #0d0f14;
+  border: 3px solid #1a1d28;
+  transform: rotateX(180deg);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.lid-back-mark {
   font-family: 'Baloo 2', sans-serif;
   font-weight: 800;
-  font-size: 20px;
-  color: #fff;
+  font-size: 1.1rem;
+  letter-spacing: .25em;
+  color: rgba(255,255,255,.06);
+  text-transform: uppercase;
+}
+
+/* Emblema no centro da tampa */
+.lid-emblem {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+
+.lid-emblem svg {
+  width: 96px; height: 96px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.5));
+}
+
+/* ================================================================
+   SLOTS — grade 2×2, aparecem após a tampa abrir
+   ================================================================ */
+.estojo-topo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
 
-/* Grid de 4 slots lado a lado — um por equipe */
+.equipe-nome-estojo {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+.contagem-badge {
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--card-line);
+  color: var(--muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
 .estojo-corpo {
-  padding: 20px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  /* Textura interna */
   background:
-    repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 14px);
+    repeating-linear-gradient(135deg, rgba(255,255,255,.015) 0 2px, transparent 2px 14px);
 }
 
-@media (max-width: 480px) {
-  .estojo-corpo { grid-template-columns: repeat(2, 1fr); }
-  .grade-areas  { grid-template-columns: 1fr; }
+@media (min-width: 480px) {
+  .estojo-corpo { grid-template-columns: repeat(4, 1fr); gap: 14px; }
 }
 
-/* ---------- Slot ---------- */
+/* Cada slot */
 .slot {
   border-radius: 14px;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   border: 1.5px dashed var(--card-line);
+  display: flex;
+  flex-direction: column;
+  /* Ocultos inicialmente; aparecem com delay após a tampa abrir */
+  opacity: 0;
+  animation: slot-reveal .45s ease forwards;
+}
+
+/* Delays escalonados (tampa leva ~1.4s para abrir totalmente) */
+.estojo-corpo .slot:nth-child(1) { animation-delay: 1.55s; }
+.estojo-corpo .slot:nth-child(2) { animation-delay: 1.75s; }
+.estojo-corpo .slot:nth-child(3) { animation-delay: 1.95s; }
+.estojo-corpo .slot:nth-child(4) { animation-delay: 2.15s; }
+
+@keyframes slot-reveal {
+  from { opacity: 0; transform: scale(.75) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+.slot.conquistada {
+  border-style: solid;
+  border-color: var(--c, #888);
+  background: radial-gradient(120% 140% at 50% 0%,
+    color-mix(in srgb, var(--c, #888) 22%, transparent),
+    transparent 70%);
 }
 
 .slot-label {
@@ -154,70 +303,86 @@ button, input { font-family: inherit; }
   font-size: 11px;
   font-weight: 700;
   text-align: center;
-  letter-spacing: 0.02em;
+  letter-spacing: .02em;
   background: var(--c, var(--card-line));
-  color: var(--ct, #fff);
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .slot-corpo {
   flex: 1;
   min-height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: 6px; padding: 8px;
   color: var(--muted);
-}
-
-/* Slot não conquistado */
-.slot-cadeado {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  opacity: 0.45;
-}
-.slot-cadeado .icone { width: 28px; height: 28px; }
-.slot-cadeado span  { font-size: 10px; text-align: center; }
-
-/* Slot conquistado */
-.slot.conquistada {
-  border-style: solid;
-  border-color: var(--c, #888);
 }
 
 .slot-insignia {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 1;
   object-fit: cover;
   display: block;
-  min-height: 90px;
 }
 
-/* Animação de entrada */
-.recem-conquistada { animation: entrar-insignia 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
-
-@keyframes entrar-insignia {
-  0%   { transform: scale(0.3) rotate(-25deg); opacity: 0; }
-  60%  { transform: scale(1.12) rotate(6deg);  opacity: 1; }
-  100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+.slot-fallback {
+  font-size: 2.8rem;
+  text-align: center;
+  padding: 12px;
 }
 
+.slot-cadeado {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+  opacity: .4;
+  padding: 10px;
+}
+.slot-cadeado .nome-insignia {
+  font-size: 10px; text-align: center; line-height: 1.3;
+}
+
+/* ================================================================
+   ANIMAÇÃO: insígnia encaixando no slot (nova conquista)
+   ================================================================ */
+.recem-conquistada {
+  animation: badge-snap .7s cubic-bezier(.2,.9,.3,1.4) .1s both !important;
+}
+
+@keyframes badge-snap {
+  0%   { transform: scale(.1) rotate(-20deg) translateY(-20px); opacity: 0; filter: brightness(3); }
+  55%  { transform: scale(1.12) rotate(4deg) translateY(0);     opacity: 1; filter: brightness(1.4); }
+  78%  { transform: scale(.94) rotate(-2deg); filter: brightness(1.1); }
+  100% { transform: scale(1)   rotate(0deg);  opacity: 1; filter: brightness(1); }
+}
+
+/* Brilho extra no slot que acabou de receber a insígnia */
+.slot.conquistada.recem-aberta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,.35) 0%, transparent 70%);
+  animation: slot-shine .8s ease forwards;
+  pointer-events: none;
+}
+@keyframes slot-shine {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ================================================================
+   RODAPÉ DA PÁGINA DO ESTOJO
+   ================================================================ */
 .rodape-nota {
-  margin-top: 20px;
+  margin-top: 18px;
   font-size: 12.5px;
   color: var(--muted);
   text-align: center;
 }
 
-/* ---------- Admin ---------- */
-.pin-caixa {
-  max-width: 320px;
-  margin: 120px auto;
-  text-align: center;
-}
+/* ================================================================
+   ADMIN
+   ================================================================ */
+.pin-caixa { max-width: 320px; margin: 120px auto; text-align: center; }
 
 .pin-caixa input {
   width: 100%;
@@ -228,7 +393,7 @@ button, input { font-family: inherit; }
   background: var(--card);
   color: var(--text);
   font-size: 16px;
-  letter-spacing: 0.2em;
+  letter-spacing: .2em;
   text-align: center;
 }
 
@@ -257,36 +422,28 @@ button, input { font-family: inherit; }
 }
 
 .linha-area-admin .cabecalho-linha {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: flex; align-items: center; gap: 10px;
   margin-bottom: 10px;
   font-family: 'Baloo 2', sans-serif;
-  font-weight: 700;
-  font-size: 16px;
+  font-weight: 700; font-size: 16px;
 }
 
-.checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.bolinha-cor { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .check-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: flex; align-items: center; gap: 6px;
   border: 1px solid var(--card-line);
   border-radius: 999px;
   padding: 6px 10px 6px 8px;
   font-size: 13px;
   cursor: pointer;
   user-select: none;
+  transition: background .15s, border-color .15s;
 }
-
 .check-pill.ativo {
   background: color-mix(in srgb, var(--pill-c, #888) 22%, var(--card));
   border-color: var(--pill-c, #888);
 }
-
 .check-pill input { accent-color: var(--pill-c, #888); }
