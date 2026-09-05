@@ -114,6 +114,18 @@ function dispararConfete(cor) {
   })();
 }
 
+// ── Copiar link da turma ──────────────────────────────────────────
+function copiarLinkAlunos(token, teamId, btn) {
+  const url = `${location.origin}${location.pathname}?t=${token}`;
+  navigator.clipboard.writeText(url).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    prompt('Copie o link abaixo:', url);
+  });
+}
+
 // ── Modal da insígnia ─────────────────────────────────────────────
 function abrirModalInsignia(areaId, teamId) {
   const area   = AREAS.find(a => a.id === areaId);
@@ -242,6 +254,30 @@ function renderEstojo(equipe) {
       </div>`;
     document.getElementById('app').appendChild(secao);
   }
+
+  // Seção de links das turmas (para compartilhar)
+  const linkUrl = `${location.origin}${location.pathname}?t=${equipe.token}`;
+  const secaoLinks = document.createElement('div');
+  secaoLinks.className = 'alunos-links-secao';
+  secaoLinks.innerHTML = `
+    <h2 class="boletim-titulo">🔗 Links das Turmas</h2>
+    <p class="alunos-links-desc">Salve ou compartilhe o link da sua turma para acessar o estojo a qualquer momento.</p>
+    <div class="alunos-links-grade">
+      ${TEAMS.map(t => {
+        const url = `${location.origin}${location.pathname}?t=${t.token}`;
+        const ativo = t.id === equipe.id;
+        return `
+          <div class="alunos-link-card ${ativo ? 'alunos-link-card-ativo' : ''}" style="--c:${t.cor}">
+            <div class="alunos-link-nome" style="color:${t.cor}">${t.nome}</div>
+            <div class="alunos-link-url">${url}</div>
+            <button class="alunos-link-btn" onclick="copiarLinkAlunos('${t.token}','${t.id}',this)"
+                    style="background:${t.cor}">
+              📋 Copiar link
+            </button>
+          </div>`;
+      }).join('')}
+    </div>`;
+  document.getElementById('app').appendChild(secaoLinks);
 
   setTimeout(() => tocarSom('abrir'), 500);
   if (areas > 0) setTimeout(() => tocarSom('snap'), BASE_DELAY * 1000);
