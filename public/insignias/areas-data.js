@@ -48,17 +48,48 @@ function conquistouArea(estado, areaId, teamId) {
 }
 
 // ── Boletim do Torneio ────────────────────────────────────────────
-const STORAGE_KEY_BOLETIM = "torneio-boletim:v1";
+// Armazenado no Firebase RTDB para ser visível em todos os dispositivos.
+const STORAGE_KEY_BOLETIM = "torneio-boletim:v1"; // cache local
+const RTDB_BOLETIM_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/boletim.json";
 
+let _boletimCache = null;
+
+// Retorna o cache local (carregarBoletim() deve ter sido chamado antes)
 function lerBoletim() {
+  if (_boletimCache) return _boletimCache;
   try {
     const bruto = localStorage.getItem(STORAGE_KEY_BOLETIM);
     return bruto ? JSON.parse(bruto) : { itens: [] };
   } catch { return { itens: [] }; }
 }
 
-function salvarBoletim(dados) {
+// Busca do Firebase e atualiza cache. Sempre chamar antes de exibir o boletim.
+async function carregarBoletim() {
+  try {
+    const resp = await fetch(RTDB_BOLETIM_URL);
+    if (resp.ok) {
+      const data = await resp.json();
+      _boletimCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(_boletimCache));
+      return _boletimCache;
+    }
+  } catch (_) {}
+  // Fallback: usa cache local
+  _boletimCache = lerBoletim();
+  return _boletimCache;
+}
+
+// Salva no Firebase e atualiza cache local.
+async function salvarBoletim(dados) {
+  _boletimCache = dados;
   localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(dados));
+  try {
+    await fetch(RTDB_BOLETIM_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados)
+    });
+  } catch (_) {} // Falha silenciosa — localStorage mantém cópia
 }
 
 function detectarTipoMidia(url) {

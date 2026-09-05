@@ -305,7 +305,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
   const equipe = resolverEquipePorToken();
   if (equipe) {
-    renderEstojo(equipe);
+    carregarBoletim().then(() => renderEstojo(equipe));
   } else {
     renderAcessoRestrito();
   }

@@ -453,22 +453,21 @@ function comprimirImagem(file, maxW, qualidade) {
   });
 }
 
-function boletimHandleFile(input) {
+async function boletimHandleFile(input) {
   const file = input.files[0];
   if (!file) return;
-  comprimirImagem(file, 1400, 0.80).then(dataUrl => {
-    const dados = lerBoletim();
-    dados.itens.unshift({
-      id: Date.now().toString(36),
-      tipo: 'imagem',
-      url: dataUrl,
-      titulo: '',
-      legenda: '',
-      ts: Date.now()
-    });
-    salvarBoletim(dados);
-    renderPainel();
+  const dataUrl = await comprimirImagem(file, 1400, 0.80);
+  const dados = lerBoletim();
+  dados.itens.unshift({
+    id: Date.now().toString(36),
+    tipo: 'imagem',
+    url: dataUrl,
+    titulo: '',
+    legenda: '',
+    ts: Date.now()
   });
+  await salvarBoletim(dados);
+  renderPainel();
 }
 
 // Até 3 fotos por notícia
@@ -489,7 +488,7 @@ function noticiaHandleFile(input, slot) {
 }
 
 // ── Adicionar mídia por URL ───────────────────────────────────────
-function boletimAdicionar() {
+async function boletimAdicionar() {
   const url     = (document.getElementById('bol-url')?.value || '').trim();
   const titulo  = (document.getElementById('bol-titulo')?.value || '').trim();
   const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
@@ -500,7 +499,7 @@ function boletimAdicionar() {
 
   const dados = lerBoletim();
   dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, ts: Date.now() });
-  salvarBoletim(dados);
+  await salvarBoletim(dados);
   renderPainel();
 }
 
@@ -629,30 +628,30 @@ function boletimGerarNoticia() {
   window._noticiaRascunho = rascunho;
 }
 
-function boletimPublicarNoticia() {
+async function boletimPublicarNoticia() {
   if (!window._noticiaRascunho) return;
   const dados = lerBoletim();
   dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), ...window._noticiaRascunho });
-  salvarBoletim(dados);
+  await salvarBoletim(dados);
   window._noticiaRascunho = null;
   _noticiaFotos = [null, null, null];
   renderPainel();
 }
 
-function boletimRemover(idx) {
+async function boletimRemover(idx) {
   if (!confirm('Remover este item do boletim?')) return;
   const dados = lerBoletim();
   dados.itens.splice(idx, 1);
-  salvarBoletim(dados);
+  await salvarBoletim(dados);
   renderPainel();
 }
 
-function boletimMover(idx, delta) {
+async function boletimMover(idx, delta) {
   const dados = lerBoletim();
   const novo  = idx + delta;
   if (novo < 0 || novo >= dados.itens.length) return;
   [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
-  salvarBoletim(dados);
+  await salvarBoletim(dados);
   renderPainel();
 }
 
@@ -661,7 +660,8 @@ function sair() {
   renderLoginAdmin();
 }
 
-window.addEventListener("DOMContentLoaded", function () {
+window.addEventListener("DOMContentLoaded", async function () {
+  await carregarBoletim();
   if (sessionStorage.getItem(CHAVE_SESSAO_AREAS) === "1") {
     renderPainel();
   } else {
