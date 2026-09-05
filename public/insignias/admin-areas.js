@@ -360,25 +360,30 @@ function renderAbaBoletim(boletim) {
       ` : `
         <div class="boletim-form">
           <p style="font-size:13px;color:var(--muted);margin-bottom:4px">
-            Descreva brevemente o momento do torneio — a IA gera uma notícia completa estilo SESI Torneio Notícias.
+            Descreva o momento — a IA gera manchete, parágrafos e citação. Adicione até 3 fotos para criar a colagem.
           </p>
           <textarea id="not-descricao" class="boletim-input boletim-textarea"
             placeholder="Ex: A equipe verde venceu o desafio de robótica com um robô que desviou todos os obstáculos..." rows="3"></textarea>
 
-          <div class="bol-upload-opcoes" style="margin-top:4px">
-            <label class="bol-upload-btn" for="not-file-camera">
-              <span>📸</span> Tirar foto agora
-            </label>
-            <input id="not-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="noticiaHandleFile(this)">
-
-            <label class="bol-upload-btn bol-upload-btn-sec" for="not-file-input">
-              <span>🖼️</span> Escolher da galeria
-            </label>
-            <input id="not-file-input" type="file" accept="image/*" style="display:none" onchange="noticiaHandleFile(this)">
+          <p style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px;letter-spacing:.04em">FOTOS DA COLAGEM (até 3)</p>
+          <div class="not-slots-grade">
+            ${[0,1,2].map(i => `
+              <div class="not-slot" id="not-thumb-${i}">
+                <span class="not-slot-label">${i === 0 ? 'Principal' : 'Foto ' + (i+1)}</span>
+                <div class="not-slot-btns">
+                  <label class="not-slot-btn" for="not-cam-${i}" title="Câmera">📸
+                    <input id="not-cam-${i}" type="file" accept="image/*" capture="environment"
+                           style="display:none" onchange="noticiaHandleFile(this,${i})">
+                  </label>
+                  <label class="not-slot-btn not-slot-btn-sec" for="not-gal-${i}" title="Galeria">🖼️
+                    <input id="not-gal-${i}" type="file" accept="image/*"
+                           style="display:none" onchange="noticiaHandleFile(this,${i})">
+                  </label>
+                </div>
+              </div>`).join('')}
           </div>
-          <div id="not-foto-status" style="font-size:12px;color:var(--muted);min-height:16px"></div>
 
-          <input id="not-foto" type="url" placeholder="Ou cole link de foto para ilustrar" class="boletim-input">
+          <input id="not-foto" type="url" placeholder="Ou cole link de uma foto extra" class="boletim-input" style="margin-top:4px">
           <button class="boletim-btn-add boletim-btn-noticia" onclick="boletimGerarNoticia()">✨ Gerar Notícia</button>
         </div>
         <div id="not-erro" class="erro" style="margin-top:8px"></div>
@@ -466,14 +471,20 @@ function boletimHandleFile(input) {
   });
 }
 
-let _noticiaFotoBase64 = null;
-function noticiaHandleFile(input) {
+// Até 3 fotos por notícia
+let _noticiaFotos = [null, null, null];
+
+function noticiaHandleFile(input, slot) {
   const file = input.files[0];
   if (!file) return;
-  comprimirImagem(file, 1400, 0.80).then(dataUrl => {
-    _noticiaFotoBase64 = dataUrl;
-    const status = document.getElementById('not-foto-status');
-    if (status) status.textContent = '✓ Foto carregada e pronta para ilustrar a notícia.';
+  comprimirImagem(file, 1400, 0.82).then(dataUrl => {
+    _noticiaFotos[slot] = dataUrl;
+    const thumb = document.getElementById('not-thumb-' + slot);
+    if (thumb) {
+      thumb.style.backgroundImage = `url('${dataUrl}')`;
+      thumb.classList.add('carregada');
+      thumb.querySelector('.not-slot-label').textContent = '✓';
+    }
   });
 }
 
@@ -564,7 +575,26 @@ function gerarNoticia(descricao) {
   ];
   const para3 = pick(fechamentos);
 
-  return { manchete, subtitulo, reporter, corpo: [intro, para2, para3] };
+  // Chapéu (categoria)
+  const chapeus = temRobotica ? ['🤖 ROBÓTICA', '💡 TECNOLOGIA', '⚙️ INOVAÇÃO']
+    : temIngles  ? ['🌎 INGLÊS', '📚 IDIOMAS', '🗣️ LINGUAGEM']
+    : temArtes   ? ['🎨 ARTES', '✨ CRIATIVIDADE', '🎭 CULTURA']
+    : temEdf     ? ['⚽ ESPORTES', '🏃 MOVIMENTO', '💪 SAÚDE']
+    : temVitoria ? ['🏆 DESTAQUE', '🥇 VITÓRIA', '⭐ CAMPEÕES']
+    : ['📢 TORNEIO', '🔥 EXCLUSIVO', '📰 DESTAQUES'];
+  const chapeu = pick(chapeus);
+
+  // Pull-quote em destaque
+  const pullquotes = [
+    `"Nunca vi tanto talento reunido em uma única atividade do torneio"`,
+    `"Foi um momento que nenhum dos presentes vai esquecer tão cedo"`,
+    `"O nível de dedicação dos alunos superou todas as nossas expectativas"`,
+    `"Este é o tipo de momento que justifica todo o esforço que depositamos no torneio"`,
+    `"A energia que tomou conta do ambiente foi simplesmente indescritível"`
+  ];
+  const pullquote = pick(pullquotes);
+
+  return { manchete, subtitulo, reporter, chapeu, pullquote, corpo: [intro, para2, para3] };
 }
 
 function boletimGerarNoticia() {
@@ -577,14 +607,18 @@ function boletimGerarNoticia() {
   if(erro) erro.textContent = '';
 
   const noticia = gerarNoticia(descricao);
-  const imagem  = _noticiaFotoBase64 || (fotoUrl ? fotoUrl : null);
 
-  // Pré-visualização
+  // Monta array de imagens (fotos carregadas + URL extra)
+  const imagens = _noticiaFotos.filter(Boolean);
+  if (fotoUrl) { try { new URL(fotoUrl); imagens.push(fotoUrl); } catch(_) {} }
+
+  const rascunho = { ...noticia, imagens, tipo: 'noticia' };
+
   if (preview) {
     preview.innerHTML = `
       <div class="not-preview-card">
-        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">PRÉ-VISUALIZAÇÃO</p>
-        ${renderNoticiaCard({ ...noticia, imagem, tipo: 'noticia' })}
+        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">PRÉ-VISUALIZAÇÃO · ${imagens.length} foto(s)</p>
+        ${renderNoticiaCard(rascunho)}
         <button class="boletim-btn-add" style="margin-top:14px;width:100%" onclick="boletimPublicarNoticia()">
           📢 Publicar no Boletim
         </button>
@@ -592,21 +626,16 @@ function boletimGerarNoticia() {
     preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // Guarda temporariamente para publicação
-  window._noticiaRascunho = { ...noticia, imagem, tipo: 'noticia' };
+  window._noticiaRascunho = rascunho;
 }
 
 function boletimPublicarNoticia() {
   if (!window._noticiaRascunho) return;
   const dados = lerBoletim();
-  dados.itens.unshift({
-    id: Date.now().toString(36),
-    ts: Date.now(),
-    ...window._noticiaRascunho
-  });
+  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), ...window._noticiaRascunho });
   salvarBoletim(dados);
   window._noticiaRascunho = null;
-  _noticiaFotoBase64      = null;
+  _noticiaFotos = [null, null, null];
   renderPainel();
 }
 

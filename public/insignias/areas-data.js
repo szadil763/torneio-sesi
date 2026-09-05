@@ -72,29 +72,87 @@ function youtubeId(url) {
   return m ? m[1] : null;
 }
 
-// Renderiza um card de notícia estilo jornal para uso em alunos.js e admin pré-view
+// Renderiza um card de notícia estilo G1/UOL para uso em alunos.js e admin preview
 function renderNoticiaCard(item) {
   const dataFmt = new Date(item.ts || Date.now()).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
-  const foto = item.imagem
-    ? `<div class="bol-noticia-foto"><img src="${item.imagem}" alt="${item.manchete}"></div>`
-    : '';
-  const corpo = (item.corpo || []).map(p => `<p class="bol-noticia-p">${p}</p>`).join('');
+
+  // Suporta array de imagens (novo) ou imagem única (compatibilidade)
+  const imgs = item.imagens && item.imagens.length
+    ? item.imagens
+    : (item.imagem ? [item.imagem] : []);
+  const n = imgs.length;
+
+  // Colagem baseada no número de fotos
+  let colagem = '';
+  if (n === 1) {
+    colagem = `
+      <div class="bol-hero" style="background-image:url('${imgs[0]}')">
+        <div class="bol-hero-overlay">
+          ${item.chapeu ? `<span class="bol-chapeu">${item.chapeu}</span>` : ''}
+          <div class="bol-manchete-hero">${item.manchete}</div>
+        </div>
+      </div>`;
+  } else if (n === 2) {
+    colagem = `
+      <div class="bol-colagem-2">
+        <div class="bol-col-esq" style="background-image:url('${imgs[0]}')">
+          <div class="bol-col-overlay">
+            ${item.chapeu ? `<span class="bol-chapeu">${item.chapeu}</span>` : ''}
+            <div class="bol-manchete-hero bol-manchete-sm">${item.manchete}</div>
+          </div>
+        </div>
+        <div class="bol-col-dir" style="background-image:url('${imgs[1]}')"></div>
+      </div>`;
+  } else if (n >= 3) {
+    colagem = `
+      <div class="bol-colagem-3">
+        <div class="bol-col3-grande" style="background-image:url('${imgs[0]}')">
+          ${item.chapeu ? `<span class="bol-chapeu" style="position:absolute;top:12px;left:12px">${item.chapeu}</span>` : ''}
+        </div>
+        <div class="bol-col3-lateral">
+          <div style="background-image:url('${imgs[1]}')"></div>
+          <div style="background-image:url('${imgs[2]}')"></div>
+        </div>
+      </div>`;
+  }
+
+  // Parágrafos com pull-quote após o 1º
+  const paragrafos = item.corpo || [];
+  let corpoHtml = '';
+  paragrafos.forEach((p, i) => {
+    corpoHtml += `<p class="bol-noticia-p">${p}</p>`;
+    if (i === 0 && item.pullquote) {
+      corpoHtml += `<blockquote class="bol-pullquote">${item.pullquote}</blockquote>`;
+    }
+  });
+
+  // Se sem foto: manchete no corpo em destaque
+  const mancheteCorpo = n === 0
+    ? `<div class="bol-manchete-texto">${item.manchete}</div>`
+    : (n >= 2 ? '' : '');  // n===1: manchete já está no hero
+
   return `
     <div class="bol-noticia-card">
       <div class="bol-noticia-header">
-        <span class="bol-noticia-brand">SESI TORNEIO NOTÍCIAS</span>
+        <span class="bol-noticia-brand">📺 SESI TORNEIO NOTÍCIAS</span>
         <span class="bol-noticia-data">${dataFmt}</span>
       </div>
-      ${foto}
+      ${colagem}
       <div class="bol-noticia-corpo">
-        <div class="bol-noticia-manchete">${item.manchete}</div>
+        ${item.chapeu && n === 0 ? `<span class="bol-chapeu bol-chapeu-inline">${item.chapeu}</span>` : ''}
+        ${mancheteCorpo}
+        ${n >= 2 ? `<div class="bol-manchete-texto">${item.manchete}</div>` : ''}
         <div class="bol-noticia-subtitulo">${item.subtitulo || ''}</div>
-        <div class="bol-noticia-linha"></div>
-        <div class="bol-noticia-reporter">Por <strong>${item.reporter || 'Redação'}</strong></div>
-        ${corpo}
+        <div class="bol-noticia-meta">
+          <span class="bol-noticia-reporter">Por <strong>${item.reporter || 'Redação SESI'}</strong></span>
+          <span class="bol-noticia-sep">·</span>
+          <span class="bol-noticia-data-meta">${dataFmt}</span>
+        </div>
+        <div class="bol-noticia-divisor"></div>
+        ${corpoHtml}
       </div>
     </div>`;
 }

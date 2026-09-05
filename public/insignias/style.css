@@ -578,7 +578,7 @@ button, input { font-family: inherit; }
 }
 
 /* ================================================================
-   BOLETIM — card de notícia (alunos + admin preview)
+   BOLETIM — card de notícia estilo G1/UOL (alunos + admin preview)
    ================================================================ */
 .bol-noticia-card {
   border-radius: 18px;
@@ -587,31 +587,125 @@ button, input { font-family: inherit; }
   background: var(--card);
   font-family: 'Inter', sans-serif;
 }
+
+/* Barra superior vermelha */
 .bol-noticia-header {
   background: #c0392b;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 7px 14px;
   gap: 8px;
 }
 .bol-noticia-brand {
   font-family: 'Baloo 2', sans-serif;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 12px;
   color: #fff;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   white-space: nowrap;
 }
 .bol-noticia-data {
   font-size: 10px;
-  color: rgba(255,255,255,.75);
+  color: rgba(255,255,255,.7);
   white-space: nowrap;
 }
-.bol-noticia-foto { width: 100%; }
-.bol-noticia-foto img { width: 100%; max-height: 280px; object-fit: cover; display: block; }
-.bol-noticia-corpo { padding: 18px 18px 20px; }
-.bol-noticia-manchete {
+
+/* ── Colagem 1 foto: hero com overlay ── */
+.bol-hero {
+  width: 100%;
+  height: 260px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+.bol-hero-overlay {
+  width: 100%;
+  padding: 20px 16px 16px;
+  background: linear-gradient(to top, rgba(0,0,0,.88) 0%, rgba(0,0,0,.4) 60%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bol-chapeu {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  width: fit-content;
+}
+.bol-chapeu-inline {
+  margin-bottom: 6px;
+  display: inline-flex;
+}
+.bol-manchete-hero {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: clamp(17px, 4.5vw, 22px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+  text-shadow: 0 1px 8px rgba(0,0,0,.6);
+}
+.bol-manchete-hero.bol-manchete-sm { font-size: clamp(14px, 3.5vw, 17px); }
+
+/* ── Colagem 2 fotos ── */
+.bol-colagem-2 {
+  display: grid;
+  grid-template-columns: 63% 37%;
+  height: 220px;
+}
+.bol-col-esq, .bol-col-dir {
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.bol-col-esq { border-right: 2px solid var(--card); }
+.bol-col-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 14px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,.85) 0%, transparent 65%);
+  gap: 6px;
+}
+
+/* ── Colagem 3 fotos ── */
+.bol-colagem-3 {
+  display: grid;
+  grid-template-columns: 60% 40%;
+  height: 220px;
+  position: relative;
+}
+.bol-col3-grande {
+  background-size: cover;
+  background-position: center;
+  border-right: 2px solid var(--card);
+  position: relative;
+}
+.bol-col3-lateral {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+}
+.bol-col3-lateral > div {
+  background-size: cover;
+  background-position: center;
+}
+
+/* ── Corpo do texto ── */
+.bol-noticia-corpo { padding: 16px 16px 20px; }
+
+.bol-manchete-texto {
   font-family: 'Baloo 2', sans-serif;
   font-size: clamp(18px, 4.5vw, 24px);
   font-weight: 800;
@@ -623,31 +717,49 @@ button, input { font-family: inherit; }
   font-size: 14px;
   color: var(--muted);
   line-height: 1.55;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   font-style: italic;
 }
-.bol-noticia-linha {
-  height: 3px;
-  background: #c0392b;
-  width: 40px;
-  border-radius: 2px;
-  margin-bottom: 10px;
-}
-.bol-noticia-reporter {
+.bol-noticia-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: var(--muted);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.bol-noticia-reporter strong { color: var(--text); }
+.bol-noticia-sep { opacity: .4; }
+.bol-noticia-data-meta { opacity: .7; }
+.bol-noticia-divisor {
+  height: 3px;
+  background: linear-gradient(90deg, #c0392b 40px, var(--card-line) 40px);
+  border-radius: 2px;
   margin-bottom: 14px;
-  text-transform: uppercase;
-  letter-spacing: .06em;
 }
 .bol-noticia-p {
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.72;
   color: var(--text);
   opacity: .9;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .bol-noticia-p:last-child { margin-bottom: 0; }
+
+/* Pull-quote */
+.bol-pullquote {
+  border-left: 3px solid #c0392b;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  background: rgba(192,57,43,.07);
+  border-radius: 0 10px 10px 0;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.5;
+}
 
 /* ================================================================
    BOLETIM — painel admin
@@ -825,6 +937,75 @@ button, input { font-family: inherit; }
 /* Botão gerar notícia */
 .boletim-btn-noticia { background: #c0392b; }
 .boletim-btn-noticia:hover { opacity: .85; }
+
+/* Grade de slots de foto para criar notícia */
+.not-slots-grade {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 4px 0;
+}
+.not-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg, #12141b);
+  border: 1.5px dashed var(--card-line);
+  border-radius: 12px;
+  padding: 8px;
+  min-height: 110px;
+  align-items: center;
+  justify-content: flex-start;
+  transition: border-color .15s;
+}
+.not-slot:has(img) {
+  border-style: solid;
+  border-color: #2F8FE0;
+}
+.not-slot-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-align: center;
+}
+.not-slot-thumb {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.not-slot-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-top: auto;
+}
+.not-slot-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  background: #2F8FE0;
+  color: #fff;
+  transition: opacity .15s;
+}
+.not-slot-btn:hover { opacity: .85; }
+.not-slot-btn-sec {
+  background: transparent;
+  border: 1px solid var(--card-line);
+  color: var(--muted);
+}
+.not-slot-btn-sec:hover { background: var(--card-line); color: var(--text); }
 
 /* Preview da notícia no admin */
 .not-preview-card {
