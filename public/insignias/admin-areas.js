@@ -279,44 +279,84 @@ function renderAbaVisaoGeral(estado) {
 }
 
 // ── Aba Boletim ───────────────────────────────────────────────────
+let bolAbaAtiva = 'midia'; // 'midia' | 'noticia'
+
 function renderAbaBoletim(boletim) {
   const itens = boletim.itens || [];
   return `
     <div class="boletim-admin">
-      <p class="subtitulo" style="margin-bottom:16px">
-        Adicione fotos e vídeos do torneio. Cole o link da imagem ou do YouTube — os pais e alunos verão no estojo.
-      </p>
 
-      <div class="boletim-form">
-        <input id="bol-url"     type="url"  placeholder="Link da foto ou vídeo do YouTube"  class="boletim-input">
-        <input id="bol-titulo"  type="text" placeholder="Título (opcional)"                  class="boletim-input">
-        <input id="bol-legenda" type="text" placeholder="Legenda (opcional)"                 class="boletim-input">
-        <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar</button>
+      <div class="bol-sub-abas">
+        <button class="bol-sub-aba ${bolAbaAtiva === 'midia'   ? 'ativa' : ''}" onclick="bolTrocarAba('midia')">📷 Foto / Vídeo</button>
+        <button class="bol-sub-aba ${bolAbaAtiva === 'noticia' ? 'ativa' : ''}" onclick="bolTrocarAba('noticia')">📰 Criar Notícia</button>
       </div>
-      <div id="bol-erro" class="erro" style="margin-top:8px"></div>
+
+      ${bolAbaAtiva === 'midia' ? `
+        <div class="boletim-form">
+          <label class="bol-upload-area" for="bol-file-input">
+            <span class="bol-upload-icon">📷</span>
+            <span class="bol-upload-texto">Toque para escolher foto do dispositivo</span>
+            <span class="bol-upload-sub">JPG, PNG, HEIC — comprimido automaticamente</span>
+          </label>
+          <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
+
+          <div class="bol-separador"><span>ou cole um link</span></div>
+
+          <input id="bol-url"     type="url"  placeholder="Link da foto ou vídeo do YouTube" class="boletim-input">
+          <input id="bol-titulo"  type="text" placeholder="Título (opcional)"                 class="boletim-input">
+          <input id="bol-legenda" type="text" placeholder="Legenda (opcional)"                class="boletim-input">
+          <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar</button>
+        </div>
+        <div id="bol-erro" class="erro" style="margin-top:8px"></div>
+      ` : `
+        <div class="boletim-form">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:4px">
+            Descreva brevemente o momento do torneio — a IA gera uma notícia completa estilo SESI Torneio Notícias.
+          </p>
+          <textarea id="not-descricao" class="boletim-input boletim-textarea"
+            placeholder="Ex: A equipe verde venceu o desafio de robótica com um robô que desviou todos os obstáculos..." rows="3"></textarea>
+          <input id="not-foto" type="url" placeholder="Link de foto para ilustrar (opcional)" class="boletim-input">
+          <label class="bol-upload-area" for="not-file-input" style="margin-top:0">
+            <span class="bol-upload-icon">🖼️</span>
+            <span class="bol-upload-texto">Ou enviar foto do dispositivo</span>
+          </label>
+          <input id="not-file-input" type="file" accept="image/*" style="display:none" onchange="noticiaHandleFile(this)">
+          <button class="boletim-btn-add boletim-btn-noticia" onclick="boletimGerarNoticia()">✨ Gerar Notícia</button>
+        </div>
+        <div id="not-erro" class="erro" style="margin-top:8px"></div>
+        <div id="not-preview" style="margin-top:16px"></div>
+      `}
 
       ${itens.length === 0
         ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhum item ainda. Adicione o primeiro!</p>`
         : `<div class="boletim-lista-admin">
             ${itens.map((item, i) => {
-              const tipo = detectarTipoMidia(item.url);
-              const thumb = tipo === 'youtube'
-                ? `<img src="https://img.youtube.com/vi/${youtubeId(item.url)}/mqdefault.jpg" class="bol-thumb" onerror="this.src=''">`
-                : `<img src="${item.url}" class="bol-thumb" onerror="this.style.display='none'">`;
+              let thumb, badge;
+              if (item.tipo === 'noticia') {
+                const fotoSrc = item.imagem || '';
+                thumb = fotoSrc
+                  ? `<img src="${fotoSrc.startsWith('data:') ? fotoSrc : fotoSrc}" class="bol-thumb">`
+                  : `<div class="bol-thumb" style="display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--card-line)">📰</div>`;
+                badge = '<span class="bol-play-badge" style="background:#c0392b">📰 Notícia</span>';
+              } else {
+                const tipo = detectarTipoMidia(item.url || '');
+                thumb = tipo === 'youtube'
+                  ? `<img src="https://img.youtube.com/vi/${youtubeId(item.url)}/mqdefault.jpg" class="bol-thumb" onerror="this.src=''">`
+                  : `<img src="${item.url}" class="bol-thumb" onerror="this.style.display='none'">`;
+                badge = tipo === 'youtube' ? '<span class="bol-play-badge">▶ Vídeo</span>' : '';
+              }
+              const tituloExibido = item.tipo === 'noticia' ? item.manchete : (item.titulo || '(sem título)');
               return `
                 <div class="bol-item-admin">
-                  <div class="bol-item-preview">${thumb}
-                    ${tipo === 'youtube' ? '<span class="bol-play-badge">▶ Vídeo</span>' : ''}
-                  </div>
+                  <div class="bol-item-preview">${thumb}${badge}</div>
                   <div class="bol-item-info">
-                    <strong class="bol-item-titulo">${item.titulo || '(sem título)'}</strong>
-                    <span class="bol-item-legenda">${item.legenda || ''}</span>
-                    <span class="bol-item-url">${item.url.length > 48 ? item.url.slice(0,48)+'…' : item.url}</span>
+                    <strong class="bol-item-titulo">${tituloExibido}</strong>
+                    <span class="bol-item-legenda">${item.legenda || item.subtitulo || ''}</span>
                   </div>
                   <div class="bol-item-acoes">
-                    ${i > 0 ? `<button class="bol-btn-ord" onclick="boletimMover(${i},-1)" title="Subir">↑</button>` : ''}
-                    ${i < itens.length-1 ? `<button class="bol-btn-ord" onclick="boletimMover(${i},+1)" title="Descer">↓</button>` : ''}
-                    <button class="bol-btn-rem" onclick="boletimRemover(${i})" title="Remover">🗑</button>
+                    ${i > 0 ? `<button class="bol-btn-ord" onclick="boletimMover(${i},-1)">↑</button>` : ''}
+                    ${i < itens.length-1 ? `<button class="bol-btn-ord" onclick="boletimMover(${i},+1)">↓</button>` : ''}
+                    <button class="bol-btn-rem" onclick="boletimRemover(${i})">🗑</button>
                   </div>
                 </div>`;
             }).join('')}
@@ -325,18 +365,190 @@ function renderAbaBoletim(boletim) {
     </div>`;
 }
 
+function bolTrocarAba(aba) {
+  bolAbaAtiva = aba;
+  renderPainel();
+}
+
+// ── Upload de imagem do dispositivo ──────────────────────────────
+function comprimirImagem(file, maxW, qualidade) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale  = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', qualidade));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function boletimHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  comprimirImagem(file, 1400, 0.80).then(dataUrl => {
+    const dados = lerBoletim();
+    dados.itens.unshift({
+      id: Date.now().toString(36),
+      tipo: 'imagem',
+      url: dataUrl,
+      titulo: '',
+      legenda: '',
+      ts: Date.now()
+    });
+    salvarBoletim(dados);
+    renderPainel();
+  });
+}
+
+let _noticiaFotoBase64 = null;
+function noticiaHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  comprimirImagem(file, 1400, 0.80).then(dataUrl => {
+    _noticiaFotoBase64 = dataUrl;
+    const label = document.querySelector('label[for="not-file-input"] .bol-upload-texto');
+    if (label) label.textContent = '✓ Foto carregada!';
+  });
+}
+
+// ── Adicionar mídia por URL ───────────────────────────────────────
 function boletimAdicionar() {
-  const url     = document.getElementById('bol-url').value.trim();
-  const titulo  = document.getElementById('bol-titulo').value.trim();
-  const legenda = document.getElementById('bol-legenda').value.trim();
+  const url     = (document.getElementById('bol-url')?.value || '').trim();
+  const titulo  = (document.getElementById('bol-titulo')?.value || '').trim();
+  const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
   const erro    = document.getElementById('bol-erro');
 
-  if (!url) { erro.textContent = 'Informe um link.'; return; }
-  try { new URL(url); } catch { erro.textContent = 'Link inválido.'; return; }
+  if (!url) { if(erro) erro.textContent = 'Informe um link.'; return; }
+  try { new URL(url); } catch { if(erro) erro.textContent = 'Link inválido.'; return; }
 
   const dados = lerBoletim();
   dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, ts: Date.now() });
   salvarBoletim(dados);
+  renderPainel();
+}
+
+// ── Gerador de notícia estilo SESI Torneio Notícias ──────────────
+function gerarNoticia(descricao) {
+  const d   = descricao.trim();
+  const low = d.toLowerCase();
+
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  // Detecção de tema
+  const temVitoria  = /venc|ganhou|conquist|campe|primeiro|1[oº°] lugar|vitori|dominou/.test(low);
+  const temRobotica = /rob[oôó]|tecnol|program|arduino|sensor|código|algoritm/.test(low);
+  const temIngles   = /ingl[eê]|english|idioma|língua|vocabul|pronúnc/.test(low);
+  const temArtes    = /arte|desenh|pintur|criativ|escultur|música|dança|teatro/.test(low);
+  const temEdf      = /educa.{0,5}f[ií]sic|esport|jog[ao]|futebol|corrida|moviment|atletism/.test(low);
+  const temEquipe   = /equipe|turma|grupo|time/.test(low);
+  const temAluno    = /alun|criança|estudante|participante|jovem/.test(low);
+
+  // Adjetivos e advérbios dramáticos
+  const adjs  = ['HISTÓRICA', 'IMPRESSIONANTE', 'INÉDITA', 'EXTRAORDINÁRIA', 'ÉPICA', 'EMOCIONANTE', 'SURPREENDENTE'];
+  const adj   = pick(adjs);
+  const adjs2 = ['histórica', 'marcante', 'inesquecível', 'espetacular', 'sem precedentes'];
+  const adj2  = pick(adjs2);
+
+  // Área em destaque
+  const areaLabel = temRobotica ? 'Robótica'
+    : temIngles ? 'Inglês'
+    : temArtes  ? 'Artes'
+    : temEdf    ? 'Educação Física'
+    : 'Torneio SESI';
+
+  // Manchete
+  const manchetes = temVitoria ? [
+    `VITÓRIA ${adj}! ${d.replace(/[.!?]+$/, '').toUpperCase()}`,
+    `CONQUISTA ÉPICA: EQUIPE DO SESI DOMINA O ${areaLabel.toUpperCase()} E FAZ HISTÓRIA`,
+    `EXPLOSÃO DE ALEGRIA NO TORNEIO! ${d.replace(/[.!?]+$/, '').toUpperCase()}`
+  ] : [
+    `TORNEIO SESI: PERFORMANCE ${adj} EM ${areaLabel.toUpperCase()} DEIXA TODOS DE BOCA ABERTA`,
+    `${areaLabel.toUpperCase()} NO FOCO! ALUNOS DO SESI PROTAGONIZAM MOMENTO ${adj}`,
+    `EXCLUSIVO: O QUE ACONTECEU NO ${areaLabel.toUpperCase()} DO TORNEIO VAI TE SURPREENDER`
+  ];
+  const manchete = pick(manchetes);
+
+  // Subtítulo (chapéu)
+  const subtitulos = [
+    `Estudantes surpreenderam professores e familiares com desempenho acima do esperado`,
+    `Momento ${adj2} marcou mais uma etapa do Torneio SESI Infantil`,
+    `${temEquipe ? 'Equipes inteiras' : 'Participantes'} se superaram e deixaram o público em êxtase`,
+    `O que todos esperavam aconteceu — e foi ainda melhor do que o previsto`
+  ];
+  const subtitulo = pick(subtitulos);
+
+  // Repórteres fictícios
+  const reporters = ['Ana Paula Ferreira', 'Carlos Eduardo Lima', 'Juliana Mendes', 'Roberto Souza', 'Mariana Costa'];
+  const reporter  = pick(reporters);
+
+  // Corpo da notícia — 3 parágrafos
+  const intro = `Em mais um capítulo empolgante do Torneio SESI Infantil, ${d.replace(/[.!?]+$/, '').charAt(0).toLowerCase() + d.replace(/[.!?]+$/, '').slice(1)}. A cena arrancou aplausos da plateia e ficará marcada na memória de todos os presentes.`;
+
+  const contextos = [
+    `A atividade faz parte do projeto de educação integral do SESI, que busca desenvolver competências do século XXI nos estudantes. Segundo os organizadores, o nível de engajamento desta edição superou todas as expectativas: "Nunca vimos tanto entusiasmo e dedicação", revelou um dos professores responsáveis pela dinâmica.`,
+    `O Torneio SESI Infantil reúne turmas de diferentes perfis em desafios interdisciplinares que estimulam criatividade, trabalho em equipe e pensamento crítico. Nesta edição, a organização notou um salto significativo na qualidade das apresentações e na maturidade dos participantes.`,
+    `De acordo com a coordenação pedagógica, momentos como este reforçam o valor do torneio como ferramenta de aprendizado ativo. "Quando os alunos vivenciam o conhecimento na prática, o impacto é completamente diferente", destacou a equipe.`
+  ];
+  const para2 = pick(contextos);
+
+  const fechamentos = [
+    `O torneio continua com mais etapas previstas, e a expectativa é de que o nível de desempenho só aumente. Fique de olho no Boletim do Torneio para não perder nenhum momento!`,
+    `Com cada rodada, fica mais evidente o potencial dos jovens talentos do SESI. A comunidade escolar vibra — e tem muito mais por vir!`,
+    `Se esta etapa já foi assim, imagina o que está por vir! O Torneio SESI Infantil promete emoções até o grand finale. Não perca!`
+  ];
+  const para3 = pick(fechamentos);
+
+  return { manchete, subtitulo, reporter, corpo: [intro, para2, para3] };
+}
+
+function boletimGerarNoticia() {
+  const descricao = (document.getElementById('not-descricao')?.value || '').trim();
+  const fotoUrl   = (document.getElementById('not-foto')?.value    || '').trim();
+  const erro      = document.getElementById('not-erro');
+  const preview   = document.getElementById('not-preview');
+
+  if (!descricao) { if(erro) erro.textContent = 'Descreva o momento antes de gerar.'; return; }
+  if(erro) erro.textContent = '';
+
+  const noticia = gerarNoticia(descricao);
+  const imagem  = _noticiaFotoBase64 || (fotoUrl ? fotoUrl : null);
+
+  // Pré-visualização
+  if (preview) {
+    preview.innerHTML = `
+      <div class="not-preview-card">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">PRÉ-VISUALIZAÇÃO</p>
+        ${renderNoticiaCard({ ...noticia, imagem, tipo: 'noticia' })}
+        <button class="boletim-btn-add" style="margin-top:14px;width:100%" onclick="boletimPublicarNoticia()">
+          📢 Publicar no Boletim
+        </button>
+      </div>`;
+    preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Guarda temporariamente para publicação
+  window._noticiaRascunho = { ...noticia, imagem, tipo: 'noticia' };
+}
+
+function boletimPublicarNoticia() {
+  if (!window._noticiaRascunho) return;
+  const dados = lerBoletim();
+  dados.itens.unshift({
+    id: Date.now().toString(36),
+    ts: Date.now(),
+    ...window._noticiaRascunho
+  });
+  salvarBoletim(dados);
+  window._noticiaRascunho = null;
+  _noticiaFotoBase64      = null;
   renderPainel();
 }
 

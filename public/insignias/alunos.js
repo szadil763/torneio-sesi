@@ -217,7 +217,9 @@ function renderEstojo(equipe) {
       <h2 class="boletim-titulo">📸 Boletim do Torneio</h2>
       <div class="boletim-galeria">
         ${boletim.itens.map(item => {
-          const tipo = detectarTipoMidia(item.url);
+          if (item.tipo === 'noticia') return renderNoticiaCard(item);
+
+          const tipo = detectarTipoMidia(item.url || '');
           const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
           const midia = vid
             ? `<div class="bol-video-wrap">

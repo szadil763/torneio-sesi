@@ -578,8 +578,157 @@ button, input { font-family: inherit; }
 }
 
 /* ================================================================
+   BOLETIM — card de notícia (alunos + admin preview)
+   ================================================================ */
+.bol-noticia-card {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1.5px solid var(--card-line);
+  background: var(--card);
+  font-family: 'Inter', sans-serif;
+}
+.bol-noticia-header {
+  background: #c0392b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  gap: 8px;
+}
+.bol-noticia-brand {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.bol-noticia-data {
+  font-size: 10px;
+  color: rgba(255,255,255,.75);
+  white-space: nowrap;
+}
+.bol-noticia-foto { width: 100%; }
+.bol-noticia-foto img { width: 100%; max-height: 280px; object-fit: cover; display: block; }
+.bol-noticia-corpo { padding: 18px 18px 20px; }
+.bol-noticia-manchete {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: clamp(18px, 4.5vw, 24px);
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.bol-noticia-subtitulo {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 12px;
+  font-style: italic;
+}
+.bol-noticia-linha {
+  height: 3px;
+  background: #c0392b;
+  width: 40px;
+  border-radius: 2px;
+  margin-bottom: 10px;
+}
+.bol-noticia-reporter {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.bol-noticia-p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  opacity: .9;
+  margin-bottom: 12px;
+}
+.bol-noticia-p:last-child { margin-bottom: 0; }
+
+/* ================================================================
    BOLETIM — painel admin
    ================================================================ */
+/* Sub-abas do boletim */
+.bol-sub-abas {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.bol-sub-aba {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--card-line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.bol-sub-aba.ativa {
+  background: #2F8FE0;
+  border-color: #2F8FE0;
+  color: #fff;
+}
+
+/* Área de upload */
+.bol-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 20px 12px;
+  border: 2px dashed var(--card-line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  text-align: center;
+}
+.bol-upload-area:hover { border-color: #2F8FE0; background: rgba(47,143,224,.05); }
+.bol-upload-icon { font-size: 28px; line-height: 1; }
+.bol-upload-texto { font-size: 13px; font-weight: 600; color: var(--text); }
+.bol-upload-sub { font-size: 11px; color: var(--muted); }
+
+/* Separador "ou" */
+.bol-separador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.bol-separador::before, .bol-separador::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--card-line);
+}
+
+/* Textarea */
+.boletim-textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+}
+
+/* Botão gerar notícia */
+.boletim-btn-noticia { background: #c0392b; }
+.boletim-btn-noticia:hover { opacity: .85; }
+
+/* Preview da notícia no admin */
+.not-preview-card {
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 18px;
+  padding: 16px;
+}
+
 .boletim-admin { margin-top: 8px; }
 .boletim-form {
   display: flex;

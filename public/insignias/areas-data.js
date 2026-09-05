@@ -71,3 +71,30 @@ function youtubeId(url) {
   const m = url.match(/(?:youtu\.be\/|v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
 }
+
+// Renderiza um card de notícia estilo jornal para uso em alunos.js e admin pré-view
+function renderNoticiaCard(item) {
+  const dataFmt = new Date(item.ts || Date.now()).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const foto = item.imagem
+    ? `<div class="bol-noticia-foto"><img src="${item.imagem}" alt="${item.manchete}"></div>`
+    : '';
+  const corpo = (item.corpo || []).map(p => `<p class="bol-noticia-p">${p}</p>`).join('');
+  return `
+    <div class="bol-noticia-card">
+      <div class="bol-noticia-header">
+        <span class="bol-noticia-brand">SESI TORNEIO NOTÍCIAS</span>
+        <span class="bol-noticia-data">${dataFmt}</span>
+      </div>
+      ${foto}
+      <div class="bol-noticia-corpo">
+        <div class="bol-noticia-manchete">${item.manchete}</div>
+        <div class="bol-noticia-subtitulo">${item.subtitulo || ''}</div>
+        <div class="bol-noticia-linha"></div>
+        <div class="bol-noticia-reporter">Por <strong>${item.reporter || 'Redação'}</strong></div>
+        ${corpo}
+      </div>
+    </div>`;
+}
