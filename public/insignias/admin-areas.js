@@ -293,19 +293,24 @@ function renderAbaBoletim(boletim) {
 
       ${bolAbaAtiva === 'midia' ? `
         <div class="boletim-form">
-          <label class="bol-upload-area" for="bol-file-input">
-            <span class="bol-upload-icon">📷</span>
-            <span class="bol-upload-texto">Toque para escolher foto do dispositivo</span>
-            <span class="bol-upload-sub">JPG, PNG, HEIC — comprimido automaticamente</span>
-          </label>
-          <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
+          <div class="bol-upload-opcoes">
+            <label class="bol-upload-btn" for="bol-file-camera">
+              <span>📸</span> Tirar foto agora
+            </label>
+            <input id="bol-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="boletimHandleFile(this)">
+
+            <label class="bol-upload-btn bol-upload-btn-sec" for="bol-file-input">
+              <span>🖼️</span> Escolher da galeria
+            </label>
+            <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
+          </div>
 
           <div class="bol-separador"><span>ou cole um link</span></div>
 
           <input id="bol-url"     type="url"  placeholder="Link da foto ou vídeo do YouTube" class="boletim-input">
           <input id="bol-titulo"  type="text" placeholder="Título (opcional)"                 class="boletim-input">
           <input id="bol-legenda" type="text" placeholder="Legenda (opcional)"                class="boletim-input">
-          <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar</button>
+          <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar por link</button>
         </div>
         <div id="bol-erro" class="erro" style="margin-top:8px"></div>
       ` : `
@@ -315,12 +320,21 @@ function renderAbaBoletim(boletim) {
           </p>
           <textarea id="not-descricao" class="boletim-input boletim-textarea"
             placeholder="Ex: A equipe verde venceu o desafio de robótica com um robô que desviou todos os obstáculos..." rows="3"></textarea>
-          <input id="not-foto" type="url" placeholder="Link de foto para ilustrar (opcional)" class="boletim-input">
-          <label class="bol-upload-area" for="not-file-input" style="margin-top:0">
-            <span class="bol-upload-icon">🖼️</span>
-            <span class="bol-upload-texto">Ou enviar foto do dispositivo</span>
-          </label>
-          <input id="not-file-input" type="file" accept="image/*" style="display:none" onchange="noticiaHandleFile(this)">
+
+          <div class="bol-upload-opcoes" style="margin-top:4px">
+            <label class="bol-upload-btn" for="not-file-camera">
+              <span>📸</span> Tirar foto agora
+            </label>
+            <input id="not-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="noticiaHandleFile(this)">
+
+            <label class="bol-upload-btn bol-upload-btn-sec" for="not-file-input">
+              <span>🖼️</span> Escolher da galeria
+            </label>
+            <input id="not-file-input" type="file" accept="image/*" style="display:none" onchange="noticiaHandleFile(this)">
+          </div>
+          <div id="not-foto-status" style="font-size:12px;color:var(--muted);min-height:16px"></div>
+
+          <input id="not-foto" type="url" placeholder="Ou cole link de foto para ilustrar" class="boletim-input">
           <button class="boletim-btn-add boletim-btn-noticia" onclick="boletimGerarNoticia()">✨ Gerar Notícia</button>
         </div>
         <div id="not-erro" class="erro" style="margin-top:8px"></div>
@@ -414,8 +428,8 @@ function noticiaHandleFile(input) {
   if (!file) return;
   comprimirImagem(file, 1400, 0.80).then(dataUrl => {
     _noticiaFotoBase64 = dataUrl;
-    const label = document.querySelector('label[for="not-file-input"] .bol-upload-texto');
-    if (label) label.textContent = '✓ Foto carregada!';
+    const status = document.getElementById('not-foto-status');
+    if (status) status.textContent = '✓ Foto carregada e pronta para ilustrar a notícia.';
   });
 }
 

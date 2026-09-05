@@ -676,24 +676,35 @@ button, input { font-family: inherit; }
   color: #fff;
 }
 
-/* Área de upload */
-.bol-upload-area {
+/* Botões de upload (câmera / galeria) */
+.bol-upload-opcoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.bol-upload-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 20px 12px;
-  border: 2px dashed var(--card-line);
+  gap: 7px;
+  padding: 14px 10px;
+  border: 2px solid #2F8FE0;
   border-radius: 14px;
+  background: rgba(47,143,224,.1);
+  color: #2F8FE0;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: border-color .15s, background .15s;
   text-align: center;
+  transition: background .15s, color .15s;
 }
-.bol-upload-area:hover { border-color: #2F8FE0; background: rgba(47,143,224,.05); }
-.bol-upload-icon { font-size: 28px; line-height: 1; }
-.bol-upload-texto { font-size: 13px; font-weight: 600; color: var(--text); }
-.bol-upload-sub { font-size: 11px; color: var(--muted); }
+.bol-upload-btn:hover { background: #2F8FE0; color: #fff; }
+.bol-upload-btn-sec {
+  border-color: var(--card-line);
+  background: transparent;
+  color: var(--muted);
+}
+.bol-upload-btn-sec:hover { background: var(--card-line); color: var(--text); }
 
 /* Separador "ou" */
 .bol-separador {
