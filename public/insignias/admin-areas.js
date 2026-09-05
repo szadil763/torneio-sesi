@@ -115,9 +115,19 @@ function renderPainel() {
   `;
 }
 
+function copiarLink(token) {
+  const url = location.origin + '/insignias/alunos.html?t=' + token;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('btn-link-' + token);
+    if (btn) { btn.textContent = '✓ Copiado!'; setTimeout(() => { btn.textContent = '🔗 Copiar link'; }, 2000); }
+  }).catch(() => {
+    prompt('Copie o link abaixo:', location.origin + '/insignias/alunos.html?t=' + token);
+  });
+}
+
 function renderAbaGerenciar(estado, ts) {
   return `
-    <p class="subtitulo" style="margin-bottom:12px">Use + para adicionar insígnias e − para remover. A quantidade aparece no estojo em tempo real.</p>
+    <p class="subtitulo" style="margin-bottom:4px">Use + para adicionar insígnias e − para remover. Compartilhe o link de cada equipe com os pais.</p>
     <div class="tabela-admin">
       ${TEAMS.map(equipe => {
         const totalEquipe      = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
@@ -128,6 +138,11 @@ function renderAbaGerenciar(estado, ts) {
               <span class="bolinha-cor" style="background:${equipe.cor}"></span>
               <strong>${equipe.nome}</strong>
               <span class="admin-contagem">${areasComInsignia}/${AREAS.length} áreas · ${totalEquipe} insígnias</span>
+              <button class="btn-copiar-link" id="btn-link-${equipe.token}"
+                      onclick="copiarLink('${equipe.token}')"
+                      style="border-color:${equipe.cor};color:${equipe.cor}">
+                🔗 Copiar link
+              </button>
             </div>
             <div class="counters-grid">
               ${AREAS.map(area => {

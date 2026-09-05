@@ -1,5 +1,26 @@
 // Página de alunos e pais — Insígnias por Área.
+// Acesso controlado por token de equipe na URL (?t=TOKEN).
 // A animação completa do estojo (tampa + insígnias encaixando) acontece SEMPRE.
+
+// ── Controle de acesso ────────────────────────────────────────────
+function resolverEquipePorToken() {
+  const params = new URLSearchParams(location.search);
+  const token  = params.get('t');
+  if (!token) return null;
+  return TEAMS.find(t => t.token === token) || null;
+}
+
+function renderAcessoRestrito() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;padding:32px 20px;gap:20px">
+      <div style="font-size:56px">🔒</div>
+      <h1 style="font-family:'Baloo 2',sans-serif;font-size:26px;font-weight:800;color:#f2f0e9">Acesso restrito</h1>
+      <p style="color:#7a7f96;font-size:15px;max-width:32ch;line-height:1.6">
+        Use o link fornecido pelo seu professor para acessar o estojo da sua equipe.
+      </p>
+    </div>`;
+}
 
 // ── SVG emblema da tampa ──────────────────────────────────────────
 function emblemaLid() {
@@ -28,7 +49,6 @@ function tocarSom(tipo) {
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
     } else if (tipo === 'snap') {
-      // Cada insígnia encaixando faz um som levemente diferente
       const freqs = [900, 820, 740, 660];
       freqs.forEach((freq, i) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -112,80 +132,20 @@ function fecharModal() {
   document.body.style.overflow = '';
 }
 
-// ── Totais ────────────────────────────────────────────────────────
-function totalAreasEquipe(estado, teamId) {
-  return AREAS.filter(a => conquistouArea(estado, a.id, teamId)).length;
-}
-function totalInsigniasEquipe(estado, teamId) {
-  return AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, teamId), 0);
-}
-
-// ── HOME: escolha de equipe ───────────────────────────────────────
-function renderHome() {
-  const app    = document.getElementById('app');
-  const estado = lerEstadoAreas();
-
-  app.innerHTML = `
-    <div class="alunos-hero">
-      <div class="alunos-hero-icon">🏅</div>
-      <div class="marca">SESI · Torneio Infantil</div>
-      <h1 class="titulo-principal">Estojo de Insígnias</h1>
-      <p class="subtitulo">Toque na sua equipe para abrir o estojo!</p>
-    </div>
-
-    <div class="grade-equipes-btn">
-      ${TEAMS.map(t => {
-        const areas   = totalAreasEquipe(estado, t.id);
-        const total   = totalInsigniasEquipe(estado, t.id);
-        const pct     = Math.round((areas / AREAS.length) * 100);
-        const completo = areas === AREAS.length;
-        const slots   = AREAS.map(a => {
-          const qtd    = quantidadeInsignia(estado, a.id, t.id);
-          const ganhou = qtd > 0;
-          return `<span class="mini-slot ${ganhou ? 'conquistado' : ''}"
-                        style="${ganhou ? `background:${t.cor}28;border-color:${t.cor}` : ''}">
-                    ${ganhou
-                      ? `<img src="${a.imagem}" class="mini-img" onerror="this.outerHTML='${a.emoji}'">${qtd > 1 ? `<span class="mini-count">${qtd}</span>` : ''}`
-                      : '🔒'}
-                  </span>`;
-        }).join('');
-        return `
-          <button class="equipe-btn ${completo ? 'completo' : ''}"
-                  style="--c:${t.cor}; --cd:${t.corEscura}"
-                  onclick="location.hash='#/equipe/${t.id}'">
-            <div class="equipe-btn-topo" style="background:linear-gradient(135deg,${t.cor},${t.corEscura})">
-              <span class="equipe-btn-nome">${completo ? '⭐ ' : ''}${t.nome}</span>
-              <span class="equipe-btn-badge">${total} insígnia${total !== 1 ? 's' : ''}</span>
-            </div>
-            <div class="equipe-btn-slots">${slots}</div>
-            <div class="prog-bar"><div class="prog-bar-fill" style="width:${pct}%;background:${t.cor}"></div></div>
-            <div class="equipe-btn-cta alunos-cta">${completo ? '🎉 Estojo completo!' : '🎒 Abrir meu estojo!'}</div>
-          </button>`;
-      }).join('')}
-    </div>
-
-    <div class="home-links" style="margin-top:28px">
-      <a href="/hub.html" class="link-sec">⬅ Painel principal</a>
-    </div>`;
-}
-
 // ── ESTOJO: animação completa SEMPRE ─────────────────────────────
-function renderEstojo(teamId) {
-  const equipe = TEAMS.find(t => t.id === teamId);
-  const app    = document.getElementById('app');
-  if (!equipe) { location.hash = '#/'; return; }
+function renderEstojo(equipe) {
+  const app = document.getElementById('app');
 
   const estado         = lerEstadoAreas();
-  const totalInsignias = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, teamId), 0);
-  const areas          = AREAS.filter(a => conquistouArea(estado, a.id, teamId)).length;
+  const totalInsignias = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
+  const areas          = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
   const completo       = areas === AREAS.length;
 
-  // Atrasos escalonados: tampa abre em ~1.5s, insígnias encaixam depois
   const BASE_DELAY = 1.65;
   const STEP       = 0.22;
 
   const slots = AREAS.map((area, i) => {
-    const qtd    = quantidadeInsignia(estado, area.id, teamId);
+    const qtd    = quantidadeInsignia(estado, area.id, equipe.id);
     const ganhou = qtd > 0;
     const delay  = (BASE_DELAY + i * STEP).toFixed(2);
 
@@ -196,7 +156,7 @@ function renderEstojo(teamId) {
           ${ganhou
             ? `<div class="badge-3d-wrap recem-conquistada"
                     style="animation-delay:${delay}s"
-                    onclick="abrirModalInsignia('${area.id}','${teamId}')"
+                    onclick="abrirModalInsignia('${area.id}','${equipe.id}')"
                     title="Toque para ampliar">
                  <img src="${area.imagem}"
                       alt="Insígnia ${area.nome}"
@@ -217,11 +177,6 @@ function renderEstojo(teamId) {
   }).join('');
 
   app.innerHTML = `
-    <div class="topbar">
-      <button class="voltar" onclick="location.hash='#/'">← Equipes</button>
-      <a href="/hub.html" class="voltar" style="text-decoration:none;margin-left:auto">⬅ Painel</a>
-    </div>
-
     ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">
       ⭐ Estojo completo! Parabéns, ${equipe.nome}! ⭐
     </div>` : ''}
@@ -253,7 +208,6 @@ function renderEstojo(teamId) {
       💡 Toque em uma insígnia para ver em tamanho grande
     </p>`;
 
-  // Sons sincronizados com as animações
   setTimeout(() => tocarSom('abrir'), 500);
   if (areas > 0) setTimeout(() => tocarSom('snap'), BASE_DELAY * 1000);
   if (completo) setTimeout(() => {
@@ -262,14 +216,7 @@ function renderEstojo(teamId) {
   }, (BASE_DELAY + AREAS.length * STEP + 0.4) * 1000);
 }
 
-// ── Roteador ──────────────────────────────────────────────────────
-function rotear() {
-  const partes = location.hash.replace(/^#\//, '').split('/');
-  if (partes[0] === 'equipe' && partes[1]) renderEstojo(partes[1]);
-  else renderHome();
-}
-
-window.addEventListener('hashchange', rotear);
+// ── Init ──────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function () {
   document.body.insertAdjacentHTML('beforeend', `
     <div id="modal-insignia" class="modal-overlay hidden" onclick="fecharModal()">
@@ -284,5 +231,11 @@ window.addEventListener('DOMContentLoaded', function () {
       </div>
     </div>
   `);
-  rotear();
+
+  const equipe = resolverEquipePorToken();
+  if (equipe) {
+    renderEstojo(equipe);
+  } else {
+    renderAcessoRestrito();
+  }
 });
