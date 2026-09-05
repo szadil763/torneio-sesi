@@ -46,3 +46,28 @@ function quantidadeInsignia(estado, areaId, teamId) {
 function conquistouArea(estado, areaId, teamId) {
   return quantidadeInsignia(estado, areaId, teamId) > 0;
 }
+
+// ── Boletim do Torneio ────────────────────────────────────────────
+const STORAGE_KEY_BOLETIM = "torneio-boletim:v1";
+
+function lerBoletim() {
+  try {
+    const bruto = localStorage.getItem(STORAGE_KEY_BOLETIM);
+    return bruto ? JSON.parse(bruto) : { itens: [] };
+  } catch { return { itens: [] }; }
+}
+
+function salvarBoletim(dados) {
+  localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(dados));
+}
+
+function detectarTipoMidia(url) {
+  if (/youtu\.be\/|youtube\.com\/(watch|shorts|embed)/.test(url)) return 'youtube';
+  if (/\.(jpg|jpeg|png|gif|webp|avif)(\?|$)/i.test(url)) return 'imagem';
+  return 'imagem'; // tenta como imagem por padrão
+}
+
+function youtubeId(url) {
+  const m = url.match(/(?:youtu\.be\/|v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}

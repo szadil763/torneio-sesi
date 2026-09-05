@@ -66,7 +66,7 @@ function formatarData(ts) {
     + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Qual aba está ativa: 'gerenciar' | 'visao-geral'
+// Qual aba está ativa: 'gerenciar' | 'visao-geral' | 'boletim'
 let abaAtiva = 'gerenciar';
 
 function trocarAba(aba) {
@@ -80,14 +80,18 @@ function renderPainel() {
   const ts     = estado.timestamps || {};
   const totalGeral = TEAMS.reduce((sum, t) =>
     sum + AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, t.id), 0), 0);
+  const boletim = lerBoletim();
 
   const abas = `
     <div class="admin-abas">
       <button class="admin-aba ${abaAtiva === 'gerenciar'   ? 'ativa' : ''}" onclick="trocarAba('gerenciar')">
-        ✏️ Gerenciar insígnias
+        ✏️ Insígnias
       </button>
       <button class="admin-aba ${abaAtiva === 'visao-geral' ? 'ativa' : ''}" onclick="trocarAba('visao-geral')">
         📊 Visão geral
+      </button>
+      <button class="admin-aba ${abaAtiva === 'boletim'     ? 'ativa' : ''}" onclick="trocarAba('boletim')">
+        📸 Boletim
       </button>
     </div>`;
 
@@ -102,12 +106,14 @@ function renderPainel() {
 
     ${abas}
 
-    <div class="admin-resumo">
+    ${abaAtiva !== 'boletim' ? `<div class="admin-resumo">
       <span>Total de insígnias concedidas:</span>
       <strong>${totalGeral}</strong>
-    </div>
+    </div>` : ''}
 
-    ${abaAtiva === 'gerenciar' ? renderAbaGerenciar(estado, ts) : renderAbaVisaoGeral(estado)}
+    ${abaAtiva === 'gerenciar'  ? renderAbaGerenciar(estado, ts)
+    : abaAtiva === 'visao-geral' ? renderAbaVisaoGeral(estado)
+    : renderAbaBoletim(boletim)}
 
     <p class="rodape-nota">
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
@@ -270,6 +276,85 @@ function renderAbaVisaoGeral(estado) {
         }).join('')}
       </div>
     </div>`;
+}
+
+// ── Aba Boletim ───────────────────────────────────────────────────
+function renderAbaBoletim(boletim) {
+  const itens = boletim.itens || [];
+  return `
+    <div class="boletim-admin">
+      <p class="subtitulo" style="margin-bottom:16px">
+        Adicione fotos e vídeos do torneio. Cole o link da imagem ou do YouTube — os pais e alunos verão no estojo.
+      </p>
+
+      <div class="boletim-form">
+        <input id="bol-url"     type="url"  placeholder="Link da foto ou vídeo do YouTube"  class="boletim-input">
+        <input id="bol-titulo"  type="text" placeholder="Título (opcional)"                  class="boletim-input">
+        <input id="bol-legenda" type="text" placeholder="Legenda (opcional)"                 class="boletim-input">
+        <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar</button>
+      </div>
+      <div id="bol-erro" class="erro" style="margin-top:8px"></div>
+
+      ${itens.length === 0
+        ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhum item ainda. Adicione o primeiro!</p>`
+        : `<div class="boletim-lista-admin">
+            ${itens.map((item, i) => {
+              const tipo = detectarTipoMidia(item.url);
+              const thumb = tipo === 'youtube'
+                ? `<img src="https://img.youtube.com/vi/${youtubeId(item.url)}/mqdefault.jpg" class="bol-thumb" onerror="this.src=''">`
+                : `<img src="${item.url}" class="bol-thumb" onerror="this.style.display='none'">`;
+              return `
+                <div class="bol-item-admin">
+                  <div class="bol-item-preview">${thumb}
+                    ${tipo === 'youtube' ? '<span class="bol-play-badge">▶ Vídeo</span>' : ''}
+                  </div>
+                  <div class="bol-item-info">
+                    <strong class="bol-item-titulo">${item.titulo || '(sem título)'}</strong>
+                    <span class="bol-item-legenda">${item.legenda || ''}</span>
+                    <span class="bol-item-url">${item.url.length > 48 ? item.url.slice(0,48)+'…' : item.url}</span>
+                  </div>
+                  <div class="bol-item-acoes">
+                    ${i > 0 ? `<button class="bol-btn-ord" onclick="boletimMover(${i},-1)" title="Subir">↑</button>` : ''}
+                    ${i < itens.length-1 ? `<button class="bol-btn-ord" onclick="boletimMover(${i},+1)" title="Descer">↓</button>` : ''}
+                    <button class="bol-btn-rem" onclick="boletimRemover(${i})" title="Remover">🗑</button>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>`
+      }
+    </div>`;
+}
+
+function boletimAdicionar() {
+  const url     = document.getElementById('bol-url').value.trim();
+  const titulo  = document.getElementById('bol-titulo').value.trim();
+  const legenda = document.getElementById('bol-legenda').value.trim();
+  const erro    = document.getElementById('bol-erro');
+
+  if (!url) { erro.textContent = 'Informe um link.'; return; }
+  try { new URL(url); } catch { erro.textContent = 'Link inválido.'; return; }
+
+  const dados = lerBoletim();
+  dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, ts: Date.now() });
+  salvarBoletim(dados);
+  renderPainel();
+}
+
+function boletimRemover(idx) {
+  if (!confirm('Remover este item do boletim?')) return;
+  const dados = lerBoletim();
+  dados.itens.splice(idx, 1);
+  salvarBoletim(dados);
+  renderPainel();
+}
+
+function boletimMover(idx, delta) {
+  const dados = lerBoletim();
+  const novo  = idx + delta;
+  if (novo < 0 || novo >= dados.itens.length) return;
+  [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
+  salvarBoletim(dados);
+  renderPainel();
 }
 
 function sair() {

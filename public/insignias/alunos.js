@@ -208,6 +208,39 @@ function renderEstojo(equipe) {
       💡 Toque em uma insígnia para ver em tamanho grande
     </p>`;
 
+  // Boletim logo abaixo do estojo
+  const boletim = lerBoletim();
+  if (boletim.itens && boletim.itens.length > 0) {
+    const secao = document.createElement('div');
+    secao.className = 'boletim-secao';
+    secao.innerHTML = `
+      <h2 class="boletim-titulo">📸 Boletim do Torneio</h2>
+      <div class="boletim-galeria">
+        ${boletim.itens.map(item => {
+          const tipo = detectarTipoMidia(item.url);
+          const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
+          const midia = vid
+            ? `<div class="bol-video-wrap">
+                 <iframe src="https://www.youtube.com/embed/${vid}?rel=0"
+                         frameborder="0" allowfullscreen
+                         allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+                         class="bol-iframe"></iframe>
+               </div>`
+            : `<div class="bol-img-wrap">
+                 <img src="${item.url}" alt="${item.titulo || 'Foto do torneio'}" class="bol-img"
+                      onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
+               </div>`;
+          return `
+            <div class="bol-card">
+              ${midia}
+              ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>` : ''}
+              ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
+            </div>`;
+        }).join('')}
+      </div>`;
+    document.getElementById('app').appendChild(secao);
+  }
+
   setTimeout(() => tocarSom('abrir'), 500);
   if (areas > 0) setTimeout(() => tocarSom('snap'), BASE_DELAY * 1000);
   if (completo) setTimeout(() => {
