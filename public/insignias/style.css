@@ -652,6 +652,100 @@ button, input { font-family: inherit; }
 /* ================================================================
    BOLETIM — painel admin
    ================================================================ */
+/* ================================================================
+   PAINEL DE LINKS DAS TURMAS
+   ================================================================ */
+.painel-links {
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 18px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.painel-links-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.painel-links-summary::-webkit-details-marker { display: none; }
+.painel-links-hint {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.painel-links[open] .painel-links-hint { display: none; }
+.painel-links-grade {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+.painel-link-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg, #12141b);
+  border: 1px solid var(--tc, var(--card-line));
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.painel-link-bolinha {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.painel-link-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.painel-link-nome { font-size: 13px; color: var(--text); }
+.painel-link-url {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+}
+.painel-link-btn {
+  font-size: 12px;
+  font-weight: 700;
+  background: transparent;
+  border: 1.5px solid currentColor;
+  border-radius: 20px;
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.painel-link-btn:hover { background: rgba(255,255,255,.08); }
+.painel-link-todos {
+  width: 100%;
+  padding: 11px;
+  margin-top: 4px;
+  background: rgba(47,143,224,.12);
+  border: 1.5px solid #2F8FE0;
+  border-radius: 12px;
+  color: #2F8FE0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.painel-link-todos:hover { background: rgba(47,143,224,.22); }
+
 /* Sub-abas do boletim */
 .bol-sub-abas {
   display: flex;

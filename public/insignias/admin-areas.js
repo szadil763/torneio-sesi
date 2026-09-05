@@ -95,6 +95,33 @@ function renderPainel() {
       </button>
     </div>`;
 
+  const painelLinks = `
+    <details class="painel-links" id="painel-links-detalhe">
+      <summary class="painel-links-summary">
+        🔗 Links das turmas
+        <span class="painel-links-hint">toque para expandir</span>
+      </summary>
+      <div class="painel-links-grade">
+        ${TEAMS.map(t => {
+          const url = location.origin + '/insignias/alunos.html?t=' + t.token;
+          return `
+            <div class="painel-link-card" style="--tc:${t.cor}">
+              <span class="painel-link-bolinha" style="background:${t.cor}"></span>
+              <div class="painel-link-info">
+                <strong class="painel-link-nome">${t.nome}</strong>
+                <code class="painel-link-url">${url}</code>
+              </div>
+              <button class="painel-link-btn" id="pl-${t.token}"
+                      onclick="copiarLink('${t.token}')"
+                      style="border-color:${t.cor};color:${t.cor}">
+                Copiar
+              </button>
+            </div>`;
+        }).join('')}
+        <button class="painel-link-todos" onclick="copiarTodosLinks()">📋 Copiar todos os links de uma vez</button>
+      </div>
+    </details>`;
+
   app.innerHTML = `
     <div class="topbar">
       <button class="voltar" onclick="sair()">Sair</button>
@@ -104,6 +131,7 @@ function renderPainel() {
     <div class="marca">Painel do professor</div>
     <h1 class="titulo-principal">Insígnias por Área</h1>
 
+    ${painelLinks}
     ${abas}
 
     ${abaAtiva !== 'boletim' ? `<div class="admin-resumo">
@@ -124,11 +152,27 @@ function renderPainel() {
 function copiarLink(token) {
   const url = location.origin + '/insignias/alunos.html?t=' + token;
   navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('btn-link-' + token);
-    if (btn) { btn.textContent = '✓ Copiado!'; setTimeout(() => { btn.textContent = '🔗 Copiar link'; }, 2000); }
+    // Atualiza qualquer botão com esse token (painel fixo ou aba gerenciar)
+    ['btn-link-' + token, 'pl-' + token].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copiado!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
   }).catch(() => {
-    prompt('Copie o link abaixo:', location.origin + '/insignias/alunos.html?t=' + token);
+    prompt('Copie o link abaixo:', url);
   });
+}
+
+function copiarTodosLinks() {
+  const texto = TEAMS.map(t =>
+    `${t.nome}:\n${location.origin}/insignias/alunos.html?t=${t.token}`
+  ).join('\n\n');
+  navigator.clipboard.writeText(texto).then(() => {
+    const btn = document.querySelector('.painel-link-todos');
+    if (btn) { btn.textContent = '✓ Todos os links copiados!'; setTimeout(() => { btn.textContent = '📋 Copiar todos os links de uma vez'; }, 2500); }
+  }).catch(() => { prompt('Copie os links abaixo:', texto); });
 }
 
 function renderAbaGerenciar(estado, ts) {
