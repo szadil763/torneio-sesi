@@ -466,25 +466,22 @@ function TelaoView() {
       return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
     });
     const complete = items.every((it) => it.montagem !== null && it.giro !== null);
+    const hasAny   = items.some((it) => it.montagem !== null && it.giro !== null);
     let montPts = {};
     let giroPts = {};
-    if (complete) {
-      montPts = rankPoints(
-        items.map((it) => ({ team: it.team, value: it.montagem })),
-        false
-      );
-      giroPts = rankPoints(
-        items.map((it) => ({ team: it.team, value: it.giro })),
-        true
-      );
+    if (hasAny) {
+      const comMontagem = items.filter((it) => it.montagem !== null);
+      const comGiro     = items.filter((it) => it.giro !== null);
+      montPts = rankPoints(comMontagem.map((it) => ({ team: it.team, value: it.montagem })), false);
+      giroPts = rankPoints(comGiro.map((it)     => ({ team: it.team, value: it.giro })),     true);
     }
-    return { round: r, items, complete, montPts, giroPts };
+    return { round: r, items, complete, hasAny, montPts, giroPts };
   });
 
   const totals = {};
   TEAMS.forEach((t) => (totals[t.id] = 0));
   roundResults.forEach((rr) => {
-    if (rr.complete) {
+    if (rr.hasAny) {
       TEAMS.forEach((t) => {
         totals[t.id] += (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
       });
@@ -578,44 +575,32 @@ function TelaoView() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {roundResults.map((rr) => {
-            // Find winner(s): team(s) with highest round points
             let winners = [];
             let maxPts = 0;
-            if (rr.complete) {
+            if (rr.hasAny) {
               TEAMS.forEach((t) => {
                 const pts = (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
                 if (pts > maxPts) { maxPts = pts; winners = [t]; }
-                else if (pts === maxPts) { winners.push(t); }
+                else if (pts === maxPts && pts > 0) { winners.push(t); }
               });
             }
             const isTie = winners.length > 1;
             return (
-              <div
-                key={rr.round}
-                className="rounded-2xl overflow-hidden shadow-sm border border-gray-200"
-              >
-                <div
-                  className="px-3 py-1.5 text-xs font-bold text-white text-center"
-                  style={{ backgroundColor: AZUL }}
-                >
+              <div key={rr.round} className="rounded-2xl overflow-hidden shadow-sm border border-gray-200">
+                <div className="px-3 py-1.5 text-xs font-bold text-white text-center" style={{ backgroundColor: AZUL }}>
                   Rodada {rr.round}
+                  {rr.hasAny && !rr.complete && <span className="ml-1 opacity-70">(parcial)</span>}
                 </div>
-                {rr.complete ? (
-                  <div
-                    className="p-3 flex flex-col items-center gap-1"
-                    style={{ backgroundColor: winners[0]?.color + "22" }}
-                  >
+                {rr.hasAny ? (
+                  <div className="p-3 flex flex-col items-center gap-1"
+                    style={{ backgroundColor: (winners[0]?.color ?? "#ccc") + "22" }}>
                     <div className="text-2xl">{isTie ? "🤝" : "🏆"}</div>
                     <div className="font-extrabold text-sm text-center" style={{ color: AZUL }}>
-                      {isTie
-                        ? winners.map((w) => w.label).join(" · ")
-                        : winners[0]?.label}
+                      {isTie ? winners.map((w) => w.label).join(" · ") : winners[0]?.label}
                     </div>
-                    <div
-                      className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                      style={{ backgroundColor: isTie ? "#6B7280" : winners[0]?.color }}
-                    >
-                      {maxPts} pts
+                    <div className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: isTie ? "#6B7280" : winners[0]?.color }}>
+                      {maxPts} pts{!rr.complete && " *"}
                     </div>
                   </div>
                 ) : (
@@ -639,14 +624,11 @@ function TelaoView() {
             key={rr.round}
             className="rounded-2xl border overflow-hidden border-gray-200"
           >
-            <div
-              className="px-4 py-2 font-bold text-white flex items-center justify-between"
-              style={{ backgroundColor: AZUL }}
-            >
+            <div className="px-4 py-2 font-bold text-white flex items-center justify-between" style={{ backgroundColor: AZUL }}>
               <span>Rodada {rr.round}</span>
               {!rr.complete && (
                 <span className="text-xs font-normal opacity-80">
-                  aguardando resultados...
+                  {rr.hasAny ? "parcial — aguardando equipes..." : "aguardando resultados..."}
                 </span>
               )}
             </div>
@@ -981,17 +963,19 @@ function PonteTelaoView() {
       return { team: t.id, tempo: v?.tempo ?? null };
     });
     const complete = items.every((it) => it.tempo !== null);
+    const hasAny   = items.some((it) => it.tempo !== null);
     let pts = {};
-    if (complete) {
-      pts = rankPoints(items.map((it) => ({ team: it.team, value: it.tempo })), false);
+    if (hasAny) {
+      const comTempo = items.filter((it) => it.tempo !== null);
+      pts = rankPoints(comTempo.map((it) => ({ team: it.team, value: it.tempo })), false);
     }
-    return { round: r, items, complete, pts };
+    return { round: r, items, complete, hasAny, pts };
   });
 
   const totals = {};
   TEAMS.forEach((t) => (totals[t.id] = 0));
   roundResults.forEach((rr) => {
-    if (rr.complete) TEAMS.forEach((t) => { totals[t.id] += rr.pts[t.id] || 0; });
+    if (rr.hasAny) TEAMS.forEach((t) => { totals[t.id] += rr.pts[t.id] || 0; });
   });
 
   const ranking = [...TEAMS].sort((a, b) => totals[b.id] - totals[a.id]);
@@ -1054,7 +1038,7 @@ function PonteTelaoView() {
             let winners = [];
             let maxPts = 0;
             let bestTime = null;
-            if (rr.complete) {
+            if (rr.hasAny) {
               TEAMS.forEach((t) => {
                 const p = rr.pts[t.id] || 0;
                 if (p > maxPts) { maxPts = p; winners = [t]; }
@@ -1068,8 +1052,9 @@ function PonteTelaoView() {
               <div key={rr.round} className="rounded-2xl overflow-hidden shadow-sm border border-gray-200">
                 <div className="px-3 py-1.5 text-xs font-bold text-white text-center" style={{ backgroundColor: AZUL }}>
                   Rodada {rr.round}
+                  {rr.hasAny && !rr.complete && <span className="ml-1 opacity-70">(parcial)</span>}
                 </div>
-                {rr.complete ? (
+                {rr.hasAny ? (
                   <div className="p-3 flex flex-col items-center gap-1" style={{ backgroundColor: (winners[0]?.color ?? "#ccc") + "22" }}>
                     <div className="text-2xl">{isTie ? "🤝" : "🏆"}</div>
                     <div className="font-extrabold text-sm text-center" style={{ color: AZUL }}>
@@ -1098,7 +1083,7 @@ function PonteTelaoView() {
           <div key={rr.round} className="rounded-2xl border overflow-hidden border-gray-200">
             <div className="px-4 py-2 font-bold text-white flex items-center justify-between" style={{ backgroundColor: AZUL }}>
               <span>Rodada {rr.round}</span>
-              {!rr.complete && <span className="text-xs font-normal opacity-80">aguardando resultados...</span>}
+              {!rr.complete && <span className="text-xs font-normal opacity-80">{rr.hasAny ? "parcial — aguardando equipes..." : "aguardando resultados..."}</span>}
             </div>
             <table className="w-full text-sm">
               <thead>
@@ -1115,7 +1100,7 @@ function PonteTelaoView() {
                   return a.tempo - b.tempo;
                 }).map((it) => {
                   const t = TEAMS.find((x) => x.id === it.team);
-                  const pts = rr.complete ? (rr.pts[it.team] || 0) : null;
+                  const pts = rr.hasAny ? (rr.pts[it.team] || 0) : null;
                   const isLive = !!liveKeys[`${rr.round}_${it.team}`];
                   return (
                     <tr key={it.team} className="border-t border-gray-100">
