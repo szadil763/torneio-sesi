@@ -2,6 +2,69 @@
 // Acesso controlado por token de equipe na URL (?t=TOKEN).
 // A animação completa do estojo (tampa + insígnias encaixando) acontece SEMPRE.
 
+// ── Idioma ────────────────────────────────────────────────────────
+const STRINGS = {
+  pt: {
+    torneio_titulo:       'TORNEIO SESI INFANTIL',
+    torneio_comeca_em:    'começa em',
+    torneio_andamento:    'TORNEIO EM ANDAMENTO!',
+    torneio_ao_vivo:      '📺 Assistir abertura ao vivo',
+    torneio_ao_vivo_btn:  '📺 Abertura ao vivo — Teams',
+    torneio_data:         '📅 03 de outubro de 2026 · 08h00',
+    dias:   'dias',
+    horas:  'horas',
+    min:    'min',
+    seg:    'seg',
+    estojos_titulo:       'Estojos de Insígnias',
+    estojos_subtitulo:    'Toque em uma turma para abrir o estojo',
+    toque_para_abrir:     'Toque para abrir',
+    estojo_completo:      '⭐ Estojo completo! Parabéns,',
+    dica_insignia:        '💡 Toque em uma insígnia para ver em tamanho grande',
+    boletim_titulo:       '📸 Boletim do Torneio',
+    boletim_pt_note:      '',
+    img_indisponivel:     'Imagem indisponível',
+  },
+  en: {
+    torneio_titulo:       'SESI CHILDREN\'S TOURNAMENT',
+    torneio_comeca_em:    'starts in',
+    torneio_andamento:    'TOURNAMENT IN PROGRESS!',
+    torneio_ao_vivo:      '📺 Watch opening ceremony live',
+    torneio_ao_vivo_btn:  '📺 Live opening — Teams',
+    torneio_data:         '📅 October 3, 2026 · 8:00 AM',
+    dias:   'days',
+    horas:  'hours',
+    min:    'min',
+    seg:    'sec',
+    estojos_titulo:       'Badge Cases',
+    estojos_subtitulo:    'Tap a class to open the case',
+    toque_para_abrir:     'Tap to open',
+    estojo_completo:      '⭐ Case complete! Congrats,',
+    dica_insignia:        '💡 Tap a badge to see it full size',
+    boletim_titulo:       '📸 Tournament Bulletin',
+    boletim_pt_note:      '<p style="font-size:11px;color:var(--muted);margin:4px 0 12px;text-align:center">Content written in Portuguese by teachers</p>',
+    img_indisponivel:     'Image unavailable',
+  }
+};
+
+let _lang = (() => {
+  try {
+    const saved = localStorage.getItem('torneio-lang');
+    if (saved === 'pt' || saved === 'en') return saved;
+  } catch (_) {}
+  return navigator.language && navigator.language.startsWith('pt') ? 'pt' : 'en';
+})();
+
+function t(key) {
+  return (STRINGS[_lang] || STRINGS.pt)[key] || key;
+}
+
+function alternarIdioma() {
+  _lang = _lang === 'pt' ? 'en' : 'pt';
+  try { localStorage.setItem('torneio-lang', _lang); } catch (_) {}
+  Object.keys(_estojoAberto).forEach(k => delete _estojoAberto[k]);
+  renderPaginaEstojos();
+}
+
 // ── Configuração do torneio ───────────────────────────────────────
 // Data de início: 03/10/2026 às 08h00 (horário de Brasília)
 const TORNEIO_INICIO = new Date('2026-10-03T08:00:00-03:00');
@@ -37,44 +100,44 @@ function renderContador(equipe) {
     if (!tempo) {
       inner.innerHTML = `
         <div class="contador-ao-vivo" style="--c:${cor}">
-          🏆 <span>TORNEIO EM ANDAMENTO!</span>
+          🏆 <span>${t('torneio_andamento')}</span>
         </div>
         ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI' ? `
         <a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:${cor}">
-          📺 Assistir abertura ao vivo
+          ${t('torneio_ao_vivo')}
         </a>` : ''}`;
       clearInterval(_countdownInterval);
       return;
     }
 
     inner.innerHTML = `
-      <div class="contador-titulo">🏆 TORNEIO SESI INFANTIL</div>
-      <div class="contador-subtitulo">começa em</div>
+      <div class="contador-titulo">🏆 ${t('torneio_titulo')}</div>
+      <div class="contador-subtitulo">${t('torneio_comeca_em')}</div>
       <div class="contador-numeros">
         <div class="contador-bloco" style="--c:${cor}">
           <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
-          <span class="contador-label">dias</span>
+          <span class="contador-label">${t('dias')}</span>
         </div>
         <span class="contador-sep">:</span>
         <div class="contador-bloco" style="--c:${cor}">
           <span class="contador-num">${String(tempo.horas).padStart(2,'0')}</span>
-          <span class="contador-label">horas</span>
+          <span class="contador-label">${t('horas')}</span>
         </div>
         <span class="contador-sep">:</span>
         <div class="contador-bloco" style="--c:${cor}">
           <span class="contador-num">${String(tempo.minutos).padStart(2,'0')}</span>
-          <span class="contador-label">min</span>
+          <span class="contador-label">${t('min')}</span>
         </div>
         <span class="contador-sep">:</span>
         <div class="contador-bloco" style="--c:${cor}">
           <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
-          <span class="contador-label">seg</span>
+          <span class="contador-label">${t('seg')}</span>
         </div>
       </div>
-      <div class="contador-data">📅 03 de outubro de 2026 · 08h00</div>
+      <div class="contador-data">${t('torneio_data')}</div>
       ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI' ? `
       <a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:${cor}">
-        📺 Abertura ao vivo — Teams
+        ${t('torneio_ao_vivo_btn')}
       </a>` : ''}`;
   }
 
@@ -243,7 +306,7 @@ function renderEstojoNoContainer(equipe, container) {
   }).join('');
 
   container.innerHTML = `
-    ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">⭐ Estojo completo! Parabéns, ${equipe.nome}! ⭐</div>` : ''}
+    ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">${t('estojo_completo')} ${equipe.nome}! ⭐</div>` : ''}
     <div class="case-scene">
       <div class="case-3d">
         <div class="case-base">
@@ -265,7 +328,7 @@ function renderEstojoNoContainer(equipe, container) {
         </div>
       </div>
     </div>
-    <p class="rodape-nota alunos-dica" style="margin-bottom:0">💡 Toque em uma insígnia para ver em tamanho grande</p>`;
+    <p class="rodape-nota alunos-dica" style="margin-bottom:0">${t('dica_insignia')}</p>`;
 
   tocarSom('abrir');
   if (areas > 0) setTimeout(() => tocarSom('snap'), BASE_DELAY * 1000);
@@ -305,6 +368,16 @@ function abrirEstojo(teamId) {
 // ── Página principal com todos os estojos ─────────────────────────
 function renderPaginaEstojos() {
   const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // Botão de idioma fixo no topo
+  const langBtn = document.createElement('button');
+  langBtn.className = 'lang-toggle-btn';
+  langBtn.onclick = alternarIdioma;
+  langBtn.innerHTML = _lang === 'pt'
+    ? '🇺🇸 EN'
+    : '🇧🇷 PT';
+  app.appendChild(langBtn);
 
   // Contador regressivo com cor SESI
   renderContador({ cor: '#004B8D' });
@@ -312,21 +385,21 @@ function renderPaginaEstojos() {
   app.insertAdjacentHTML('beforeend', `
     <div class="alunos-hero">
       <div class="alunos-hero-icon">🏅</div>
-      <h1 style="font-family:'Baloo 2',sans-serif;font-weight:900;font-size:22px;margin:0 0 4px">Estojos de Insígnias</h1>
-      <p style="font-size:13px;color:var(--muted);margin:0">Toque em uma turma para abrir o estojo</p>
+      <h1 style="font-family:'Baloo 2',sans-serif;font-weight:900;font-size:22px;margin:0 0 4px">${t('estojos_titulo')}</h1>
+      <p style="font-size:13px;color:var(--muted);margin:0">${t('estojos_subtitulo')}</p>
     </div>
     <div class="equipes-grade">
-      ${TEAMS.map(t => `
-        <div class="equipe-secao" id="sec-${t.id}">
-          <button class="equipe-abrir-btn" id="btn-${t.id}"
-                  onclick="abrirEstojo('${t.id}')"
-                  style="--c:${t.cor}">
+      ${TEAMS.map(tm => `
+        <div class="equipe-secao" id="sec-${tm.id}">
+          <button class="equipe-abrir-btn" id="btn-${tm.id}"
+                  onclick="abrirEstojo('${tm.id}')"
+                  style="--c:${tm.cor}">
             <span class="equipe-bolinha"></span>
-            <span class="equipe-btn-nome">${t.nome}</span>
-            <span class="equipe-abrir-hint">Toque para abrir</span>
+            <span class="equipe-btn-nome">${tm.nome}</span>
+            <span class="equipe-abrir-hint">${t('toque_para_abrir')}</span>
             <span class="equipe-abrir-icone">▼</span>
           </button>
-          <div class="equipe-estojo-wrap" id="wrap-${t.id}" hidden></div>
+          <div class="equipe-estojo-wrap" id="wrap-${tm.id}" hidden></div>
         </div>`).join('')}
     </div>`);
 
@@ -337,12 +410,14 @@ function renderPaginaEstojos() {
     secao.className = 'boletim-secao';
     secao.style.marginTop = '36px';
     secao.innerHTML = `
-      <h2 class="boletim-titulo">📸 Boletim do Torneio</h2>
+      <h2 class="boletim-titulo">${t('boletim_titulo')}</h2>
+      ${t('boletim_pt_note')}
       <div class="boletim-galeria">
         ${boletim.itens.map(item => {
           if (item.tipo === 'noticia') return renderNoticiaCard(item);
           const tipo = detectarTipoMidia(item.url || '');
           const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
+          const imgErrLabel = t('img_indisponivel');
           const midia = vid
             ? `<div class="bol-video-wrap">
                  <iframe src="https://www.youtube.com/embed/${vid}?rel=0" frameborder="0" allowfullscreen
@@ -356,7 +431,7 @@ function renderPaginaEstojos() {
                </div>`
             : `<div class="bol-img-wrap">
                  <img src="${item.url}" alt="${item.titulo || 'Foto'}" class="bol-img"
-                      onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
+                      onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>${imgErrLabel}</span>'">
                </div>`;
           return `
             <div class="bol-card">
@@ -372,6 +447,7 @@ function renderPaginaEstojos() {
 
 // ── Init ──────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function () {
+  // Modal vive no body (fora do #app) para sobreviver ao re-render
   document.body.insertAdjacentHTML('beforeend', `
     <div id="modal-insignia" class="modal-overlay hidden" onclick="fecharModal()">
       <div class="modal-card" onclick="event.stopPropagation()">
