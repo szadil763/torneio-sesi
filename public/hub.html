@@ -242,6 +242,12 @@
     }
     .mod-comunicados:hover { border-color: #F5821F; }
 
+    .mod-comunicados-admin {
+      --grad: linear-gradient(135deg, #1a3a5c 0%, #c0651a 100%);
+      --cor-cta: #c0651a;
+    }
+    .mod-comunicados-admin:hover { border-color: #c0651a; }
+
     /* ── Linha do admin ── */
     .admin-row {
       width: 100%;
@@ -357,11 +363,11 @@
     <!-- segunda linha: professor -->
     <div class="grade" style="margin-top:12px">
 
-      <!-- Professor: gerenciar -->
+      <!-- Professor: gerenciar torneio -->
       <a href="/insignias/admin-areas.html" class="modulo mod-professor">
         <div class="modulo-topo">
           <span class="modulo-icone">✏️</span>
-          <span class="modulo-nome">Gerenciar<br>Insígnias</span>
+          <span class="modulo-nome">Gerenciamento<br>do Torneio</span>
           <span class="modulo-badge">🔐 Professor</span>
         </div>
         <div class="modulo-corpo">
@@ -391,20 +397,41 @@
 
     </div>
 
-    <!-- Comunicados — linha inteira (largura total) -->
-    <div style="width:100%;max-width:540px;margin-top:12px">
-      <a href="/insignias/comunicados.html" class="modulo mod-comunicados" style="display:flex;flex-direction:row;border-radius:18px;overflow:hidden">
-        <div class="modulo-topo" style="flex-direction:row;align-items:center;gap:14px;padding:18px 20px;flex-shrink:0">
-          <span class="modulo-icone" style="font-size:28px">📢</span>
-          <span class="modulo-nome" style="white-space:nowrap">Comunicados</span>
+    <!-- Terceira linha: admin comunicados + comunicados público -->
+    <div class="grade" style="margin-top:12px">
+
+      <!-- Gerenciamento de Comunicados -->
+      <a href="/insignias/admin-comunicados.html" class="modulo mod-comunicados-admin">
+        <div class="modulo-topo">
+          <span class="modulo-icone">📝</span>
+          <span class="modulo-nome">Gerenciamento<br>de Comunicados</span>
+          <span class="modulo-badge">🔐 Professor</span>
         </div>
-        <div class="modulo-corpo" style="flex-direction:row;align-items:center;padding:14px 18px;gap:12px">
-          <p class="modulo-desc" style="flex:1;margin:0">Recados, dicas e boletim do torneio para pais e alunos.</p>
-          <div class="modulo-cta" style="border:none;padding:0;flex-shrink:0">
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Publique boletins, recados e dicas para pais e alunos. Requer PIN.</p>
+          <div class="modulo-cta">
+            Entrar
             <div class="modulo-cta-arrow">→</div>
           </div>
         </div>
       </a>
+
+      <!-- Comunicados — público -->
+      <a href="/insignias/comunicados.html" class="modulo mod-comunicados">
+        <div class="modulo-topo">
+          <span class="modulo-icone">📢</span>
+          <span class="modulo-nome">Comunicados<br>do Torneio</span>
+          <span class="modulo-badge">👨‍👩‍👧 Pais e Alunos</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Boletim, recados e dicas do torneio para toda a família.</p>
+          <div class="modulo-cta">
+            Ver comunicados
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+
     </div>
 
     <p class="rodape">SESI · Serviço Social da Indústria</p>
