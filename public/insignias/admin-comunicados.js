@@ -82,6 +82,7 @@ function copiarLinkComunicados() {
 
 // ── Aba Boletim ───────────────────────────────────────────────────
 let bolAbaAtiva = 'midia';
+let _pendingMedia = null; // { dataUrl, tipo: 'imagem'|'video' }
 
 function renderAbaBoletimCom(boletim) {
   const itens = boletim.itens || [];
@@ -94,25 +95,39 @@ function renderAbaBoletimCom(boletim) {
 
       ${bolAbaAtiva === 'midia' ? `
         <div class="boletim-form">
-          <div class="bol-upload-opcoes">
-            <label class="bol-upload-btn" for="bol-file-camera"><span>📸</span> Tirar foto agora</label>
-            <input id="bol-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="boletimHandleFile(this)">
-            <label class="bol-upload-btn bol-upload-btn-sec" for="bol-file-input"><span>🖼️</span> Foto da galeria</label>
-            <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
-            <label class="bol-upload-btn bol-upload-btn-vid" for="bol-file-video"><span>📹</span> Enviar vídeo</label>
-            <input id="bol-file-video" type="file" accept="video/*" style="display:none" onchange="boletimHandleVideo(this)">
-          </div>
-          <div id="bol-video-aviso" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;text-align:center">
-            ⏳ Carregando vídeo…
-          </div>
-          <div class="bol-separador"><span>ou cole um link</span></div>
-          <input id="bol-url"     type="url"  placeholder="Link da foto ou vídeo do YouTube" class="boletim-input">
-          <input id="bol-titulo"  type="text" placeholder="Título (opcional)"                class="boletim-input">
-          <input id="bol-legenda" type="text" placeholder="Legenda (opcional)"               class="boletim-input">
-          <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar por link</button>
 
-          <div class="bol-separador ia-separador"><span>✨ ou gere título e legenda com IA</span></div>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Descreva o que aparece na foto ou no vídeo e a IA sugere título e legenda automaticamente.</p>
+          ${_pendingMedia ? `
+            <!-- Preview da mídia pendente -->
+            <div class="bol-pending-wrap">
+              ${_pendingMedia.tipo === 'video'
+                ? `<video src="${_pendingMedia.dataUrl}" class="bol-pending-preview" muted playsinline controls preload="metadata"></video>`
+                : `<img src="${_pendingMedia.dataUrl}" class="bol-pending-preview">`}
+              <button class="bol-pending-cancel" onclick="boletimCancelarPendente()">✕ Cancelar</button>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Adicione título e legenda para essa mídia antes de publicar.</p>
+          ` : `
+            <div class="bol-upload-opcoes">
+              <label class="bol-upload-btn" for="bol-file-camera"><span>📸</span> Tirar foto agora</label>
+              <input id="bol-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="boletimHandleFile(this)">
+              <label class="bol-upload-btn bol-upload-btn-sec" for="bol-file-input"><span>🖼️</span> Foto da galeria</label>
+              <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
+              <label class="bol-upload-btn bol-upload-btn-vid" for="bol-file-video"><span>📹</span> Enviar vídeo</label>
+              <input id="bol-file-video" type="file" accept="video/*" style="display:none" onchange="boletimHandleVideo(this)">
+            </div>
+            <div id="bol-video-aviso" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;text-align:center">⏳ Carregando vídeo…</div>
+            <div class="bol-separador"><span>ou cole um link</span></div>
+            <input id="bol-url" type="url" placeholder="Link da foto ou vídeo do YouTube" class="boletim-input">
+          `}
+
+          <input id="bol-titulo"  type="text" placeholder="Título (opcional)"  class="boletim-input">
+          <input id="bol-legenda" type="text" placeholder="Legenda (opcional)" class="boletim-input">
+
+          ${_pendingMedia
+            ? `<button class="boletim-btn-add" onclick="boletimConfirmarPendente()">✅ Adicionar ao boletim</button>`
+            : `<button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar por link</button>`}
+
+          <div class="bol-separador ia-separador"><span>✨ gere título e legenda com IA</span></div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Descreva o que aparece na foto ou no vídeo e a IA sugere título e legenda.</p>
           <textarea id="bol-ia-desc" class="boletim-input boletim-textarea" rows="2"
             placeholder="Ex: A equipe azul apresentou o robô que desviou todos os obstáculos e ganhou aplausos..."></textarea>
           <button class="boletim-btn-noticia" onclick="midiaGerarIA()" style="margin-top:6px">✨ Gerar título e legenda</button>
@@ -448,9 +463,7 @@ async function boletimHandleFile(input) {
   const file = input.files[0];
   if (!file) return;
   const dataUrl = await comprimirImagem(file, 1400, 0.80);
-  const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), tipo: 'imagem', url: dataUrl, titulo: '', legenda: '', ts: Date.now() });
-  await salvarBoletim(dados);
+  _pendingMedia = { dataUrl, tipo: 'imagem' };
   renderPainelCom();
 }
 
@@ -470,9 +483,30 @@ async function boletimHandleVideo(input) {
     reader.onload = e => resolve(e.target.result);
     reader.readAsDataURL(file);
   });
+  _pendingMedia = { dataUrl, tipo: 'video' };
+  renderPainelCom();
+}
+
+async function boletimConfirmarPendente() {
+  if (!_pendingMedia) return;
+  const titulo  = (document.getElementById('bol-titulo')?.value  || '').trim();
+  const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
   const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), tipo: 'video', url: dataUrl, titulo: '', legenda: '', ts: Date.now() });
+  dados.itens.unshift({
+    id: Date.now().toString(36),
+    tipo: _pendingMedia.tipo,
+    url: _pendingMedia.dataUrl,
+    titulo,
+    legenda,
+    ts: Date.now()
+  });
   await salvarBoletim(dados);
+  _pendingMedia = null;
+  renderPainelCom();
+}
+
+function boletimCancelarPendente() {
+  _pendingMedia = null;
   renderPainelCom();
 }
 
