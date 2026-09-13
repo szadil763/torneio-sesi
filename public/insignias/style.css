@@ -1554,6 +1554,76 @@ button, input { font-family: inherit; }
 .btn-salvar-erro { background: #E5484D; color: #fff; }
 .btn-salvar-erro:hover:not(:disabled) { background: #f06060; }
 
+/* ── Overlay PIN para salvar ── */
+.overlay-pin-salvar {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.pin-salvar-caixa {
+  background: var(--card);
+  border: 1.5px solid #E0B23C;
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,.6);
+}
+.pin-salvar-titulo {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+.pin-salvar-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+.pin-salvar-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--card-line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 22px;
+  text-align: center;
+  letter-spacing: .2em;
+  font-family: inherit;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color .15s;
+}
+.pin-salvar-input:focus { border-color: #E0B23C; }
+.pin-salvar-acoes {
+  display: flex;
+  gap: 10px;
+}
+.pin-salvar-cancelar {
+  flex: 1;
+  padding: 10px;
+  border: 1.5px solid var(--card-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color .15s, border-color .15s;
+}
+.pin-salvar-cancelar:hover { color: var(--text); border-color: var(--muted); }
+.pin-salvar-acoes .btn-salvar-firebase { flex: 1; }
+
 .admin-abas {
   display: flex; gap: 8px;
   margin: 16px 0 0;

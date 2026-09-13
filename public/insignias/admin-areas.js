@@ -57,7 +57,41 @@ function alterarQuantidade(areaId, teamId, delta) {
   renderPainel();
 }
 
-async function confirmarSalvar() {
+function pedirPinSalvar() {
+  const app = document.getElementById('admin-app');
+  app.insertAdjacentHTML('beforeend', `
+    <div id="overlay-pin-salvar" class="overlay-pin-salvar" onclick="fecharPinSalvar(event)">
+      <div class="pin-salvar-caixa" onclick="event.stopPropagation()">
+        <h3 class="pin-salvar-titulo">Confirmar salvamento</h3>
+        <p class="pin-salvar-sub">Digite o PIN para salvar as insígnias no servidor</p>
+        <input id="pin-salvar-input" type="password" inputmode="numeric" maxlength="8"
+               placeholder="••••" class="pin-salvar-input"
+               onkeydown="if(event.key==='Enter') tentarSalvarComPin()">
+        <div class="pin-salvar-acoes">
+          <button class="pin-salvar-cancelar" onclick="fecharPinSalvar()">Cancelar</button>
+          <button class="btn-salvar-firebase" onclick="tentarSalvarComPin()">Salvar</button>
+        </div>
+        <div id="pin-salvar-erro" class="erro" style="margin-top:8px"></div>
+      </div>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('pin-salvar-input')?.focus(), 50);
+}
+
+function fecharPinSalvar(e) {
+  if (e && e.target !== document.getElementById('overlay-pin-salvar')) return;
+  document.getElementById('overlay-pin-salvar')?.remove();
+}
+
+async function tentarSalvarComPin() {
+  const pin = document.getElementById('pin-salvar-input')?.value;
+  if (pin !== ADMIN_PIN) {
+    const err = document.getElementById('pin-salvar-erro');
+    if (err) err.textContent = 'PIN incorreto.';
+    return;
+  }
+  document.getElementById('overlay-pin-salvar')?.remove();
+
   const barra = document.getElementById('barra-salvar');
   if (barra) barra.innerHTML = `
     <span class="barra-salvar-msg">💾 Salvando…</span>
@@ -72,6 +106,10 @@ async function confirmarSalvar() {
       <span class="barra-salvar-msg barra-salvar-erro">⚠ Falha ao salvar — verifique a conexão</span>
       <button class="btn-salvar-firebase btn-salvar-erro" onclick="confirmarSalvar()">Tentar novamente</button>`;
   }
+}
+
+function confirmarSalvar() {
+  pedirPinSalvar();
 }
 
 function formatarData(ts) {
