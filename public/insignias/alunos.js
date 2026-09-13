@@ -2,6 +2,89 @@
 // Acesso controlado por token de equipe na URL (?t=TOKEN).
 // A animação completa do estojo (tampa + insígnias encaixando) acontece SEMPRE.
 
+// ── Configuração do torneio ───────────────────────────────────────
+// Data de início: 03/10/2026 às 08h00 (horário de Brasília)
+const TORNEIO_INICIO = new Date('2026-10-03T08:00:00-03:00');
+// Link da abertura ao vivo (Microsoft Teams) — atualize aqui quando tiver o link:
+const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
+
+// ── Contador regressivo ───────────────────────────────────────────
+let _countdownInterval = null;
+
+function renderContador(equipe) {
+  const cor = equipe.cor;
+
+  function calcular() {
+    const agora = Date.now();
+    const diff  = TORNEIO_INICIO.getTime() - agora;
+    if (diff <= 0) return null;
+    const dias    = Math.floor(diff / 86400000);
+    const horas   = Math.floor((diff % 86400000) / 3600000);
+    const minutos = Math.floor((diff % 3600000)  / 60000);
+    const segs    = Math.floor((diff % 60000)     / 1000);
+    return { dias, horas, minutos, segs };
+  }
+
+  const secao = document.createElement('div');
+  secao.id = 'contador-torneio';
+  secao.className = 'contador-secao';
+
+  function atualizar() {
+    const tempo = calcular();
+    const inner = document.getElementById('contador-inner');
+    if (!inner) return;
+
+    if (!tempo) {
+      inner.innerHTML = `
+        <div class="contador-ao-vivo" style="--c:${cor}">
+          🏆 <span>TORNEIO EM ANDAMENTO!</span>
+        </div>
+        ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI' ? `
+        <a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:${cor}">
+          📺 Assistir abertura ao vivo
+        </a>` : ''}`;
+      clearInterval(_countdownInterval);
+      return;
+    }
+
+    inner.innerHTML = `
+      <div class="contador-titulo">🏆 TORNEIO SESI INFANTIL</div>
+      <div class="contador-subtitulo">começa em</div>
+      <div class="contador-numeros">
+        <div class="contador-bloco" style="--c:${cor}">
+          <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
+          <span class="contador-label">dias</span>
+        </div>
+        <span class="contador-sep">:</span>
+        <div class="contador-bloco" style="--c:${cor}">
+          <span class="contador-num">${String(tempo.horas).padStart(2,'0')}</span>
+          <span class="contador-label">horas</span>
+        </div>
+        <span class="contador-sep">:</span>
+        <div class="contador-bloco" style="--c:${cor}">
+          <span class="contador-num">${String(tempo.minutos).padStart(2,'0')}</span>
+          <span class="contador-label">min</span>
+        </div>
+        <span class="contador-sep">:</span>
+        <div class="contador-bloco" style="--c:${cor}">
+          <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
+          <span class="contador-label">seg</span>
+        </div>
+      </div>
+      <div class="contador-data">📅 03 de outubro de 2026 · 08h00</div>
+      ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI' ? `
+      <a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:${cor}">
+        📺 Abertura ao vivo — Teams
+      </a>` : ''}`;
+  }
+
+  secao.innerHTML = `<div id="contador-inner"></div>`;
+  document.getElementById('app').prepend(secao);
+  atualizar();
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  _countdownInterval = setInterval(atualizar, 1000);
+}
+
 // ── Controle de acesso ────────────────────────────────────────────
 function resolverEquipePorToken() {
   const params = new URLSearchParams(location.search);
@@ -147,6 +230,8 @@ function fecharModal() {
 // ── ESTOJO: animação completa SEMPRE ─────────────────────────────
 function renderEstojo(equipe) {
   const app = document.getElementById('app');
+
+  renderContador(equipe);
 
   const estado         = lerEstadoAreas();
   const totalInsignias = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
