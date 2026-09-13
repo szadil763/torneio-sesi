@@ -935,6 +935,9 @@ button, input { font-family: inherit; }
   height: 1px;
   background: var(--card-line);
 }
+/* Variante IA — destaque com azul */
+.ia-separador { color: #2F8FE0; font-weight: 700; margin-top: 16px; }
+.ia-separador::before, .ia-separador::after { background: color-mix(in srgb, #2F8FE0 35%, transparent); }
 
 /* Textarea */
 .boletim-textarea {

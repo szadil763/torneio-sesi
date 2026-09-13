@@ -110,6 +110,13 @@ function renderAbaBoletimCom(boletim) {
           <input id="bol-titulo"  type="text" placeholder="Título (opcional)"                class="boletim-input">
           <input id="bol-legenda" type="text" placeholder="Legenda (opcional)"               class="boletim-input">
           <button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar por link</button>
+
+          <div class="bol-separador ia-separador"><span>✨ ou gere título e legenda com IA</span></div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Descreva o que aparece na foto ou no vídeo e a IA sugere título e legenda automaticamente.</p>
+          <textarea id="bol-ia-desc" class="boletim-input boletim-textarea" rows="2"
+            placeholder="Ex: A equipe azul apresentou o robô que desviou todos os obstáculos e ganhou aplausos..."></textarea>
+          <button class="boletim-btn-noticia" onclick="midiaGerarIA()" style="margin-top:6px">✨ Gerar título e legenda</button>
+          <div id="bol-ia-resultado" style="display:none;font-size:12px;background:color-mix(in srgb,#2F8FE0 10%,var(--card));border:1px solid #2F8FE0;border-radius:10px;padding:10px 12px;margin-top:8px;color:var(--text)"></div>
         </div>
         <div id="bol-erro" class="erro" style="margin-top:8px"></div>
       ` : `
@@ -208,6 +215,14 @@ function renderSubRecadosCom(recados) {
   const itens = recados.itens || [];
   return `
     <div class="boletim-form">
+      <div class="bol-separador ia-separador" style="margin-top:0"><span>✨ Gerar recado com IA</span></div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Descreva o assunto e a IA escreve o recado completo para pais e alunos.</p>
+      <textarea id="rec-ia-desc" class="boletim-input boletim-textarea" rows="2"
+        placeholder="Ex: Lembrar os pais que na sexta tem apresentação das equipes às 14h na quadra..."></textarea>
+      <button class="boletim-btn-noticia" onclick="recadoGerarIA()" style="margin-bottom:4px">✨ Gerar recado</button>
+      <div id="rec-ia-resultado" style="display:none;font-size:12px;background:color-mix(in srgb,#2F8FE0 10%,var(--card));border:1px solid #2F8FE0;border-radius:10px;padding:10px 12px;margin-bottom:8px;color:var(--text)"></div>
+
+      <div class="bol-separador"><span>ou escreva diretamente</span></div>
       <input id="rec-titulo" type="text" placeholder="Título do recado (opcional)" class="boletim-input">
       <textarea id="rec-texto" class="boletim-input boletim-textarea" rows="4"
         placeholder="Digite o recado para pais e alunos..."></textarea>
@@ -239,6 +254,14 @@ function renderSubDicasCom(dicas) {
   const itens = dicas.itens || [];
   return `
     <div class="boletim-form">
+      <div class="bol-separador ia-separador" style="margin-top:0"><span>✨ Gerar dica com IA</span></div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Descreva o tema da dica e a IA escolhe o emoji e escreve o texto certo.</p>
+      <textarea id="dic-ia-desc" class="boletim-input boletim-textarea" rows="2"
+        placeholder="Ex: Tomar água durante as atividades para manter o foco e a energia nas provas..."></textarea>
+      <button class="boletim-btn-noticia" onclick="dicaGerarIA()" style="margin-bottom:4px">✨ Gerar dica</button>
+      <div id="dic-ia-resultado" style="display:none;font-size:12px;background:color-mix(in srgb,#2F8FE0 10%,var(--card));border:1px solid #2F8FE0;border-radius:10px;padding:10px 12px;margin-bottom:8px;color:var(--text)"></div>
+
+      <div class="bol-separador"><span>ou escreva diretamente</span></div>
       <div style="display:flex;gap:8px">
         <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
         <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
@@ -265,6 +288,141 @@ function renderSubDicasCom(dicas) {
 }
 
 function comTrocarSubAba(sub) { comSubAba = sub; renderPainelCom(); }
+
+// ── Geradores de IA ───────────────────────────────────────────────
+function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function gerarLegendaMidia(descricao) {
+  const d   = descricao.trim();
+  const low = d.toLowerCase();
+  const temVitoria  = /venc|ganhou|conquist|campe|vitóri|primeiro/.test(low);
+  const temRobotica = /rob[oôó]|tecnol|arduino|sensor/.test(low);
+  const temIngles   = /ingl[eê]|english/.test(low);
+  const temArtes    = /arte|desenh|pintur|criativ/.test(low);
+  const temEdf      = /educa.{0,5}f[ií]sic|esport|jog[ao]/.test(low);
+
+  const emoji = temVitoria ? '🏆' : temRobotica ? '🤖' : temIngles ? '🌎' : temArtes ? '🎨' : temEdf ? '⚽' : '📸';
+
+  const titulos = temVitoria
+    ? [`${emoji} Momento de vitória!`, `${emoji} Conquista inesquecível`, `${emoji} Campeões em ação!`]
+    : [`${emoji} Registro do Torneio SESI`, `${emoji} ${d.slice(0,42).replace(/[.!?,;]+$/,'')}`,
+       `${emoji} Momento especial no torneio`, `${emoji} Talentos em destaque`];
+
+  const legendas = [
+    `${d} — Torneio SESI Infantil 🏅`,
+    `${d.charAt(0).toUpperCase() + d.slice(1).replace(/[.!?]+$/,'')}. Um momento para guardar para sempre!`,
+    `Mais um registro especial do nosso torneio: ${d.toLowerCase().replace(/[.!?]+$/,'')}.`,
+    `${d.replace(/[.!?]+$/,'')} — que turma incrível! 🌟`
+  ];
+
+  return { titulo: _pick(titulos), legenda: _pick(legendas) };
+}
+
+function midiaGerarIA() {
+  const descricao = (document.getElementById('bol-ia-desc')?.value || '').trim();
+  const resultado = document.getElementById('bol-ia-resultado');
+  if (!descricao) { if(resultado) { resultado.style.display='block'; resultado.textContent='Descreva a mídia antes de gerar.'; } return; }
+
+  const { titulo, legenda } = gerarLegendaMidia(descricao);
+
+  const campoTitulo  = document.getElementById('bol-titulo');
+  const campoLegenda = document.getElementById('bol-legenda');
+  if (campoTitulo)  campoTitulo.value  = titulo;
+  if (campoLegenda) campoLegenda.value = legenda;
+
+  if (resultado) {
+    resultado.style.display = 'block';
+    resultado.innerHTML = `<strong>Título:</strong> ${titulo}<br><strong>Legenda:</strong> ${legenda}<br><span style="color:var(--muted);font-size:11px">Campos preenchidos acima — edite se quiser antes de adicionar.</span>`;
+  }
+  campoTitulo?.focus();
+}
+
+function gerarRecadoConteudo(descricao) {
+  const d   = descricao.trim();
+  const low = d.toLowerCase();
+  const temAtencao  = /atenção|impor|obrigat|necessá|urgent|lembr|aviso/.test(low);
+  const temParabens = /parabéns|conquist|vitória|campe|destaque/.test(low);
+
+  const titulos = temAtencao
+    ? ['⚠️ Atenção, famílias!', '📌 Informação importante', '🔔 Aviso da coordenação']
+    : temParabens
+    ? ['🏆 Parabéns às equipes!', '🎉 Destaque do torneio', '⭐ Reconhecimento especial']
+    : ['📢 Comunicado do torneio', '📝 Recado para as famílias', '🏅 Informativo SESI Torneio', '👨‍👩‍👧 Mensagem para pais e alunos'];
+
+  const aberturas = [
+    'Prezadas famílias,\n\n',
+    'Olá, comunidade SESI!\n\n',
+    'Caros pais e responsáveis,\n\n',
+    'Queridas famílias,\n\n'
+  ];
+
+  const fechamentos = [
+    '\n\nContamos com a participação de todos! 💙🧡',
+    '\n\nCaso tenham dúvidas, fiquem à vontade para entrar em contato. 😊',
+    '\n\nAgradecemos a compreensão e apoio de todas as famílias! 🙏',
+    '\n\nJuntos fazemos um torneio ainda mais especial! 🏆'
+  ];
+
+  const corpoBase = d.charAt(0).toUpperCase() + d.slice(1).replace(/[.!?]+$/, '') + '.';
+  return { titulo: _pick(titulos), texto: _pick(aberturas) + corpoBase + _pick(fechamentos) };
+}
+
+function recadoGerarIA() {
+  const descricao = (document.getElementById('rec-ia-desc')?.value || '').trim();
+  const resultado = document.getElementById('rec-ia-resultado');
+  if (!descricao) { if(resultado) { resultado.style.display='block'; resultado.textContent='Descreva o assunto do recado antes de gerar.'; } return; }
+
+  const { titulo, texto } = gerarRecadoConteudo(descricao);
+
+  const campoTitulo = document.getElementById('rec-titulo');
+  const campoTexto  = document.getElementById('rec-texto');
+  if (campoTitulo) campoTitulo.value = titulo;
+  if (campoTexto)  campoTexto.value  = texto;
+
+  if (resultado) {
+    resultado.style.display = 'block';
+    resultado.innerHTML = `<strong>${titulo}</strong><br><span style="white-space:pre-line;font-size:11px">${texto}</span><br><span style="color:var(--muted);font-size:11px">Campos preenchidos abaixo — edite antes de publicar.</span>`;
+  }
+  campoTexto?.focus();
+}
+
+function gerarDicaConteudo(descricao) {
+  const d   = descricao.trim();
+  const low = d.toLowerCase();
+  const temSaude    = /saúd|agua|aliment|descanso|sono|exerc/.test(low);
+  const temEstudo   = /estud|aprender|praticar|treinar|preparar/.test(low);
+  const temEquipe   = /equipe|time|colega|juntos|colabor/.test(low);
+  const temConcentr = /foco|concentr|atenção|calma|respir/.test(low);
+
+  const icones = temSaude    ? ['💧','🥗','🏃','😴','🍎']
+    : temEstudo   ? ['📚','✏️','🧠','💡','📖']
+    : temEquipe   ? ['🤝','👥','💪','🎯','⭐']
+    : temConcentr ? ['🎯','🧘','🌬️','💆','🔍']
+    : ['💡','✨','🏅','🌟','👊','🎖️','🔥'];
+
+  const icone = _pick(icones);
+  const texto = d.charAt(0).toUpperCase() + d.slice(1).replace(/[.!?]+$/, '') + '!';
+  return { icone, texto };
+}
+
+function dicaGerarIA() {
+  const descricao = (document.getElementById('dic-ia-desc')?.value || '').trim();
+  const resultado = document.getElementById('dic-ia-resultado');
+  if (!descricao) { if(resultado) { resultado.style.display='block'; resultado.textContent='Descreva o tema da dica antes de gerar.'; } return; }
+
+  const { icone, texto } = gerarDicaConteudo(descricao);
+
+  const campoIcone = document.getElementById('dic-icone');
+  const campoTexto = document.getElementById('dic-texto');
+  if (campoIcone) campoIcone.value = icone;
+  if (campoTexto) campoTexto.value = texto;
+
+  if (resultado) {
+    resultado.style.display = 'block';
+    resultado.innerHTML = `${icone} <strong>${texto}</strong><br><span style="color:var(--muted);font-size:11px">Campos preenchidos abaixo — edite antes de adicionar.</span>`;
+  }
+  campoTexto?.focus();
+}
 
 // ── Imagem / Compressão ───────────────────────────────────────────
 function comprimirImagem(file, maxW, qualidade) {
