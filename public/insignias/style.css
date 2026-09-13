@@ -1509,6 +1509,51 @@ button, input { font-family: inherit; }
 /* ================================================================
    ABAS DO ADMIN
    ================================================================ */
+/* ── Barra de salvar pendente ── */
+.barra-salvar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #7A5D14;
+  border: 1.5px solid #E0B23C;
+  border-radius: 14px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(224,178,60,.25);
+  animation: barra-aparecer .2s ease;
+}
+@keyframes barra-aparecer {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.barra-salvar-msg {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+.barra-salvar-erro { color: #ffa0a0; }
+.btn-salvar-firebase {
+  background: #E0B23C;
+  color: #1a0f00;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background .15s, transform .1s;
+}
+.btn-salvar-firebase:hover:not(:disabled) { background: #f0c84a; transform: translateY(-1px); }
+.btn-salvar-firebase:disabled { opacity: .6; cursor: default; }
+.btn-salvar-erro { background: #E5484D; color: #fff; }
+.btn-salvar-erro:hover:not(:disabled) { background: #f06060; }
+
 .admin-abas {
   display: flex; gap: 8px;
   margin: 16px 0 0;

@@ -52,8 +52,26 @@ function alterarQuantidade(areaId, teamId, delta) {
     if (atual === 0) estado.timestamps[areaId + ':' + teamId] = Date.now();
   }
 
-  salvarEstadoAreas(estado);
+  salvarLocalmente(estado);
+  _pendente = true;
   renderPainel();
+}
+
+async function confirmarSalvar() {
+  const barra = document.getElementById('barra-salvar');
+  if (barra) barra.innerHTML = `
+    <span class="barra-salvar-msg">💾 Salvando…</span>
+    <button class="btn-salvar-firebase" disabled>Aguarde…</button>`;
+
+  const ok = await salvarEstadoAreas(lerEstadoAreas());
+  if (ok) {
+    _pendente = false;
+    renderPainel();
+  } else if (barra) {
+    barra.innerHTML = `
+      <span class="barra-salvar-msg barra-salvar-erro">⚠ Falha ao salvar — verifique a conexão</span>
+      <button class="btn-salvar-firebase btn-salvar-erro" onclick="confirmarSalvar()">Tentar novamente</button>`;
+  }
 }
 
 function formatarData(ts) {
@@ -65,6 +83,7 @@ function formatarData(ts) {
 
 // 'gerenciar' | 'visao-geral'
 let abaAtiva = 'gerenciar';
+let _pendente = false;
 
 function trocarAba(aba) {
   abaAtiva = aba;
@@ -124,6 +143,12 @@ function renderPainel() {
     </div>
     <div class="marca">Gerenciamento do Torneio</div>
     <h1 class="titulo-principal">Insígnias por Área</h1>
+
+    ${_pendente ? `
+    <div id="barra-salvar" class="barra-salvar">
+      <span class="barra-salvar-msg">⚠ Alterações não salvas no servidor</span>
+      <button class="btn-salvar-firebase" onclick="confirmarSalvar()">💾 Salvar agora</button>
+    </div>` : ''}
 
     ${painelLinks}
     ${abas}

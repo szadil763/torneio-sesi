@@ -46,7 +46,6 @@ async function carregarInsignias() {
       return _insigniasCache;
     }
   } catch (_) {}
-  // Fallback: usa cache local
   try {
     const bruto = localStorage.getItem(STORAGE_KEY_AREAS);
     _insigniasCache = bruto ? JSON.parse(bruto) : { conquistas: {} };
@@ -54,15 +53,25 @@ async function carregarInsignias() {
   return _insigniasCache;
 }
 
-// Salva no Firebase e atualiza cache local (fire-and-forget para o Firebase).
-function salvarEstadoAreas(estado) {
+// Atualiza apenas cache em memória e localStorage (sem Firebase).
+function salvarLocalmente(estado) {
   _insigniasCache = estado;
   localStorage.setItem(STORAGE_KEY_AREAS, JSON.stringify(estado));
-  fetch(RTDB_INSIGNIAS_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(estado)
-  }).catch(() => {});
+}
+
+// Persiste no Firebase. Retorna true em sucesso, false em falha.
+async function salvarEstadoAreas(estado) {
+  salvarLocalmente(estado);
+  try {
+    const resp = await fetch(RTDB_INSIGNIAS_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(estado)
+    });
+    return resp.ok;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Retorna a quantidade de insígnias que a equipe tem nessa área (0 = nenhuma)
