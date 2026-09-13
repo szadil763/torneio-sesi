@@ -4,6 +4,69 @@
 const TORNEIO_INICIO = new Date('2026-10-03T08:00:00-03:00');
 const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
 
+// ── Idioma ────────────────────────────────────────────────────────
+const STRINGS_COM = {
+  pt: {
+    titulo_pagina:    'Comunicados',
+    subtitulo_pagina: 'Recados, dicas e novidades do torneio para pais e alunos',
+    estojos_titulo:   '🏅 Estojos de Insígnias',
+    estojos_sub:      'Toque em um estojo para abrir e ver as insígnias conquistadas',
+    insignias:        'insígnias',
+    dica_insignia:    '💡 Toque em uma insígnia para ver em tamanho grande',
+    recados_titulo:   '📢 Recados dos professores',
+    recados_vazio:    'Nenhum recado por enquanto.',
+    dicas_titulo:     '💡 Dicas para o torneio',
+    dicas_vazio:      'Nenhuma dica por enquanto.',
+    boletim_titulo:   '📸 Boletim do torneio',
+    rodape:           'Atualizado automaticamente · SESI Torneio Infantil 2026',
+    andamento:        'TORNEIO EM ANDAMENTO!',
+    comeca_em:        'começa em',
+    data_evento:      '📅 03 de outubro de 2026 · 08h00',
+    dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
+    ao_vivo:          '📺 Assistir abertura ao vivo',
+    ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
+  },
+  en: {
+    titulo_pagina:    'Updates',
+    subtitulo_pagina: 'Messages, tips and news from the tournament for parents and students',
+    estojos_titulo:   '🏅 Badge Cases',
+    estojos_sub:      'Tap a case to open it and see the earned badges',
+    insignias:        'badges',
+    dica_insignia:    '💡 Tap a badge to see it full size',
+    recados_titulo:   '📢 Teacher messages',
+    recados_vazio:    'No messages yet.',
+    dicas_titulo:     '💡 Tournament tips',
+    dicas_vazio:      'No tips yet.',
+    boletim_titulo:   '📸 Tournament Bulletin',
+    rodape:           'Auto-updated · SESI Children\'s Tournament 2026',
+    andamento:        'TOURNAMENT IN PROGRESS!',
+    comeca_em:        'starts in',
+    data_evento:      '📅 October 3, 2026 · 8:00 AM',
+    dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
+    ao_vivo:          '📺 Watch opening ceremony live',
+    ao_vivo_btn:      '📺 Live opening — Teams',
+  }
+};
+
+let _langCom = (() => {
+  try {
+    const s = localStorage.getItem('torneio-lang');
+    if (s === 'pt' || s === 'en') return s;
+  } catch (_) {}
+  return navigator.language && navigator.language.startsWith('pt') ? 'pt' : 'en';
+})();
+
+function tc(key) {
+  return (STRINGS_COM[_langCom] || STRINGS_COM.pt)[key] || key;
+}
+
+function alternarIdiomaCom() {
+  _langCom = _langCom === 'pt' ? 'en' : 'pt';
+  try { localStorage.setItem('torneio-lang', _langCom); } catch (_) {}
+  _estojoAtivoCom = null;
+  renderComunicados();
+}
+
 let _countdownInterval = null;
 
 // ── Contador regressivo ───────────────────────────────────────────
@@ -33,10 +96,10 @@ function renderContadorCom() {
     if (!tempo) {
       inner.innerHTML = `
         <div class="contador-ao-vivo" style="--c:#F5821F">
-          🏆 <span>TORNEIO EM ANDAMENTO!</span>
+          🏆 <span>${tc('andamento')}</span>
         </div>
         ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-          ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">📺 Assistir abertura ao vivo</a>`
+          ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">${tc('ao_vivo')}</a>`
           : ''}`;
       clearInterval(_countdownInterval);
       return;
@@ -44,31 +107,31 @@ function renderContadorCom() {
 
     inner.innerHTML = `
       <div class="contador-titulo">🏆 SESI TORNEIO INFANTIL</div>
-      <div class="contador-subtitulo">começa em</div>
+      <div class="contador-subtitulo">${tc('comeca_em')}</div>
       <div class="contador-numeros">
         <div class="contador-bloco" style="--c:#004B8D">
           <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
-          <span class="contador-label">dias</span>
+          <span class="contador-label">${tc('dias')}</span>
         </div>
         <span class="contador-sep">:</span>
         <div class="contador-bloco" style="--c:#004B8D">
           <span class="contador-num">${String(tempo.horas).padStart(2,'0')}</span>
-          <span class="contador-label">horas</span>
+          <span class="contador-label">${tc('horas')}</span>
         </div>
         <span class="contador-sep">:</span>
         <div class="contador-bloco" style="--c:#004B8D">
           <span class="contador-num">${String(tempo.minutos).padStart(2,'0')}</span>
-          <span class="contador-label">min</span>
+          <span class="contador-label">${tc('min')}</span>
         </div>
         <span class="contador-sep">:</span>
         <div class="contador-bloco" style="--c:#F5821F">
           <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
-          <span class="contador-label">seg</span>
+          <span class="contador-label">${tc('seg')}</span>
         </div>
       </div>
-      <div class="contador-data">📅 03 de outubro de 2026 · 08h00</div>
+      <div class="contador-data">${tc('data_evento')}</div>
       ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-        ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#004B8D">📺 Abertura ao vivo — Teams</a>`
+        ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#004B8D">${tc('ao_vivo_btn')}</a>`
         : ''}`;
   }
 
@@ -254,7 +317,7 @@ function renderEstojoNoContainerCom(equipe, container) {
         </div>
       </div>
     </div>
-    <p class="rodape-nota alunos-dica" style="margin-bottom:0">💡 Toque em uma insígnia para ver em tamanho grande</p>`;
+    <p class="rodape-nota alunos-dica" style="margin-bottom:0">${tc('dica_insignia')}</p>`;
 
   tocarSomCom('abrir');
   if (ganhas > 0) setTimeout(() => tocarSomCom('snap'), BASE_DELAY * 1000);
@@ -296,8 +359,8 @@ function renderEstojosSection() {
   const secao = document.createElement('div');
   secao.className = 'com-secao com-secao-estojos';
   secao.innerHTML = `
-    <div class="com-secao-titulo">🏅 Estojos de Insígnias</div>
-    <p class="com-estojos-sub">Toque em um estojo para abrir e ver as insígnias conquistadas</p>
+    <div class="com-secao-titulo">${tc('estojos_titulo')}</div>
+    <p class="com-estojos-sub">${tc('estojos_sub')}</p>
     <div class="mini-estojos-grid">
       ${TEAMS.map(tm => {
         const n = AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length;
@@ -311,7 +374,7 @@ function renderEstojosSection() {
               <div class="mini-case-clasp"></div>
             </div>
             <div class="mini-nome">${tm.nome}</div>
-            <div class="mini-count">${n} / ${AREAS.length} insígnias</div>
+            <div class="mini-count">${n} / ${AREAS.length} ${tc('insignias')}</div>
           </div>`;
       }).join('')}
     </div>
@@ -325,9 +388,9 @@ function renderRecados(recados) {
   const secao = document.createElement('div');
   secao.className = 'com-secao';
   secao.innerHTML = `
-    <div class="com-secao-titulo">📢 Recados dos professores</div>
+    <div class="com-secao-titulo">${tc('recados_titulo')}</div>
     ${itens.length === 0
-      ? `<div class="com-vazio">Nenhum recado por enquanto.</div>`
+      ? `<div class="com-vazio">${tc('recados_vazio')}</div>`
       : itens.map(r => `
           <div class="com-recado ${r.destaque ? 'com-recado-destaque' : ''}">
             ${r.titulo ? `<div class="com-recado-titulo">${r.titulo}</div>` : ''}
@@ -343,9 +406,9 @@ function renderDicas(dicas) {
   const secao = document.createElement('div');
   secao.className = 'com-secao';
   secao.innerHTML = `
-    <div class="com-secao-titulo">💡 Dicas para o torneio</div>
+    <div class="com-secao-titulo">${tc('dicas_titulo')}</div>
     ${itens.length === 0
-      ? `<div class="com-vazio">Nenhuma dica por enquanto.</div>`
+      ? `<div class="com-vazio">${tc('dicas_vazio')}</div>`
       : `<div class="com-dicas-lista">
           ${itens.map(d => `
             <div class="com-dica">
@@ -364,7 +427,7 @@ function renderBoletimCom(boletim) {
   const secao = document.createElement('div');
   secao.className = 'com-secao boletim-secao';
   secao.innerHTML = `
-    <div class="com-secao-titulo">📸 Boletim do torneio</div>
+    <div class="com-secao-titulo">${tc('boletim_titulo')}</div>
     <div class="boletim-galeria">
       ${itens.map(item => {
         if (item.tipo === 'noticia') return renderNoticiaCard(item);
@@ -400,14 +463,17 @@ function renderBoletimCom(boletim) {
 async function renderComunicados() {
   const app = document.getElementById('app');
   app.innerHTML = `
+    <button class="lang-toggle-btn" onclick="alternarIdiomaCom()">
+      ${_langCom === 'pt' ? '🇺🇸 EN' : '🇧🇷 PT'}
+    </button>
     <div class="com-header">
       <div class="com-logo">
         <span class="com-logo-detalhe"></span>
         SESI TORNEIO INFANTIL
         <span class="com-logo-detalhe"></span>
       </div>
-      <h1 class="com-titulo">Comunicados</h1>
-      <p class="com-subtitulo">Recados, dicas e novidades do torneio para pais e alunos</p>
+      <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
+      <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
     </div>`;
 
   // Contador
@@ -428,7 +494,7 @@ async function renderComunicados() {
   renderBoletimCom(boletim);
 
   app.insertAdjacentHTML('beforeend', `
-    <div class="com-rodape">Atualizado automaticamente · SESI Torneio Infantil 2026</div>`);
+    <div class="com-rodape">${tc('rodape')}</div>`);
 }
 
 // ── Auto-refresh a cada 60 s ──────────────────────────────────────
