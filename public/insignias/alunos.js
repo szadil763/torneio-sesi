@@ -85,24 +85,12 @@ function renderContador(equipe) {
   _countdownInterval = setInterval(atualizar, 1000);
 }
 
-// ── Controle de acesso ────────────────────────────────────────────
+// ── Controle de acesso (mantido apenas para compatibilidade com links antigos) ──
 function resolverEquipePorToken() {
   const params = new URLSearchParams(location.search);
   const token  = params.get('t');
   if (!token) return null;
   return TEAMS.find(t => t.token === token) || null;
-}
-
-function renderAcessoRestrito() {
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;padding:32px 20px;gap:20px">
-      <div style="font-size:56px">🔒</div>
-      <h1 style="font-family:'Baloo 2',sans-serif;font-size:26px;font-weight:800;color:#f2f0e9">Acesso restrito</h1>
-      <p style="color:#7a7f96;font-size:15px;max-width:32ch;line-height:1.6">
-        Use o link fornecido pelo seu professor para acessar o estojo da sua equipe.
-      </p>
-    </div>`;
 }
 
 // ── SVG emblema da tampa ──────────────────────────────────────────
@@ -216,25 +204,18 @@ function fecharModal() {
   document.body.style.overflow = '';
 }
 
-// ── ESTOJO: animação completa SEMPRE ─────────────────────────────
-function renderEstojo(equipe) {
-  const app = document.getElementById('app');
-
-  renderContador(equipe);
-
-  const estado         = lerEstadoAreas();
-  const totalInsignias = AREAS.reduce((s, a) => s + quantidadeInsignia(estado, a.id, equipe.id), 0);
-  const areas          = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
-  const completo       = areas === AREAS.length;
+// ── Renderiza o estojo aberto dentro de um container ─────────────
+function renderEstojoNoContainer(equipe, container) {
+  const estado   = lerEstadoAreas();
+  const areas    = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
+  const completo = areas === AREAS.length;
 
   const BASE_DELAY = 1.65;
   const STEP       = 0.22;
 
   const slots = AREAS.map((area, i) => {
-    const qtd    = quantidadeInsignia(estado, area.id, equipe.id);
-    const ganhou = qtd > 0;
+    const ganhou = conquistouArea(estado, area.id, equipe.id);
     const delay  = (BASE_DELAY + i * STEP).toFixed(2);
-
     return `
       <div class="slot ${ganhou ? 'conquistada recem-aberta' : ''}" style="--c:${equipe.cor}">
         <div class="slot-label" style="background:${equipe.cor}">${area.nome}</div>
@@ -249,7 +230,6 @@ function renderEstojo(equipe) {
                       class="slot-insignia"
                       onerror="this.closest('.badge-3d-wrap').outerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">
                  <div class="badge-gloss"></div>
-                 ${qtd > 1 ? `<div class="slot-qtd-badge" style="background:${equipe.cor}">×${qtd}</div>` : ''}
                </div>`
             : `<div class="slot-vazio">
                  <div class="slot-vazio-circulo" style="--c:${equipe.cor}">
@@ -262,17 +242,13 @@ function renderEstojo(equipe) {
       </div>`;
   }).join('');
 
-  app.innerHTML = `
-    ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">
-      ⭐ Estojo completo! Parabéns, ${equipe.nome}! ⭐
-    </div>` : ''}
-
+  container.innerHTML = `
+    ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">⭐ Estojo completo! Parabéns, ${equipe.nome}! ⭐</div>` : ''}
     <div class="case-scene">
       <div class="case-3d">
         <div class="case-base">
           <div class="estojo-topo">
             <span class="equipe-nome-estojo" style="color:${equipe.cor}">${equipe.nome}</span>
-            <span class="contagem-badge">${totalInsignias} insígnia${totalInsignias !== 1 ? 's' : ''}</span>
           </div>
           <div class="estojo-corpo">${slots}</div>
           <div class="estojo-prog">
@@ -289,52 +265,104 @@ function renderEstojo(equipe) {
         </div>
       </div>
     </div>
+    <p class="rodape-nota alunos-dica" style="margin-bottom:0">💡 Toque em uma insígnia para ver em tamanho grande</p>`;
 
-    <p class="rodape-nota alunos-dica">
-      💡 Toque em uma insígnia para ver em tamanho grande
-    </p>`;
-
-  // Boletim logo abaixo do estojo
-  const boletim = lerBoletim();
-  if (boletim.itens && boletim.itens.length > 0) {
-    const secao = document.createElement('div');
-    secao.className = 'boletim-secao';
-    secao.innerHTML = `
-      <h2 class="boletim-titulo">📸 Boletim do Torneio</h2>
-      <div class="boletim-galeria">
-        ${boletim.itens.map(item => {
-          if (item.tipo === 'noticia') return renderNoticiaCard(item);
-
-          const tipo = detectarTipoMidia(item.url || '');
-          const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
-          const midia = vid
-            ? `<div class="bol-video-wrap">
-                 <iframe src="https://www.youtube.com/embed/${vid}?rel=0"
-                         frameborder="0" allowfullscreen
-                         allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
-                         class="bol-iframe"></iframe>
-               </div>`
-            : `<div class="bol-img-wrap">
-                 <img src="${item.url}" alt="${item.titulo || 'Foto do torneio'}" class="bol-img"
-                      onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
-               </div>`;
-          return `
-            <div class="bol-card">
-              ${midia}
-              ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>` : ''}
-              ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
-            </div>`;
-        }).join('')}
-      </div>`;
-    document.getElementById('app').appendChild(secao);
-  }
-
-  setTimeout(() => tocarSom('abrir'), 500);
+  tocarSom('abrir');
   if (areas > 0) setTimeout(() => tocarSom('snap'), BASE_DELAY * 1000);
   if (completo) setTimeout(() => {
     dispararConfete(equipe.cor);
     tocarSom('completo');
   }, (BASE_DELAY + AREAS.length * STEP + 0.4) * 1000);
+}
+
+// ── Controla abertura/fechamento individual de cada estojo ────────
+const _estojoAberto = {};
+
+function abrirEstojo(teamId) {
+  const equipe = TEAMS.find(t => t.id === teamId);
+  if (!equipe) return;
+
+  const btn  = document.getElementById('btn-' + teamId);
+  const wrap = document.getElementById('wrap-' + teamId);
+  if (!btn || !wrap) return;
+
+  if (!wrap.hidden) {
+    wrap.hidden = true;
+    btn.classList.remove('aberto');
+    return;
+  }
+
+  btn.classList.add('aberto');
+  wrap.hidden = false;
+
+  // Renderiza o estojo apenas na primeira abertura
+  if (!_estojoAberto[teamId]) {
+    _estojoAberto[teamId] = true;
+    renderEstojoNoContainer(equipe, wrap);
+  }
+}
+
+// ── Página principal com todos os estojos ─────────────────────────
+function renderPaginaEstojos() {
+  const app = document.getElementById('app');
+
+  // Contador regressivo com cor SESI
+  renderContador({ cor: '#004B8D' });
+
+  app.insertAdjacentHTML('beforeend', `
+    <div class="alunos-hero">
+      <div class="alunos-hero-icon">🏅</div>
+      <h1 style="font-family:'Baloo 2',sans-serif;font-weight:900;font-size:22px;margin:0 0 4px">Estojos de Insígnias</h1>
+      <p style="font-size:13px;color:var(--muted);margin:0">Toque em uma turma para abrir o estojo</p>
+    </div>
+    <div class="equipes-grade">
+      ${TEAMS.map(t => `
+        <div class="equipe-secao" id="sec-${t.id}">
+          <button class="equipe-abrir-btn" id="btn-${t.id}"
+                  onclick="abrirEstojo('${t.id}')"
+                  style="--c:${t.cor}">
+            <span class="equipe-bolinha"></span>
+            <span class="equipe-btn-nome">${t.nome}</span>
+            <span class="equipe-abrir-hint">Toque para abrir</span>
+            <span class="equipe-abrir-icone">▼</span>
+          </button>
+          <div class="equipe-estojo-wrap" id="wrap-${t.id}" hidden></div>
+        </div>`).join('')}
+    </div>`);
+
+  // Boletim abaixo dos estojos
+  const boletim = lerBoletim();
+  if (boletim.itens && boletim.itens.length > 0) {
+    const secao = document.createElement('div');
+    secao.className = 'boletim-secao';
+    secao.style.marginTop = '36px';
+    secao.innerHTML = `
+      <h2 class="boletim-titulo">📸 Boletim do Torneio</h2>
+      <div class="boletim-galeria">
+        ${boletim.itens.map(item => {
+          if (item.tipo === 'noticia') return renderNoticiaCard(item);
+          const tipo = detectarTipoMidia(item.url || '');
+          const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
+          const midia = vid
+            ? `<div class="bol-video-wrap">
+                 <iframe src="https://www.youtube.com/embed/${vid}?rel=0" frameborder="0" allowfullscreen
+                         allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+                         class="bol-iframe"></iframe>
+               </div>`
+            : `<div class="bol-img-wrap">
+                 <img src="${item.url}" alt="${item.titulo || 'Foto'}" class="bol-img"
+                      onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
+               </div>`;
+          return `
+            <div class="bol-card">
+              ${midia}
+              ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>`   : ''}
+              ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
+            </div>`;
+        }).join('')}
+      </div>`;
+    app.appendChild(secao);
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────
@@ -353,10 +381,5 @@ window.addEventListener('DOMContentLoaded', function () {
     </div>
   `);
 
-  const equipe = resolverEquipePorToken();
-  if (equipe) {
-    carregarBoletim().then(() => renderEstojo(equipe));
-  } else {
-    renderAcessoRestrito();
-  }
+  carregarBoletim().then(() => renderPaginaEstojos());
 });
