@@ -19,10 +19,11 @@ function renderLoginAdmin() {
   document.getElementById("campo-pin").focus();
 }
 
-function tentarEntrar() {
+async function tentarEntrar() {
   const valor = document.getElementById("campo-pin").value;
   if (valor === ADMIN_PIN) {
     sessionStorage.setItem(CHAVE_SESSAO_AREAS, "1");
+    await carregarInsignias();
     renderPainel();
   } else {
     document.getElementById("erro-pin").textContent = "PIN incorreto.";
@@ -311,7 +312,8 @@ function sair() {
   renderLoginAdmin();
 }
 
-window.addEventListener("DOMContentLoaded", function () {
+window.addEventListener("DOMContentLoaded", async function () {
+  await carregarInsignias();
   if (sessionStorage.getItem(CHAVE_SESSAO_AREAS) === "1") {
     renderPainel();
   } else {

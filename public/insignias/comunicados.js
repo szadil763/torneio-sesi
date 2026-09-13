@@ -479,15 +479,16 @@ async function renderComunicados() {
   // Contador
   renderContadorCom();
 
-  // Estojos
-  renderEstojosSection();
-
-  // Carrega dados do Firebase em paralelo
-  const [recados, dicas, boletim] = await Promise.all([
+  // Carrega insígnias + comunicados do Firebase em paralelo
+  const [, recados, dicas, boletim] = await Promise.all([
+    carregarInsignias(),
     carregarRecados(),
     carregarDicas(),
     carregarBoletim()
   ]);
+
+  // Estojos (renderiza após carregarInsignias resolver)
+  renderEstojosSection();
 
   renderRecados(recados);
   renderDicas(dicas);

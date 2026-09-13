@@ -468,5 +468,5 @@ window.addEventListener('DOMContentLoaded', function () {
     </div>
   `);
 
-  carregarBoletim().then(() => renderPaginaEstojos());
+  Promise.all([carregarInsignias(), carregarBoletim()]).then(() => renderPaginaEstojos());
 });

@@ -20,8 +20,13 @@ const AREAS = [
 
 // Chave própria — não conflita com o estojo por equipe/atividade (STORAGE_KEY = "torneio-insignias:v1")
 const STORAGE_KEY_AREAS = "torneio-insignias-areas:v1";
+const RTDB_INSIGNIAS_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/insignias.json";
 
+let _insigniasCache = null;
+
+// Retorna cache em memória ou localStorage (sync — carregarInsignias() deve ter sido chamado antes)
 function lerEstadoAreas() {
+  if (_insigniasCache) return _insigniasCache;
   try {
     const bruto = localStorage.getItem(STORAGE_KEY_AREAS);
     return bruto ? JSON.parse(bruto) : { conquistas: {} };
@@ -30,8 +35,34 @@ function lerEstadoAreas() {
   }
 }
 
+// Busca do Firebase e atualiza cache. Chamar no início de cada página.
+async function carregarInsignias() {
+  try {
+    const resp = await fetch(RTDB_INSIGNIAS_URL);
+    if (resp.ok) {
+      const data = await resp.json();
+      _insigniasCache = (data && data.conquistas) ? data : { conquistas: {} };
+      localStorage.setItem(STORAGE_KEY_AREAS, JSON.stringify(_insigniasCache));
+      return _insigniasCache;
+    }
+  } catch (_) {}
+  // Fallback: usa cache local
+  try {
+    const bruto = localStorage.getItem(STORAGE_KEY_AREAS);
+    _insigniasCache = bruto ? JSON.parse(bruto) : { conquistas: {} };
+  } catch (_) { _insigniasCache = { conquistas: {} }; }
+  return _insigniasCache;
+}
+
+// Salva no Firebase e atualiza cache local (fire-and-forget para o Firebase).
 function salvarEstadoAreas(estado) {
+  _insigniasCache = estado;
   localStorage.setItem(STORAGE_KEY_AREAS, JSON.stringify(estado));
+  fetch(RTDB_INSIGNIAS_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(estado)
+  }).catch(() => {});
 }
 
 // Retorna a quantidade de insígnias que a equipe tem nessa área (0 = nenhuma)
