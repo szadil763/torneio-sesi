@@ -1,0 +1,132 @@
+/* ── Comunicados — página pública pais/alunos ──────────────────── */
+
+.com-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.com-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #004B8D;
+  color: #fff;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  padding: 8px 18px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+  letter-spacing: .03em;
+}
+.com-logo-detalhe {
+  background: #F5821F;
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.com-titulo {
+  font-size: 22px;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 900;
+  margin: 0 0 4px;
+}
+.com-subtitulo {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Seção genérica */
+.com-secao {
+  margin-bottom: 36px;
+}
+.com-secao-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.com-secao-titulo::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--card-line);
+}
+
+/* Cards de recado */
+.com-recado {
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-left: 4px solid #004B8D;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.com-recado-titulo {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: 'Baloo 2', sans-serif;
+  margin-bottom: 6px;
+}
+.com-recado-texto {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-line;
+}
+.com-recado-data {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.com-recado-destaque {
+  border-left-color: #F5821F;
+  background: color-mix(in srgb, #F5821F 6%, var(--card));
+}
+
+/* Cards de dica */
+.com-dicas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.com-dica {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 12px;
+  padding: 13px 15px;
+}
+.com-dica-icone {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.com-dica-texto {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* Vazio */
+.com-vazio {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--muted);
+  font-size: 14px;
+  background: var(--card);
+  border: 1.5px dashed var(--card-line);
+  border-radius: 14px;
+}
+
+/* Rodapé */
+.com-rodape {
+  text-align: center;
+  padding: 24px 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}

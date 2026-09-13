@@ -92,6 +92,72 @@ async function salvarBoletim(dados) {
   } catch (_) {} // Falha silenciosa — localStorage mantém cópia
 }
 
+// ── Recados dos Professores ───────────────────────────────────────
+const RTDB_RECADOS_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/recados.json";
+const STORAGE_KEY_RECADOS = "torneio-recados:v1";
+let _recadosCache = null;
+
+function lerRecados() {
+  if (_recadosCache) return _recadosCache;
+  try { const b = localStorage.getItem(STORAGE_KEY_RECADOS); return b ? JSON.parse(b) : { itens: [] }; }
+  catch { return { itens: [] }; }
+}
+
+async function carregarRecados() {
+  try {
+    const resp = await fetch(RTDB_RECADOS_URL);
+    if (resp.ok) {
+      const data = await resp.json();
+      _recadosCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      localStorage.setItem(STORAGE_KEY_RECADOS, JSON.stringify(_recadosCache));
+      return _recadosCache;
+    }
+  } catch (_) {}
+  _recadosCache = lerRecados();
+  return _recadosCache;
+}
+
+async function salvarRecados(dados) {
+  _recadosCache = dados;
+  localStorage.setItem(STORAGE_KEY_RECADOS, JSON.stringify(dados));
+  try {
+    await fetch(RTDB_RECADOS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+  } catch (_) {}
+}
+
+// ── Dicas ─────────────────────────────────────────────────────────
+const RTDB_DICAS_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/dicas.json";
+const STORAGE_KEY_DICAS = "torneio-dicas:v1";
+let _dicasCache = null;
+
+function lerDicas() {
+  if (_dicasCache) return _dicasCache;
+  try { const b = localStorage.getItem(STORAGE_KEY_DICAS); return b ? JSON.parse(b) : { itens: [] }; }
+  catch { return { itens: [] }; }
+}
+
+async function carregarDicas() {
+  try {
+    const resp = await fetch(RTDB_DICAS_URL);
+    if (resp.ok) {
+      const data = await resp.json();
+      _dicasCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      localStorage.setItem(STORAGE_KEY_DICAS, JSON.stringify(_dicasCache));
+      return _dicasCache;
+    }
+  } catch (_) {}
+  _dicasCache = lerDicas();
+  return _dicasCache;
+}
+
+async function salvarDicas(dados) {
+  _dicasCache = dados;
+  localStorage.setItem(STORAGE_KEY_DICAS, JSON.stringify(dados));
+  try {
+    await fetch(RTDB_DICAS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+  } catch (_) {}
+}
+
 function detectarTipoMidia(url) {
   if (/youtu\.be\/|youtube\.com\/(watch|shorts|embed)/.test(url)) return 'youtube';
   if (/\.(jpg|jpeg|png|gif|webp|avif)(\?|$)/i.test(url)) return 'imagem';

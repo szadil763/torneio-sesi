@@ -66,7 +66,7 @@ function formatarData(ts) {
     + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// Qual aba está ativa: 'gerenciar' | 'visao-geral' | 'boletim'
+// Qual aba está ativa: 'gerenciar' | 'visao-geral' | 'boletim' | 'comunicados'
 let abaAtiva = 'gerenciar';
 
 function trocarAba(aba) {
@@ -84,14 +84,17 @@ function renderPainel() {
 
   const abas = `
     <div class="admin-abas">
-      <button class="admin-aba ${abaAtiva === 'gerenciar'   ? 'ativa' : ''}" onclick="trocarAba('gerenciar')">
+      <button class="admin-aba ${abaAtiva === 'gerenciar'    ? 'ativa' : ''}" onclick="trocarAba('gerenciar')">
         ✏️ Insígnias
       </button>
-      <button class="admin-aba ${abaAtiva === 'visao-geral' ? 'ativa' : ''}" onclick="trocarAba('visao-geral')">
+      <button class="admin-aba ${abaAtiva === 'visao-geral'  ? 'ativa' : ''}" onclick="trocarAba('visao-geral')">
         📊 Visão geral
       </button>
-      <button class="admin-aba ${abaAtiva === 'boletim'     ? 'ativa' : ''}" onclick="trocarAba('boletim')">
+      <button class="admin-aba ${abaAtiva === 'boletim'      ? 'ativa' : ''}" onclick="trocarAba('boletim')">
         📸 Boletim
+      </button>
+      <button class="admin-aba ${abaAtiva === 'comunicados'  ? 'ativa' : ''}" onclick="trocarAba('comunicados')">
+        📢 Comunicados
       </button>
     </div>`;
 
@@ -134,14 +137,15 @@ function renderPainel() {
     ${painelLinks}
     ${abas}
 
-    ${abaAtiva !== 'boletim' ? `<div class="admin-resumo">
+    ${abaAtiva === 'gerenciar' || abaAtiva === 'visao-geral' ? `<div class="admin-resumo">
       <span>Total de insígnias concedidas:</span>
       <strong>${totalGeral}</strong>
     </div>` : ''}
 
-    ${abaAtiva === 'gerenciar'  ? renderAbaGerenciar(estado, ts)
+    ${abaAtiva === 'gerenciar'   ? renderAbaGerenciar(estado, ts)
     : abaAtiva === 'visao-geral' ? renderAbaVisaoGeral(estado)
-    : renderAbaBoletim(boletim)}
+    : abaAtiva === 'boletim'     ? renderAbaBoletim(boletim)
+    : renderAbaComunicados()}
 
     <p class="rodape-nota">
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
@@ -655,13 +659,171 @@ async function boletimMover(idx, delta) {
   renderPainel();
 }
 
+// ── Aba Comunicados ───────────────────────────────────────────────
+let comSubAba = 'recados'; // 'recados' | 'dicas'
+
+function renderAbaComunicados() {
+  const recados = lerRecados();
+  const dicas   = lerDicas();
+  const urlPub  = location.origin + '/insignias/comunicados.html';
+
+  return `
+    <div class="boletim-admin">
+      <div style="background:var(--card);border:1.5px solid var(--card-line);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px">Link público para pais e alunos</div>
+          <code style="font-size:11px;word-break:break-all;color:var(--text)">${urlPub}</code>
+        </div>
+        <button onclick="copiarLinkComunicados()" style="flex-shrink:0;border:1.5px solid #004B8D;color:#004B8D;background:transparent;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer" id="btn-link-com">
+          📋 Copiar
+        </button>
+      </div>
+
+      <div class="bol-sub-abas">
+        <button class="bol-sub-aba ${comSubAba === 'recados' ? 'ativa' : ''}" onclick="comTrocarSubAba('recados')">📢 Recados</button>
+        <button class="bol-sub-aba ${comSubAba === 'dicas'   ? 'ativa' : ''}" onclick="comTrocarSubAba('dicas')">💡 Dicas</button>
+      </div>
+
+      ${comSubAba === 'recados' ? renderSubRecados(recados) : renderSubDicas(dicas)}
+    </div>`;
+}
+
+function renderSubRecados(recados) {
+  const itens = recados.itens || [];
+  return `
+    <div class="boletim-form">
+      <input id="rec-titulo" type="text" placeholder="Título do recado (opcional)" class="boletim-input">
+      <textarea id="rec-texto" class="boletim-input boletim-textarea" rows="4"
+        placeholder="Digite o recado para pais e alunos..."></textarea>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 8px;cursor:pointer">
+        <input type="checkbox" id="rec-destaque"> Destacar este recado (laranja)
+      </label>
+      <button class="boletim-btn-add" onclick="recadoAdicionar()">📢 Publicar recado</button>
+    </div>
+    <div id="rec-erro" class="erro" style="margin-top:8px"></div>
+    ${itens.length === 0
+      ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhum recado ainda.</p>`
+      : `<div class="boletim-lista-admin" style="margin-top:16px">
+          ${itens.map((item, i) => `
+            <div class="bol-item-admin">
+              <div class="bol-item-info" style="flex:1">
+                <strong class="bol-item-titulo">${item.titulo || '(sem título)'}</strong>
+                <span class="bol-item-legenda" style="white-space:pre-line;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${item.texto}</span>
+              </div>
+              <div class="bol-item-acoes">
+                ${i > 0               ? `<button class="bol-btn-ord" onclick="recadoMover(${i},-1)">↑</button>` : ''}
+                ${i < itens.length-1  ? `<button class="bol-btn-ord" onclick="recadoMover(${i},+1)">↓</button>` : ''}
+                <button class="bol-btn-rem" onclick="recadoRemover(${i})">🗑</button>
+              </div>
+            </div>`).join('')}
+        </div>`}`;
+}
+
+function renderSubDicas(dicas) {
+  const itens = dicas.itens || [];
+  return `
+    <div class="boletim-form">
+      <div style="display:flex;gap:8px">
+        <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
+        <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
+      </div>
+      <button class="boletim-btn-add" onclick="dicaAdicionar()">+ Adicionar dica</button>
+    </div>
+    <div id="dic-erro" class="erro" style="margin-top:8px"></div>
+    ${itens.length === 0
+      ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhuma dica ainda.</p>`
+      : `<div class="boletim-lista-admin" style="margin-top:16px">
+          ${itens.map((item, i) => `
+            <div class="bol-item-admin">
+              <div style="font-size:24px;flex-shrink:0">${item.icone || '💡'}</div>
+              <div class="bol-item-info" style="flex:1">
+                <span class="bol-item-titulo">${item.texto}</span>
+              </div>
+              <div class="bol-item-acoes">
+                ${i > 0              ? `<button class="bol-btn-ord" onclick="dicaMover(${i},-1)">↑</button>` : ''}
+                ${i < itens.length-1 ? `<button class="bol-btn-ord" onclick="dicaMover(${i},+1)">↓</button>` : ''}
+                <button class="bol-btn-rem" onclick="dicaRemover(${i})">🗑</button>
+              </div>
+            </div>`).join('')}
+        </div>`}`;
+}
+
+function comTrocarSubAba(sub) { comSubAba = sub; renderPainel(); }
+
+function copiarLinkComunicados() {
+  const url = location.origin + '/insignias/comunicados.html';
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('btn-link-com');
+    if (btn) { btn.textContent = '✓ Copiado!'; setTimeout(() => { btn.textContent = '📋 Copiar'; }, 2000); }
+  }).catch(() => { prompt('Copie o link abaixo:', url); });
+}
+
+async function recadoAdicionar() {
+  const titulo    = (document.getElementById('rec-titulo')?.value || '').trim();
+  const texto     = (document.getElementById('rec-texto')?.value  || '').trim();
+  const destaque  = document.getElementById('rec-destaque')?.checked || false;
+  const erro      = document.getElementById('rec-erro');
+  if (!texto) { if(erro) erro.textContent = 'Escreva o texto do recado.'; return; }
+  if(erro) erro.textContent = '';
+  const dados = lerRecados();
+  dados.itens.unshift({ id: Date.now().toString(36), titulo, texto, destaque, ts: Date.now() });
+  await salvarRecados(dados);
+  renderPainel();
+}
+
+async function recadoRemover(idx) {
+  if (!confirm('Remover este recado?')) return;
+  const dados = lerRecados();
+  dados.itens.splice(idx, 1);
+  await salvarRecados(dados);
+  renderPainel();
+}
+
+async function recadoMover(idx, delta) {
+  const dados = lerRecados();
+  const novo  = idx + delta;
+  if (novo < 0 || novo >= dados.itens.length) return;
+  [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
+  await salvarRecados(dados);
+  renderPainel();
+}
+
+async function dicaAdicionar() {
+  const icone = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
+  const texto = (document.getElementById('dic-texto')?.value  || '').trim();
+  const erro  = document.getElementById('dic-erro');
+  if (!texto) { if(erro) erro.textContent = 'Escreva o texto da dica.'; return; }
+  if(erro) erro.textContent = '';
+  const dados = lerDicas();
+  dados.itens.push({ id: Date.now().toString(36), icone, texto });
+  await salvarDicas(dados);
+  renderPainel();
+}
+
+async function dicaRemover(idx) {
+  if (!confirm('Remover esta dica?')) return;
+  const dados = lerDicas();
+  dados.itens.splice(idx, 1);
+  await salvarDicas(dados);
+  renderPainel();
+}
+
+async function dicaMover(idx, delta) {
+  const dados = lerDicas();
+  const novo  = idx + delta;
+  if (novo < 0 || novo >= dados.itens.length) return;
+  [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
+  await salvarDicas(dados);
+  renderPainel();
+}
+
 function sair() {
   sessionStorage.removeItem(CHAVE_SESSAO_AREAS);
   renderLoginAdmin();
 }
 
 window.addEventListener("DOMContentLoaded", async function () {
-  await carregarBoletim();
+  await Promise.all([carregarBoletim(), carregarRecados(), carregarDicas()]);
   if (sessionStorage.getItem(CHAVE_SESSAO_AREAS) === "1") {
     renderPainel();
   } else {
