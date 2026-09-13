@@ -1615,3 +1615,96 @@ tfoot tr { border-top: 2px solid var(--card-line); }
   font-size: 14px; color: var(--muted);
 }
 .admin-resumo strong { font-family: 'Baloo 2', sans-serif; font-size: 22px; color: var(--text); }
+
+/* ── Mini estojos — grade de thumbnails fechados ──────────────── */
+.mini-estojos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.mini-estojo-card {
+  border-radius: 20px;
+  background: linear-gradient(145deg, var(--cd, #1a1a2a), var(--c, #444));
+  padding: 20px 14px 14px;
+  cursor: pointer;
+  text-align: center;
+  border: 2px solid transparent;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.mini-estojo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 32px rgba(0,0,0,.5);
+}
+.mini-estojo-card.aberto {
+  border-color: var(--c);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent);
+}
+
+/* Miniatura visual do estojo fechado */
+.mini-case-wrap {
+  width: 68px;
+  height: 56px;
+  margin: 0 auto 12px;
+  position: relative;
+}
+.mini-case-lid {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 24px;
+  background: rgba(255,255,255,.22);
+  border-radius: 10px 10px 3px 3px;
+  border: 2px solid rgba(255,255,255,.38);
+  transition: transform .35s ease;
+}
+.mini-estojo-card.aberto .mini-case-lid {
+  transform: translateY(-6px) scaleY(0.7);
+  opacity: 0.6;
+}
+.mini-case-base {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 34px;
+  background: rgba(0,0,0,.28);
+  border-radius: 3px 3px 10px 10px;
+  border: 2px solid rgba(255,255,255,.16);
+}
+.mini-case-clasp {
+  position: absolute;
+  top: 21px; left: 50%;
+  transform: translateX(-50%);
+  width: 18px; height: 9px;
+  background: rgba(230,190,30,.92);
+  border-radius: 4px;
+  border: 1.5px solid rgba(180,140,0,.8);
+  z-index: 2;
+}
+
+.mini-nome {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
+.mini-count {
+  font-size: 11px;
+  color: rgba(255,255,255,.62);
+  font-weight: 500;
+}
+
+/* Área de expansão do estojo clicado */
+.estojos-expand-wrap {
+  margin-top: 12px;
+  animation: expand-in .25s ease;
+}
+@keyframes expand-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -87,7 +87,7 @@ function formatarDataCom(ts) {
 }
 
 // ── Estojos de Insígnias ──────────────────────────────────────────
-const _estojoAberto = {};
+let _estojoAtivoCom = null;
 
 function emblemaLid() {
   return `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -267,42 +267,55 @@ function renderEstojoNoContainerCom(equipe, container) {
 function abrirEstojoCom(teamId) {
   const equipe = TEAMS.find(t => t.id === teamId);
   if (!equipe) return;
-  const btn  = document.getElementById('btn-com-' + teamId);
-  const wrap = document.getElementById('wrap-com-' + teamId);
-  if (!btn || !wrap) return;
-  if (!wrap.hidden) {
-    wrap.hidden = true;
-    btn.classList.remove('aberto');
+  const expandWrap = document.getElementById('estojos-expand-com');
+  if (!expandWrap) return;
+
+  // Toggle: clicando no aberto fecha
+  if (_estojoAtivoCom === teamId) {
+    _estojoAtivoCom = null;
+    expandWrap.hidden = true;
+    expandWrap.innerHTML = '';
+    document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
     return;
   }
-  btn.classList.add('aberto');
-  wrap.hidden = false;
-  if (!_estojoAberto[teamId]) {
-    _estojoAberto[teamId] = true;
-    renderEstojoNoContainerCom(equipe, wrap);
-  }
+
+  // Troca: fecha anterior, abre novo
+  _estojoAtivoCom = teamId;
+  document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
+  const card = document.getElementById('mini-com-' + teamId);
+  if (card) card.classList.add('aberto');
+
+  expandWrap.hidden = false;
+  expandWrap.innerHTML = '';
+  renderEstojoNoContainerCom(equipe, expandWrap);
+  setTimeout(() => expandWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 180);
 }
 
 function renderEstojosSection() {
+  const estado = lerEstadoAreas();
   const secao = document.createElement('div');
   secao.className = 'com-secao com-secao-estojos';
   secao.innerHTML = `
     <div class="com-secao-titulo">🏅 Estojos de Insígnias</div>
-    <p class="com-estojos-sub">Toque em uma turma para abrir o estojo e ver as insígnias conquistadas</p>
-    <div class="equipes-grade">
-      ${TEAMS.map(tm => `
-        <div class="equipe-secao" id="sec-com-${tm.id}">
-          <button class="equipe-abrir-btn" id="btn-com-${tm.id}"
-                  onclick="abrirEstojoCom('${tm.id}')"
-                  style="--c:${tm.cor}">
-            <span class="equipe-bolinha"></span>
-            <span class="equipe-btn-nome">${tm.nome}</span>
-            <span class="equipe-abrir-hint">Toque para abrir</span>
-            <span class="equipe-abrir-icone">▼</span>
-          </button>
-          <div class="equipe-estojo-wrap" id="wrap-com-${tm.id}" hidden></div>
-        </div>`).join('')}
-    </div>`;
+    <p class="com-estojos-sub">Toque em um estojo para abrir e ver as insígnias conquistadas</p>
+    <div class="mini-estojos-grid">
+      ${TEAMS.map(tm => {
+        const n = AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length;
+        return `
+          <div class="mini-estojo-card" id="mini-com-${tm.id}"
+               onclick="abrirEstojoCom('${tm.id}')"
+               style="--c:${tm.cor};--cd:${tm.corEscura}">
+            <div class="mini-case-wrap">
+              <div class="mini-case-lid"></div>
+              <div class="mini-case-base"></div>
+              <div class="mini-case-clasp"></div>
+            </div>
+            <div class="mini-nome">${tm.nome}</div>
+            <div class="mini-count">${n} / ${AREAS.length} insígnias</div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div id="estojos-expand-com" class="estojos-expand-wrap" hidden></div>`;
   document.getElementById('app').appendChild(secao);
 }
 
@@ -426,7 +439,7 @@ function agendarRefresh() {
     _recadosCache = null;
     _dicasCache   = null;
     _boletimCache = null;
-    Object.keys(_estojoAberto).forEach(k => delete _estojoAberto[k]);
+    _estojoAtivoCom = null;
     await renderComunicados();
     agendarRefresh();
   }, 60000);

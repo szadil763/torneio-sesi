@@ -61,7 +61,7 @@ function t(key) {
 function alternarIdioma() {
   _lang = _lang === 'pt' ? 'en' : 'pt';
   try { localStorage.setItem('torneio-lang', _lang); } catch (_) {}
-  Object.keys(_estojoAberto).forEach(k => delete _estojoAberto[k]);
+  _estojoAtivoId = null;
   renderPaginaEstojos();
 }
 
@@ -338,31 +338,32 @@ function renderEstojoNoContainer(equipe, container) {
   }, (BASE_DELAY + AREAS.length * STEP + 0.4) * 1000);
 }
 
-// ── Controla abertura/fechamento individual de cada estojo ────────
-const _estojoAberto = {};
+// ── Controla abertura/fechamento — um estojo de cada vez ─────────
+let _estojoAtivoId = null;
 
 function abrirEstojo(teamId) {
   const equipe = TEAMS.find(t => t.id === teamId);
   if (!equipe) return;
+  const expandWrap = document.getElementById('estojos-expand');
+  if (!expandWrap) return;
 
-  const btn  = document.getElementById('btn-' + teamId);
-  const wrap = document.getElementById('wrap-' + teamId);
-  if (!btn || !wrap) return;
-
-  if (!wrap.hidden) {
-    wrap.hidden = true;
-    btn.classList.remove('aberto');
+  if (_estojoAtivoId === teamId) {
+    _estojoAtivoId = null;
+    expandWrap.hidden = true;
+    expandWrap.innerHTML = '';
+    document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
     return;
   }
 
-  btn.classList.add('aberto');
-  wrap.hidden = false;
+  _estojoAtivoId = teamId;
+  document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
+  const card = document.getElementById('mini-' + teamId);
+  if (card) card.classList.add('aberto');
 
-  // Renderiza o estojo apenas na primeira abertura
-  if (!_estojoAberto[teamId]) {
-    _estojoAberto[teamId] = true;
-    renderEstojoNoContainer(equipe, wrap);
-  }
+  expandWrap.hidden = false;
+  expandWrap.innerHTML = '';
+  renderEstojoNoContainer(equipe, expandWrap);
+  setTimeout(() => expandWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 180);
 }
 
 // ── Página principal com todos os estojos ─────────────────────────
@@ -382,26 +383,31 @@ function renderPaginaEstojos() {
   // Contador regressivo com cor SESI
   renderContador({ cor: '#004B8D' });
 
+  const estado = lerEstadoAreas();
   app.insertAdjacentHTML('beforeend', `
     <div class="alunos-hero">
       <div class="alunos-hero-icon">🏅</div>
       <h1 style="font-family:'Baloo 2',sans-serif;font-weight:900;font-size:22px;margin:0 0 4px">${t('estojos_titulo')}</h1>
       <p style="font-size:13px;color:var(--muted);margin:0">${t('estojos_subtitulo')}</p>
     </div>
-    <div class="equipes-grade">
-      ${TEAMS.map(tm => `
-        <div class="equipe-secao" id="sec-${tm.id}">
-          <button class="equipe-abrir-btn" id="btn-${tm.id}"
-                  onclick="abrirEstojo('${tm.id}')"
-                  style="--c:${tm.cor}">
-            <span class="equipe-bolinha"></span>
-            <span class="equipe-btn-nome">${tm.nome}</span>
-            <span class="equipe-abrir-hint">${t('toque_para_abrir')}</span>
-            <span class="equipe-abrir-icone">▼</span>
-          </button>
-          <div class="equipe-estojo-wrap" id="wrap-${tm.id}" hidden></div>
-        </div>`).join('')}
-    </div>`);
+    <div class="mini-estojos-grid" style="max-width:480px;margin-inline:auto;width:100%">
+      ${TEAMS.map(tm => {
+        const n = AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length;
+        return `
+          <div class="mini-estojo-card" id="mini-${tm.id}"
+               onclick="abrirEstojo('${tm.id}')"
+               style="--c:${tm.cor};--cd:${tm.corEscura}">
+            <div class="mini-case-wrap">
+              <div class="mini-case-lid"></div>
+              <div class="mini-case-base"></div>
+              <div class="mini-case-clasp"></div>
+            </div>
+            <div class="mini-nome">${tm.nome}</div>
+            <div class="mini-count">${n} / ${AREAS.length} ${_lang === 'pt' ? 'insígnias' : 'badges'}</div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div id="estojos-expand" class="estojos-expand-wrap" hidden></div>`);
 
   // Boletim abaixo dos estojos
   const boletim = lerBoletim();
