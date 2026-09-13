@@ -882,11 +882,14 @@ button, input { font-family: inherit; }
   color: #fff;
 }
 
-/* Botões de upload (câmera / galeria) */
+/* Botões de upload (câmera / galeria / vídeo) */
 .bol-upload-opcoes {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+.bol-upload-opcoes:has(.bol-upload-btn-vid) {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 .bol-upload-btn {
   display: flex;
@@ -911,6 +914,12 @@ button, input { font-family: inherit; }
   color: var(--muted);
 }
 .bol-upload-btn-sec:hover { background: var(--card-line); color: var(--text); }
+.bol-upload-btn-vid {
+  border-color: #c0392b;
+  background: transparent;
+  color: #c0392b;
+}
+.bol-upload-btn-vid:hover { background: #c0392b; color: #fff; }
 
 /* Separador "ou" */
 .bol-separador {

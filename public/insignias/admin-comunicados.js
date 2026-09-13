@@ -97,8 +97,13 @@ function renderAbaBoletimCom(boletim) {
           <div class="bol-upload-opcoes">
             <label class="bol-upload-btn" for="bol-file-camera"><span>📸</span> Tirar foto agora</label>
             <input id="bol-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="boletimHandleFile(this)">
-            <label class="bol-upload-btn bol-upload-btn-sec" for="bol-file-input"><span>🖼️</span> Escolher da galeria</label>
+            <label class="bol-upload-btn bol-upload-btn-sec" for="bol-file-input"><span>🖼️</span> Foto da galeria</label>
             <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
+            <label class="bol-upload-btn bol-upload-btn-vid" for="bol-file-video"><span>📹</span> Enviar vídeo</label>
+            <input id="bol-file-video" type="file" accept="video/*" style="display:none" onchange="boletimHandleVideo(this)">
+          </div>
+          <div id="bol-video-aviso" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;text-align:center">
+            ⏳ Carregando vídeo…
           </div>
           <div class="bol-separador"><span>ou cole um link</span></div>
           <input id="bol-url"     type="url"  placeholder="Link da foto ou vídeo do YouTube" class="boletim-input">
@@ -151,10 +156,16 @@ function renderAbaBoletimCom(boletim) {
                 badge = '<span class="bol-play-badge" style="background:#c0392b">📰 Notícia</span>';
               } else {
                 const tipo = detectarTipoMidia(item.url || '');
-                thumb = tipo === 'youtube'
-                  ? `<img src="https://img.youtube.com/vi/${youtubeId(item.url)}/mqdefault.jpg" class="bol-thumb" onerror="this.src=''">`
-                  : `<img src="${item.url}" class="bol-thumb" onerror="this.style.display='none'">`;
-                badge = tipo === 'youtube' ? '<span class="bol-play-badge">▶ Vídeo</span>' : '';
+                if (tipo === 'youtube') {
+                  thumb = `<img src="https://img.youtube.com/vi/${youtubeId(item.url)}/mqdefault.jpg" class="bol-thumb" onerror="this.src=''">`
+                  badge = '<span class="bol-play-badge">▶ YouTube</span>';
+                } else if (tipo === 'video') {
+                  thumb = `<video src="${item.url}" class="bol-thumb" style="object-fit:cover" muted playsinline preload="metadata"></video>`;
+                  badge = '<span class="bol-play-badge" style="background:#c0392b">🎬 Vídeo</span>';
+                } else {
+                  thumb = `<img src="${item.url}" class="bol-thumb" onerror="this.style.display='none'">`;
+                  badge = '';
+                }
               }
               const tituloExibido = item.tipo === 'noticia' ? item.manchete : (item.titulo || '(sem título)');
               return `
@@ -281,6 +292,28 @@ async function boletimHandleFile(input) {
   const dataUrl = await comprimirImagem(file, 1400, 0.80);
   const dados = lerBoletim();
   dados.itens.unshift({ id: Date.now().toString(36), tipo: 'imagem', url: dataUrl, titulo: '', legenda: '', ts: Date.now() });
+  await salvarBoletim(dados);
+  renderPainelCom();
+}
+
+async function boletimHandleVideo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const MAX_MB = 50;
+  if (file.size > MAX_MB * 1024 * 1024) {
+    alert(`Vídeo muito grande (${(file.size/1024/1024).toFixed(0)} MB). Limite: ${MAX_MB} MB.\nPara vídeos maiores, envie para o YouTube e cole o link.`);
+    input.value = '';
+    return;
+  }
+  const aviso = document.getElementById('bol-video-aviso');
+  if (aviso) aviso.style.display = 'block';
+  const dataUrl = await new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+  const dados = lerBoletim();
+  dados.itens.unshift({ id: Date.now().toString(36), tipo: 'video', url: dataUrl, titulo: '', legenda: '', ts: Date.now() });
   await salvarBoletim(dados);
   renderPainelCom();
 }

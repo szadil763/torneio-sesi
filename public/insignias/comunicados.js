@@ -143,6 +143,11 @@ function renderBoletimCom(boletim) {
                  allowfullscreen allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
                  class="bol-iframe"></iframe>
              </div>`
+          : tipo === 'video'
+          ? `<div class="bol-video-wrap">
+               <video src="${item.url}" controls playsinline class="bol-iframe"
+                 style="background:#000;width:100%;max-height:360px;object-fit:contain"></video>
+             </div>`
           : `<div class="bol-img-wrap">
                <img src="${item.url}" alt="${item.titulo || 'Foto'}" class="bol-img"
                  onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">

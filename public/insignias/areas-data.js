@@ -160,8 +160,9 @@ async function salvarDicas(dados) {
 
 function detectarTipoMidia(url) {
   if (/youtu\.be\/|youtube\.com\/(watch|shorts|embed)/.test(url)) return 'youtube';
-  if (/\.(jpg|jpeg|png|gif|webp|avif)(\?|$)/i.test(url)) return 'imagem';
-  return 'imagem'; // tenta como imagem por padrão
+  if (/^data:video\//.test(url)) return 'video';
+  if (/\.(mp4|webm|mov|avi|mkv|ogg|m4v|3gp|ts|mts|m2ts|flv|wmv|ogv)(\?|$)/i.test(url)) return 'video';
+  return 'imagem';
 }
 
 function youtubeId(url) {
