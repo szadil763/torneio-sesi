@@ -43,7 +43,7 @@ function renderContadorCom() {
     }
 
     inner.innerHTML = `
-      <div class="contador-titulo">🏆 TORNEIO SESI INFANTIL</div>
+      <div class="contador-titulo">🏆 SESI TORNEIO INFANTIL</div>
       <div class="contador-subtitulo">começa em</div>
       <div class="contador-numeros">
         <div class="contador-bloco" style="--c:#004B8D">
@@ -428,9 +428,7 @@ async function renderComunicados() {
   renderBoletimCom(boletim);
 
   app.insertAdjacentHTML('beforeend', `
-    <div class="com-rodape">
-      Atualizado automaticamente · SESI Torneio Infantil 2026
-    </div>`);
+    <div class="com-rodape">Atualizado automaticamente · SESI Torneio Infantil 2026</div>`);
 }
 
 // ── Auto-refresh a cada 60 s ──────────────────────────────────────
