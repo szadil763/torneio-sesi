@@ -248,6 +248,17 @@
     }
     .mod-comunicados-admin:hover { border-color: #c0651a; }
 
+    /* ── Card destaque (largura total) ── */
+    .grade-full {
+      grid-template-columns: 1fr;
+    }
+    .mod-destaque .modulo-topo {
+      padding: 26px 24px 22px;
+    }
+    .mod-destaque .modulo-icone { font-size: 40px; }
+    .mod-destaque .modulo-nome  { font-size: 20px; }
+    .mod-destaque .modulo-desc  { font-size: 14px; }
+
     /* ── Linha do admin ── */
     .admin-row {
       width: 100%;
@@ -323,10 +334,27 @@
       <p class="subtitulo">Escolha a modalidade que deseja acessar.</p>
     </div>
 
-    <!-- cards de módulos -->
+    <!-- Card principal: Comunicados + Insígnias (público) -->
+    <div class="grade grade-full" style="margin-bottom:12px">
+      <a href="/insignias/comunicados.html" class="modulo mod-comunicados mod-destaque">
+        <div class="modulo-topo">
+          <span class="modulo-icone">📢</span>
+          <span class="modulo-nome">Comunicados &amp; Insígnias</span>
+          <span class="modulo-badge">👨‍👩‍👧 Pais e Alunos</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Recados, dicas, boletim e estojos de insígnias de cada turma — tudo em um só lugar.</p>
+          <div class="modulo-cta">
+            Acessar
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Linha: Propulsão + Ranking -->
     <div class="grade">
 
-      <!-- Módulo 1: Propulsão -->
       <a href="/index.html" class="modulo mod-propulsao">
         <div class="modulo-topo">
           <span class="modulo-icone">🚀</span>
@@ -342,44 +370,6 @@
         </div>
       </a>
 
-      <!-- Módulo 2: Insígnias — Alunos/Pais -->
-      <a href="/insignias/alunos.html" class="modulo mod-insignias">
-        <div class="modulo-topo">
-          <span class="modulo-icone">🏅</span>
-          <span class="modulo-nome">Estojos<br>de Insígnias</span>
-          <span class="modulo-badge">🎒 Alunos e Pais</span>
-        </div>
-        <div class="modulo-corpo">
-          <p class="modulo-desc">Abra o estojo da sua equipe e veja as insígnias conquistadas com animação!</p>
-          <div class="modulo-cta">
-            Abrir estojo
-            <div class="modulo-cta-arrow">→</div>
-          </div>
-        </div>
-      </a>
-
-    </div>
-
-    <!-- segunda linha: professor -->
-    <div class="grade" style="margin-top:12px">
-
-      <!-- Professor: gerenciar torneio -->
-      <a href="/insignias/admin-areas.html" class="modulo mod-professor">
-        <div class="modulo-topo">
-          <span class="modulo-icone">✏️</span>
-          <span class="modulo-nome">Gerenciamento<br>do Torneio</span>
-          <span class="modulo-badge">🔐 Professor</span>
-        </div>
-        <div class="modulo-corpo">
-          <p class="modulo-desc">Adicione ou remova insígnias por equipe e área. Requer PIN.</p>
-          <div class="modulo-cta">
-            Entrar
-            <div class="modulo-cta-arrow">→</div>
-          </div>
-        </div>
-      </a>
-
-      <!-- Ranking -->
       <a href="/insignias/ranking.html" class="modulo mod-ranking">
         <div class="modulo-topo">
           <span class="modulo-icone">🏆</span>
@@ -397,10 +387,24 @@
 
     </div>
 
-    <!-- Terceira linha: admin comunicados + comunicados público -->
+    <!-- Linha: ferramentas do professor -->
     <div class="grade" style="margin-top:12px">
 
-      <!-- Gerenciamento de Comunicados -->
+      <a href="/insignias/admin-areas.html" class="modulo mod-professor">
+        <div class="modulo-topo">
+          <span class="modulo-icone">✏️</span>
+          <span class="modulo-nome">Gerenciamento<br>do Torneio</span>
+          <span class="modulo-badge">🔐 Professor</span>
+        </div>
+        <div class="modulo-corpo">
+          <p class="modulo-desc">Adicione ou remova insígnias por equipe e área. Requer PIN.</p>
+          <div class="modulo-cta">
+            Entrar
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+
       <a href="/insignias/admin-comunicados.html" class="modulo mod-comunicados-admin">
         <div class="modulo-topo">
           <span class="modulo-icone">📝</span>
@@ -411,22 +415,6 @@
           <p class="modulo-desc">Publique boletins, recados e dicas para pais e alunos. Requer PIN.</p>
           <div class="modulo-cta">
             Entrar
-            <div class="modulo-cta-arrow">→</div>
-          </div>
-        </div>
-      </a>
-
-      <!-- Comunicados — público -->
-      <a href="/insignias/comunicados.html" class="modulo mod-comunicados">
-        <div class="modulo-topo">
-          <span class="modulo-icone">📢</span>
-          <span class="modulo-nome">Comunicados<br>do Torneio</span>
-          <span class="modulo-badge">👨‍👩‍👧 Pais e Alunos</span>
-        </div>
-        <div class="modulo-corpo">
-          <p class="modulo-desc">Boletim, recados e dicas do torneio para toda a família.</p>
-          <div class="modulo-cta">
-            Ver comunicados
             <div class="modulo-cta-arrow">→</div>
           </div>
         </div>

@@ -86,6 +86,226 @@ function formatarDataCom(ts) {
   });
 }
 
+// ── Estojos de Insígnias ──────────────────────────────────────────
+const _estojoAberto = {};
+
+function emblemaLid() {
+  return `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="40" stroke="rgba(0,0,0,0.5)" stroke-width="4"/>
+    <rect x="10" y="47" width="80" height="6" fill="rgba(0,0,0,0.4)" rx="3"/>
+    <circle cx="50" cy="50" r="13" fill="rgba(0,0,0,0.3)" stroke="rgba(0,0,0,0.5)" stroke-width="4"/>
+    <path d="M50 16 L60 47 L50 42 L40 47 Z"
+          fill="rgba(220,168,0,0.75)" stroke="rgba(180,130,0,0.6)" stroke-width="1"/>
+    <circle cx="50" cy="50" r="5" fill="rgba(220,168,0,0.8)"/>
+    <circle cx="50" cy="50" r="2.5" fill="rgba(255,220,80,0.9)"/>
+  </svg>`;
+}
+
+function tocarSomCom(tipo) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (tipo === 'abrir') {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(330, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.35);
+      g.gain.setValueAtTime(0.2, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } else if (tipo === 'snap') {
+      const freqs = [900, 820, 740, 660];
+      freqs.forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'triangle'; o.frequency.value = freq;
+        const t0 = ctx.currentTime + i * 0.22;
+        g.gain.setValueAtTime(0.13, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
+        o.start(t0); o.stop(t0 + 0.2);
+      });
+    } else if (tipo === 'completo') {
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        const t0 = ctx.currentTime + i * 0.13;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(0.25, t0 + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.38);
+        o.start(t0); o.stop(t0 + 0.4);
+      });
+    }
+  } catch (_) {}
+}
+
+function dispararConfeteCom(cor) {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const c = canvas.getContext('2d');
+  const palette = [cor, '#fff', '#ffd700', cor + 'bb', '#ffaa44'];
+  const pcs = Array.from({ length: 150 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height * 0.4 - 40,
+    vx: (Math.random() - 0.5) * 8,
+    vy: Math.random() * 6 + 1,
+    rot: Math.random() * Math.PI * 2,
+    vrot: (Math.random() - 0.5) * 0.3,
+    w: Math.random() * 14 + 6,
+    h: Math.random() * 6 + 3,
+    cor: palette[Math.floor(Math.random() * palette.length)],
+    alpha: 1,
+  }));
+  let frame = 0;
+  (function animar() {
+    c.clearRect(0, 0, canvas.width, canvas.height);
+    pcs.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.14; p.rot += p.vrot;
+      if (frame > 90) p.alpha = Math.max(0, p.alpha - 0.012);
+      c.save();
+      c.translate(p.x, p.y); c.rotate(p.rot);
+      c.globalAlpha = p.alpha;
+      c.fillStyle = p.cor;
+      c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      c.restore();
+    });
+    frame++;
+    if (frame < 160) requestAnimationFrame(animar);
+    else canvas.remove();
+  })();
+}
+
+function abrirModalInsigniaCom(areaId, teamId) {
+  const area   = AREAS.find(a => a.id === areaId);
+  const equipe = TEAMS.find(t => t.id === teamId);
+  if (!area || !equipe) return;
+  document.getElementById('modal-img-com').src = area.imagem;
+  document.getElementById('modal-img-com').alt = 'Insígnia ' + area.nome;
+  document.getElementById('modal-nome-com').textContent = area.nome;
+  document.getElementById('modal-nome-com').style.color = equipe.cor;
+  document.getElementById('modal-equipe-com').textContent = equipe.nome;
+  document.getElementById('modal-insignia-com').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function fecharModalCom() {
+  document.getElementById('modal-insignia-com').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function renderEstojoNoContainerCom(equipe, container) {
+  const estado   = lerEstadoAreas();
+  const ganhas   = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
+  const completo = ganhas === AREAS.length;
+  const BASE_DELAY = 1.65;
+  const STEP       = 0.22;
+
+  const slots = AREAS.map((area, i) => {
+    const ganhou = conquistouArea(estado, area.id, equipe.id);
+    const delay  = (BASE_DELAY + i * STEP).toFixed(2);
+    return `
+      <div class="slot ${ganhou ? 'conquistada recem-aberta' : ''}" style="--c:${equipe.cor}">
+        <div class="slot-label" style="background:${equipe.cor}">${area.nome}</div>
+        <div class="slot-corpo">
+          ${ganhou
+            ? `<div class="badge-3d-wrap recem-conquistada"
+                    style="animation-delay:${delay}s"
+                    onclick="abrirModalInsigniaCom('${area.id}','${equipe.id}')"
+                    title="Toque para ampliar">
+                 <img src="${area.imagem}"
+                      alt="Insígnia ${area.nome}"
+                      class="slot-insignia"
+                      onerror="this.closest('.badge-3d-wrap').outerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">
+                 <div class="badge-gloss"></div>
+               </div>`
+            : `<div class="slot-vazio">
+                 <div class="slot-vazio-circulo" style="--c:${equipe.cor}">
+                   <span class="slot-vazio-lock">${ICONS.cadeado}</span>
+                 </div>
+                 <span class="slot-vazio-nome">${area.nome}</span>
+               </div>`
+          }
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">⭐ Estojo completo! Parabéns, ${equipe.nome}! ⭐</div>` : ''}
+    <div class="case-scene">
+      <div class="case-3d">
+        <div class="case-base">
+          <div class="estojo-topo">
+            <span class="equipe-nome-estojo" style="color:${equipe.cor}">${equipe.nome}</span>
+          </div>
+          <div class="estojo-corpo">${slots}</div>
+          <div class="estojo-prog">
+            <div class="estojo-prog-fill" style="width:${Math.round(ganhas/AREAS.length*100)}%;background:${equipe.cor}"></div>
+          </div>
+        </div>
+        <div class="case-lid" style="--c:${equipe.cor}; --cd:${equipe.corEscura}">
+          <div class="lid-front">
+            <div class="lid-emblem">${emblemaLid()}</div>
+          </div>
+          <div class="lid-back">
+            <span class="lid-back-mark">SESI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="rodape-nota alunos-dica" style="margin-bottom:0">💡 Toque em uma insígnia para ver em tamanho grande</p>`;
+
+  tocarSomCom('abrir');
+  if (ganhas > 0) setTimeout(() => tocarSomCom('snap'), BASE_DELAY * 1000);
+  if (completo) setTimeout(() => {
+    dispararConfeteCom(equipe.cor);
+    tocarSomCom('completo');
+  }, (BASE_DELAY + AREAS.length * STEP + 0.4) * 1000);
+}
+
+function abrirEstojoCom(teamId) {
+  const equipe = TEAMS.find(t => t.id === teamId);
+  if (!equipe) return;
+  const btn  = document.getElementById('btn-com-' + teamId);
+  const wrap = document.getElementById('wrap-com-' + teamId);
+  if (!btn || !wrap) return;
+  if (!wrap.hidden) {
+    wrap.hidden = true;
+    btn.classList.remove('aberto');
+    return;
+  }
+  btn.classList.add('aberto');
+  wrap.hidden = false;
+  if (!_estojoAberto[teamId]) {
+    _estojoAberto[teamId] = true;
+    renderEstojoNoContainerCom(equipe, wrap);
+  }
+}
+
+function renderEstojosSection() {
+  const secao = document.createElement('div');
+  secao.className = 'com-secao com-secao-estojos';
+  secao.innerHTML = `
+    <div class="com-secao-titulo">🏅 Estojos de Insígnias</div>
+    <p class="com-estojos-sub">Toque em uma turma para abrir o estojo e ver as insígnias conquistadas</p>
+    <div class="equipes-grade">
+      ${TEAMS.map(tm => `
+        <div class="equipe-secao" id="sec-com-${tm.id}">
+          <button class="equipe-abrir-btn" id="btn-com-${tm.id}"
+                  onclick="abrirEstojoCom('${tm.id}')"
+                  style="--c:${tm.cor}">
+            <span class="equipe-bolinha"></span>
+            <span class="equipe-btn-nome">${tm.nome}</span>
+            <span class="equipe-abrir-hint">Toque para abrir</span>
+            <span class="equipe-abrir-icone">▼</span>
+          </button>
+          <div class="equipe-estojo-wrap" id="wrap-com-${tm.id}" hidden></div>
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('app').appendChild(secao);
+}
+
 // ── Renderização de recados ───────────────────────────────────────
 function renderRecados(recados) {
   const itens = recados.itens || [];
@@ -180,6 +400,9 @@ async function renderComunicados() {
   // Contador
   renderContadorCom();
 
+  // Estojos
+  renderEstojosSection();
+
   // Carrega dados do Firebase em paralelo
   const [recados, dicas, boletim] = await Promise.all([
     carregarRecados(),
@@ -200,16 +423,29 @@ async function renderComunicados() {
 // ── Auto-refresh a cada 60 s ──────────────────────────────────────
 function agendarRefresh() {
   setTimeout(async () => {
-    // Invalida caches para forçar re-fetch
     _recadosCache = null;
     _dicasCache   = null;
     _boletimCache = null;
+    Object.keys(_estojoAberto).forEach(k => delete _estojoAberto[k]);
     await renderComunicados();
     agendarRefresh();
   }, 60000);
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="modal-insignia-com" class="modal-overlay hidden" onclick="fecharModalCom()">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <button class="modal-fechar" onclick="fecharModalCom()">✕</button>
+        <div class="modal-img-wrap">
+          <img id="modal-img-com" src="" alt="" class="modal-img-grande">
+          <div class="badge-gloss"></div>
+        </div>
+        <div id="modal-nome-com" class="modal-nome"></div>
+        <div id="modal-equipe-com" class="modal-equipe-nome"></div>
+      </div>
+    </div>
+  `);
   await renderComunicados();
   agendarRefresh();
 });

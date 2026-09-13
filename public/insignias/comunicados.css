@@ -1,5 +1,17 @@
 /* ── Comunicados — página pública pais/alunos ──────────────────── */
 
+.com-secao-estojos {
+  background: linear-gradient(180deg, rgba(0,75,141,.08) 0%, transparent 100%);
+  border-color: rgba(0,75,141,.3);
+}
+.com-estojos-sub {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin: -8px 0 18px;
+}
+/* equipes-grade já vem de alunos.css */
+
 .com-header {
   text-align: center;
   margin-bottom: 28px;
