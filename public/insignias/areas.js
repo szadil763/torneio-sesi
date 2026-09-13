@@ -201,6 +201,7 @@ function renderEstojoEquipe(teamId) {
         <div class="slot-corpo">
           ${ganhou
             ? `<div class="badge-3d-wrap ${nova ? 'recem-conquistada' : ''}"
+                    style="--c:${equipe.cor}"
                     onclick="abrirModalInsignia('${area.id}','${teamId}')"
                     title="Ver insígnia ampliada">
                  <img src="${area.imagem}"

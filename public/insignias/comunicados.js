@@ -274,7 +274,7 @@ function renderEstojoNoContainerCom(equipe, container) {
         <div class="slot-corpo">
           ${ganhou
             ? `<div class="badge-3d-wrap recem-conquistada"
-                    style="animation-delay:${delay}s"
+                    style="animation-delay:${delay}s;--c:${equipe.cor}"
                     onclick="abrirModalInsigniaCom('${area.id}','${equipe.id}')"
                     title="Toque para ampliar">
                  <img src="${area.imagem}"
