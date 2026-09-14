@@ -12,10 +12,10 @@ const TEAMS = [
 ];
 
 const AREAS = [
-  { id: "robotica",        nome: "Robótica",        emoji: "🤖", imagem: "assets/insignias/robotica.jpg" },
-  { id: "ingles",          nome: "Inglês",           emoji: "🌎", imagem: "assets/insignias/ingles.jpg" },
-  { id: "artes",           nome: "Artes",            emoji: "🎨", imagem: "assets/insignias/artes.jpg" },
-  { id: "educacao-fisica", nome: "Educação Física",  emoji: "⚽", imagem: "assets/insignias/educacao-fisica.jpg" },
+  { id: "robotica",        nome: "Robótica",        emoji: "🤖", imagem: "assets/insignias/robotica.gif" },
+  { id: "ingles",          nome: "Inglês",           emoji: "🌎", imagem: "assets/insignias/ingles.gif" },
+  { id: "artes",           nome: "Artes",            emoji: "🎨", imagem: "assets/insignias/artes.gif" },
+  { id: "educacao-fisica", nome: "Educação Física",  emoji: "⚽", imagem: "assets/insignias/educacao-fisica.gif" },
 ];
 
 // Chave própria — não conflita com o estojo por equipe/atividade (STORAGE_KEY = "torneio-insignias:v1")
