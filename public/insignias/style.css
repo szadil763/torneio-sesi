@@ -418,7 +418,7 @@ button, input { font-family: inherit; }
   aspect-ratio: 1;
   margin: auto;
   border-radius: 50%;
-  background: var(--c, #222);
+  background: #111;
   transform: rotateX(14deg) rotateY(-5deg);
   transform-style: preserve-3d;
   transition: transform .3s ease, box-shadow .3s ease;
