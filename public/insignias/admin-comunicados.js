@@ -485,7 +485,7 @@ function _getVideoMeta(file) {
 // Reproduz o vídeo em velocidade normal (necessário para captura de áudio correta).
 function _comprimirVideo(file, meta, onProgress) {
   return new Promise((resolve, reject) => {
-    const MAX_W = 640;
+    const MAX_W = 480;
     const scale = Math.min(1, MAX_W / (meta.w || MAX_W));
     const w = Math.max(2, Math.round((meta.w || MAX_W) * scale));
     const h = Math.max(2, Math.round((meta.h || 360) * scale));
@@ -518,7 +518,7 @@ function _comprimirVideo(file, meta, onProgress) {
         ]);
       } catch (_) { /* sem áudio — continua só com vídeo */ }
 
-      const recOpts = { videoBitsPerSecond: 700_000, audioBitsPerSecond: 64_000 };
+      const recOpts = { videoBitsPerSecond: 300_000, audioBitsPerSecond: 48_000 };
       if (mimeType) recOpts.mimeType = mimeType;
       const recorder = new MediaRecorder(combinedStream, recOpts);
       const chunks = [];
@@ -583,7 +583,7 @@ async function boletimHandleVideo(input) {
       <div id="bol-comp-fill" style="height:100%;background:#2F8FE0;width:0%;transition:width .4s"></div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:4px">
-      O vídeo é reproduzido internamente para compressão — leva até ${Math.ceil(meta.duration)}s.
+      Comprimindo para envio — leva até ${Math.ceil(meta.duration)}s.
     </div>`);
 
   let blob;
@@ -607,6 +607,20 @@ async function boletimHandleVideo(input) {
     reader.onload = e => resolve(e.target.result);
     reader.readAsDataURL(blob);
   });
+
+  // Firebase RTDB REST API tem limite de ~10 MB por requisição.
+  // Base64 adiciona ~33% — limite seguro: 8 MB binário → ~10,7 MB base64.
+  const MAX_B64 = 10_500_000; // ~10 MB
+  if (dataUrl.length > MAX_B64) {
+    const mbStr = (dataUrl.length / 1_048_576).toFixed(1);
+    const elErr = document.getElementById('bol-video-aviso');
+    if (elErr) {
+      elErr.style.display = 'block';
+      elErr.style.color = '#e05';
+      elErr.innerHTML = `⚠ Vídeo muito grande (${mbStr} MB após compressão). Grave em menor qualidade ou encurte para menos de 1 minuto. Para vídeos mais longos, envie ao YouTube e cole o link.`;
+    }
+    return;
+  }
 
   _pendingMedia = { dataUrl, tipo: 'video' };
   renderPainelCom();
