@@ -481,8 +481,9 @@ function _getVideoMeta(file) {
   });
 }
 
-// Comprime vídeo via canvas + MediaRecorder (apenas vídeo, sem captura de áudio).
-// Robusto em mobile/iOS: falha rápido se browser não suporta captureStream/MediaRecorder.
+// Comprime vídeo via canvas + MediaRecorder.
+// Captura áudio via video.captureStream() (sem AudioContext — mais compatível com mobile).
+// Falha rápido se browser não suporta captureStream/MediaRecorder e usa o arquivo original.
 function _comprimirVideo(file, meta, onProgress) {
   return new Promise((resolve, reject) => {
     // Verificações de suporte antes de qualquer coisa
@@ -493,8 +494,13 @@ function _comprimirVideo(file, meta, onProgress) {
       return reject(new Error('MediaRecorder não suportado'));
     }
 
-    const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']
-      .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
+    // Inclui opus para gravar áudio; iOS falha no captureStream antes de chegar aqui
+    const mimeType = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4'
+    ].find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
 
     if (!mimeType) return reject(new Error('Nenhum codec suportado'));
 
@@ -546,14 +552,29 @@ function _comprimirVideo(file, meta, onProgress) {
     timeoutId = setTimeout(() => fail(new Error('Timeout na compressão')), timeoutMs);
 
     video.oncanplaythrough = () => {
-      let stream;
+      let canvasStream;
       try {
-        stream = canvas.captureStream(24);
+        canvasStream = canvas.captureStream(24);
       } catch (e) {
         return fail(e);
       }
 
-      const recOpts = { videoBitsPerSecond: 300_000 };
+      // Tenta capturar áudio direto do elemento de vídeo (sem AudioContext)
+      let stream = canvasStream;
+      try {
+        if (typeof video.captureStream === 'function') {
+          const videoMediaStream = video.captureStream();
+          const audioTracks = videoMediaStream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            stream = new MediaStream([
+              ...canvasStream.getVideoTracks(),
+              ...audioTracks
+            ]);
+          }
+        }
+      } catch (_) { /* áudio indisponível — continua só com vídeo */ }
+
+      const recOpts = { videoBitsPerSecond: 300_000, audioBitsPerSecond: 96_000 };
       if (mimeType) recOpts.mimeType = mimeType;
 
       try {
