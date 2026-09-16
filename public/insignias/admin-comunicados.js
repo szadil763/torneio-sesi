@@ -478,51 +478,16 @@ function _getVideoDuration(file) {
   });
 }
 
-function _uploadToStorage(file) {
-  const bucket = 'torneio-sesi-20de0.firebasestorage.app';
-  const ext    = (file.name.split('.').pop() || 'mp4').toLowerCase();
-  const nome   = `boletim-videos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-  const url    = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?name=${encodeURIComponent(nome)}`;
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
-
-    xhr.upload.onprogress = e => {
-      if (!e.lengthComputable) return;
-      const pct = Math.round((e.loaded / e.total) * 100);
-      const fill = document.getElementById('bol-prog-fill');
-      const txt  = document.getElementById('bol-prog-txt');
-      if (fill) fill.style.width = pct + '%';
-      if (txt)  txt.textContent  = `Enviando vídeo… ${pct}%`;
-    };
-
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        const resp  = JSON.parse(xhr.responseText);
-        const token = resp.downloadTokens;
-        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(nome)}?alt=media&token=${token}`;
-        resolve(publicUrl);
-      } else {
-        reject(new Error('Upload falhou: ' + xhr.status));
-      }
-    };
-    xhr.onerror = () => reject(new Error('Erro de rede'));
-    xhr.send(file);
-  });
-}
-
 async function boletimHandleVideo(input) {
   const file = input.files[0];
   if (!file) return;
   const aviso = document.getElementById('bol-video-aviso');
   if (aviso) aviso.style.display = 'block';
 
-  const MAX_MB  = 500;
+  const MAX_MB  = 200;
   const MAX_SEG = 120;
   if (file.size > MAX_MB * 1024 * 1024) {
-    alert(`Vídeo muito grande (${(file.size/1024/1024).toFixed(0)} MB). Limite: ${MAX_MB} MB.`);
+    alert(`Vídeo muito grande (${(file.size/1024/1024).toFixed(0)} MB). Limite: ${MAX_MB} MB.\nPara vídeos maiores, envie para o YouTube e cole o link.`);
     input.value = ''; if (aviso) aviso.style.display = 'none'; return;
   }
 
@@ -533,8 +498,13 @@ async function boletimHandleVideo(input) {
     input.value = ''; if (aviso) aviso.style.display = 'none'; return;
   }
 
-  // Blob URL para pré-visualização local (rápido, sem ler o arquivo todo)
-  _pendingMedia = { dataUrl: URL.createObjectURL(file), tipo: 'video', _file: file };
+  if (aviso) aviso.textContent = '⏳ Carregando vídeo…';
+  const dataUrl = await new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+  _pendingMedia = { dataUrl, tipo: 'video' };
   renderPainelCom();
 }
 
@@ -542,38 +512,11 @@ async function boletimConfirmarPendente() {
   if (!_pendingMedia) return;
   const titulo  = (document.getElementById('bol-titulo')?.value  || '').trim();
   const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
-
-  let url = _pendingMedia.dataUrl;
-
-  if (_pendingMedia._file) {
-    // Vídeo local → enviar ao Firebase Storage antes de salvar no RTDB
-    const btn = document.querySelector('[onclick="boletimConfirmarPendente()"]');
-    if (btn) {
-      btn.disabled = true;
-      btn.insertAdjacentHTML('afterend', `
-        <div id="bol-prog-wrap" style="margin-top:8px">
-          <div style="height:6px;background:var(--card-line);border-radius:999px;overflow:hidden">
-            <div id="bol-prog-fill" style="height:100%;background:#2F8FE0;width:0%;transition:width .3s"></div>
-          </div>
-          <div id="bol-prog-txt" style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px">Enviando vídeo…</div>
-        </div>`);
-    }
-    try {
-      url = await _uploadToStorage(_pendingMedia._file);
-      URL.revokeObjectURL(_pendingMedia.dataUrl);
-    } catch (e) {
-      alert('Erro ao enviar vídeo. Verifique a conexão e tente novamente.');
-      if (btn) { btn.disabled = false; }
-      document.getElementById('bol-prog-wrap')?.remove();
-      return;
-    }
-  }
-
   const dados = lerBoletim();
   dados.itens.unshift({
     id: Date.now().toString(36),
     tipo: _pendingMedia.tipo,
-    url,
+    url: _pendingMedia.dataUrl,
     titulo,
     legenda,
     ts: Date.now()
@@ -584,7 +527,6 @@ async function boletimConfirmarPendente() {
 }
 
 function boletimCancelarPendente() {
-  if (_pendingMedia?._file) URL.revokeObjectURL(_pendingMedia.dataUrl);
   _pendingMedia = null;
   renderPainelCom();
 }
