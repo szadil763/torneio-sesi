@@ -49,8 +49,8 @@
     }
 
     .logo-ring {
-      width: 80px;
-      height: 80px;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--azul) 0%, var(--azul-l) 100%);
       display: flex;
@@ -58,8 +58,14 @@
       justify-content: center;
       margin: 0 auto 20px;
       box-shadow: 0 0 0 6px rgba(47,143,224,.15), 0 8px 32px rgba(0,0,0,.5);
-      font-size: 36px;
-      line-height: 1;
+      overflow: hidden;
+      padding: 0;
+    }
+    .logo-ring img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .label-sesi {
@@ -328,7 +334,7 @@
 
     <!-- hero -->
     <div class="hero">
-      <div class="logo-ring">🏆</div>
+      <div class="logo-ring"><img src="/torneio-sesi.jpg" alt="Torneio Infantil SESI"></div>
       <p class="label-sesi">SESI · Torneio Infantil</p>
       <h1 class="titulo">Painel do Torneio</h1>
       <p class="subtitulo">Escolha a modalidade que deseja acessar.</p>
