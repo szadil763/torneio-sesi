@@ -111,10 +111,10 @@ function renderAbaBoletimCom(boletim) {
               <input id="bol-file-camera" type="file" accept="image/*" capture="environment" style="display:none" onchange="boletimHandleFile(this)">
               <label class="bol-upload-btn bol-upload-btn-sec" for="bol-file-input"><span>🖼️</span> Foto da galeria</label>
               <input id="bol-file-input" type="file" accept="image/*" style="display:none" onchange="boletimHandleFile(this)">
-              <label class="bol-upload-btn bol-upload-btn-vid" for="bol-file-video"><span>📹</span> Enviar vídeo</label>
+              <label class="bol-upload-btn bol-upload-btn-vid" for="bol-file-video"><span>📹</span> Vídeo (até 2 min)</label>
               <input id="bol-file-video" type="file" accept="video/*" style="display:none" onchange="boletimHandleVideo(this)">
             </div>
-            <div id="bol-video-aviso" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;text-align:center">⏳ Carregando vídeo…</div>
+            <div id="bol-video-aviso" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;text-align:center">⏳ Verificando vídeo…</div>
             <div class="bol-separador"><span>ou cole um link</span></div>
             <input id="bol-url" type="url" placeholder="Link da foto ou vídeo do YouTube" class="boletim-input">
           `}
@@ -467,23 +467,74 @@ async function boletimHandleFile(input) {
   renderPainelCom();
 }
 
+function _getVideoDuration(file) {
+  return new Promise(resolve => {
+    const blobUrl = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { URL.revokeObjectURL(blobUrl); resolve(v.duration); };
+    v.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(0); };
+    v.src = blobUrl;
+  });
+}
+
+function _uploadToStorage(file) {
+  const bucket = 'torneio-sesi-20de0.firebasestorage.app';
+  const ext    = (file.name.split('.').pop() || 'mp4').toLowerCase();
+  const nome   = `boletim-videos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const url    = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?name=${encodeURIComponent(nome)}`;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+
+    xhr.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      const fill = document.getElementById('bol-prog-fill');
+      const txt  = document.getElementById('bol-prog-txt');
+      if (fill) fill.style.width = pct + '%';
+      if (txt)  txt.textContent  = `Enviando vídeo… ${pct}%`;
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const resp  = JSON.parse(xhr.responseText);
+        const token = resp.downloadTokens;
+        const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(nome)}?alt=media&token=${token}`;
+        resolve(publicUrl);
+      } else {
+        reject(new Error('Upload falhou: ' + xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Erro de rede'));
+    xhr.send(file);
+  });
+}
+
 async function boletimHandleVideo(input) {
   const file = input.files[0];
   if (!file) return;
-  const MAX_MB = 50;
-  if (file.size > MAX_MB * 1024 * 1024) {
-    alert(`Vídeo muito grande (${(file.size/1024/1024).toFixed(0)} MB). Limite: ${MAX_MB} MB.\nPara vídeos maiores, envie para o YouTube e cole o link.`);
-    input.value = '';
-    return;
-  }
   const aviso = document.getElementById('bol-video-aviso');
   if (aviso) aviso.style.display = 'block';
-  const dataUrl = await new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result);
-    reader.readAsDataURL(file);
-  });
-  _pendingMedia = { dataUrl, tipo: 'video' };
+
+  const MAX_MB  = 500;
+  const MAX_SEG = 120;
+  if (file.size > MAX_MB * 1024 * 1024) {
+    alert(`Vídeo muito grande (${(file.size/1024/1024).toFixed(0)} MB). Limite: ${MAX_MB} MB.`);
+    input.value = ''; if (aviso) aviso.style.display = 'none'; return;
+  }
+
+  const duracao = await _getVideoDuration(file);
+  if (duracao > MAX_SEG) {
+    const min = Math.floor(duracao / 60), seg = Math.round(duracao % 60);
+    alert(`Vídeo muito longo (${min}m ${seg}s). Limite: 2 minutos.\nPara vídeos mais longos, envie para o YouTube e cole o link.`);
+    input.value = ''; if (aviso) aviso.style.display = 'none'; return;
+  }
+
+  // Blob URL para pré-visualização local (rápido, sem ler o arquivo todo)
+  _pendingMedia = { dataUrl: URL.createObjectURL(file), tipo: 'video', _file: file };
   renderPainelCom();
 }
 
@@ -491,11 +542,38 @@ async function boletimConfirmarPendente() {
   if (!_pendingMedia) return;
   const titulo  = (document.getElementById('bol-titulo')?.value  || '').trim();
   const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
+
+  let url = _pendingMedia.dataUrl;
+
+  if (_pendingMedia._file) {
+    // Vídeo local → enviar ao Firebase Storage antes de salvar no RTDB
+    const btn = document.querySelector('[onclick="boletimConfirmarPendente()"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.insertAdjacentHTML('afterend', `
+        <div id="bol-prog-wrap" style="margin-top:8px">
+          <div style="height:6px;background:var(--card-line);border-radius:999px;overflow:hidden">
+            <div id="bol-prog-fill" style="height:100%;background:#2F8FE0;width:0%;transition:width .3s"></div>
+          </div>
+          <div id="bol-prog-txt" style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px">Enviando vídeo…</div>
+        </div>`);
+    }
+    try {
+      url = await _uploadToStorage(_pendingMedia._file);
+      URL.revokeObjectURL(_pendingMedia.dataUrl);
+    } catch (e) {
+      alert('Erro ao enviar vídeo. Verifique a conexão e tente novamente.');
+      if (btn) { btn.disabled = false; }
+      document.getElementById('bol-prog-wrap')?.remove();
+      return;
+    }
+  }
+
   const dados = lerBoletim();
   dados.itens.unshift({
     id: Date.now().toString(36),
     tipo: _pendingMedia.tipo,
-    url: _pendingMedia.dataUrl,
+    url,
     titulo,
     legenda,
     ts: Date.now()
@@ -506,6 +584,7 @@ async function boletimConfirmarPendente() {
 }
 
 function boletimCancelarPendente() {
+  if (_pendingMedia?._file) URL.revokeObjectURL(_pendingMedia.dataUrl);
   _pendingMedia = null;
   renderPainelCom();
 }
