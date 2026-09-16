@@ -82,7 +82,7 @@ function copiarLinkComunicados() {
 
 // ── Aba Boletim ───────────────────────────────────────────────────
 let bolAbaAtiva = 'midia';
-let _pendingMedia = null; // { dataUrl, tipo: 'imagem'|'video' }
+let _pendingMedia = null; // imagem: { dataUrl, tipo:'imagem' } | video: { blob, blobUrl, tipo:'video' }
 
 function renderAbaBoletimCom(boletim) {
   const itens = boletim.itens || [];
@@ -100,7 +100,7 @@ function renderAbaBoletimCom(boletim) {
             <!-- Preview da mídia pendente -->
             <div class="bol-pending-wrap">
               ${_pendingMedia.tipo === 'video'
-                ? `<video src="${_pendingMedia.dataUrl}" class="bol-pending-preview" muted playsinline controls preload="metadata"></video>`
+                ? `<video src="${_pendingMedia.blobUrl}" class="bol-pending-preview" muted playsinline controls preload="metadata"></video>`
                 : `<img src="${_pendingMedia.dataUrl}" class="bol-pending-preview">`}
               <button class="bol-pending-cancel" onclick="boletimCancelarPendente()">✕ Cancelar</button>
             </div>
@@ -649,14 +649,13 @@ async function boletimHandleVideo(input) {
     }
   }
 
-  _avisoComp('⏳ Preparando pré-visualização…');
-  const dataUrl = await new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result);
-    reader.readAsDataURL(blob);
-  });
+  // Revoga blobUrl anterior se existir
+  if (_pendingMedia && _pendingMedia.blobUrl) URL.revokeObjectURL(_pendingMedia.blobUrl);
 
-  _pendingMedia = { dataUrl, tipo: 'video' };
+  const avEl = document.getElementById('bol-video-aviso');
+  if (avEl) avEl.style.display = 'none';
+
+  _pendingMedia = { blob, blobUrl: URL.createObjectURL(blob), tipo: 'video' };
   renderPainelCom();
 }
 
@@ -672,15 +671,16 @@ async function boletimConfirmarPendente() {
   if (erroEl) erroEl.textContent = '';
 
   const id = Date.now().toString(36);
-  let url = _pendingMedia.dataUrl;
+  let url = _pendingMedia.dataUrl || '';
   let videoId = null;
 
   try {
     if (_pendingMedia.tipo === 'video') {
       if (btn) btn.textContent = '⏳ Enviando vídeo…';
-      await salvarVideoBoletim(id, _pendingMedia.dataUrl, (atual, total) => {
+      await salvarVideoBoletim(id, _pendingMedia.blob, (atual, total) => {
         if (btn) btn.textContent = `⏳ Enviando vídeo (${atual}/${total})…`;
       });
+      if (_pendingMedia.blobUrl) URL.revokeObjectURL(_pendingMedia.blobUrl);
       videoId = id;
       url = '';
     }
@@ -699,6 +699,7 @@ async function boletimConfirmarPendente() {
 }
 
 function boletimCancelarPendente() {
+  if (_pendingMedia && _pendingMedia.blobUrl) URL.revokeObjectURL(_pendingMedia.blobUrl);
   _pendingMedia = null;
   renderPainelCom();
 }

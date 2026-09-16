@@ -466,24 +466,16 @@ function renderBoletimCom(boletim) {
 }
 
 // ── Carrega vídeos lazy (buscados do RTDB após render) ────────────
-function _dataUrlToBlobUrl(dataUrl) {
-  const arr  = dataUrl.split(',');
-  const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'video/webm';
-  const bstr = atob(arr[1]);
-  const u8   = new Uint8Array(bstr.length);
-  for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
-  return URL.createObjectURL(new Blob([u8], { type: mime }));
-}
-
+// carregarVideoBoletim() já retorna uma Blob URL — usa direto no src.
 async function carregarVideosPendentes() {
   const videos = document.querySelectorAll('video[data-video-id]');
   for (const video of videos) {
     const id = video.dataset.videoId;
     const aviso = document.querySelector(`.bol-video-carregando[data-for="${id}"]`);
     try {
-      const dataUrl = await carregarVideoBoletim(id);
-      if (dataUrl) {
-        video.src = _dataUrlToBlobUrl(dataUrl);
+      const blobUrl = await carregarVideoBoletim(id);
+      if (blobUrl) {
+        video.src = blobUrl;
         video.load();
         if (aviso) aviso.remove();
       } else {

@@ -135,57 +135,89 @@ async function salvarBoletim(dados) {
   if (!resp.ok) throw new Error('RTDB boletim: ' + resp.status);
 }
 
-// Salva o dataUrl de um vídeo dividido em chunks de 1,4 MB para contornar
-// o limite de 10 MB por requisição REST do Firebase RTDB.
-// onProgress(atual, total) é opcional — chamado após cada chunk enviado.
-const _CHUNK_SIZE = 1_400_000; // 1,4 MB por chunk em base64
+// Salva um Blob de vídeo em chunks binários (~1 MB cada) no Firebase RTDB.
+// Cada chunk é convertido para base64 individualmente — nunca cria a string
+// base64 completa em memória. onProgress(atual, total) é opcional.
+const _BLOB_CHUNK = 1_050_000; // ~1 MB binário → ~1,4 MB base64
 
-async function salvarVideoBoletim(id, dataUrl, onProgress) {
-  const chunks = [];
-  for (let i = 0; i < dataUrl.length; i += _CHUNK_SIZE) {
-    chunks.push(dataUrl.slice(i, i + _CHUNK_SIZE));
-  }
-  const n = chunks.length;
+async function salvarVideoBoletim(id, blob, onProgress) {
+  const n = Math.ceil(blob.size / _BLOB_CHUNK);
+  const mime = blob.type || 'video/mp4';
+
   for (let i = 0; i < n; i++) {
+    const slice = blob.slice(i * _BLOB_CHUNK, (i + 1) * _BLOB_CHUNK);
+    const b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = e => resolve(e.target.result.split(',')[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(slice);
+    });
     const resp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/c${i}.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(chunks[i])
+      body: JSON.stringify(b64)
     });
     if (!resp.ok) throw new Error(`RTDB bol-video chunk ${i}: ${resp.status}`);
-    if (onProgress) onProgress(i + 1, n);
+    if (onProgress) onProgress(i + 1, n + 1);
   }
-  // Salva o total por último — serve como marcador de conclusão
+
+  await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/mime.json`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(mime)
+  });
   const metaResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/n.json`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(n)
   });
   if (!metaResp.ok) throw new Error('RTDB bol-video meta: ' + metaResp.status);
-  return `${RTDB_BOL_VIDEOS_BASE}/${id}`;
+  if (onProgress) onProgress(n + 1, n + 1);
 }
 
-// Carrega o dataUrl de um vídeo — suporta formato chunked (novo) e legado (string direta).
+// Carrega o vídeo e retorna uma Blob URL pronta para uso em <video src>.
+// Suporta formato novo (chunks binários + mime) e legados (chunks dataUrl / string direta).
 async function carregarVideoBoletim(id) {
   try {
-    // Novo formato: nó {n, c0, c1, ...}
     const nResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/n.json`);
-    if (nResp.ok) {
-      const n = await nResp.json();
-      if (typeof n === 'number' && n > 0) {
-        const parts = await Promise.all(
-          Array.from({ length: n }, (_, i) =>
-            fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/c${i}.json`).then(r => r.json())
-          )
-        );
-        return parts.join('');
-      }
+    if (!nResp.ok) throw new Error('n.json não encontrado');
+    const n = await nResp.json();
+
+    if (typeof n === 'number' && n > 0) {
+      const mimeResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/mime.json`);
+      const mime = mimeResp.ok ? await mimeResp.json() : null;
+
+      const parts = await Promise.all(
+        Array.from({ length: n }, (_, i) =>
+          fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/c${i}.json`).then(r => r.json())
+        )
+      );
+
+      const b64 = mime
+        ? parts.join('')                           // novo formato: base64 puro
+        : parts.join('').replace(/^data:[^,]+,/, ''); // legado: remove prefixo dataUrl
+      const effectiveMime = mime || 'video/mp4';
+
+      const bytes = atob(b64);
+      const u8 = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) u8[i] = bytes.charCodeAt(i);
+      return URL.createObjectURL(new Blob([u8], { type: effectiveMime }));
     }
-    // Formato legado: dataUrl direto no nó raiz
+  } catch (_) {}
+
+  // Formato mais antigo: dataUrl direto no nó raiz
+  try {
     const legacyResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}.json`);
     if (legacyResp.ok) {
       const data = await legacyResp.json();
-      return typeof data === 'string' ? data : null;
+      if (typeof data === 'string' && data.startsWith('data:')) {
+        const arr  = data.split(',');
+        const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'video/mp4';
+        const bytes = atob(arr[1]);
+        const u8 = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) u8[i] = bytes.charCodeAt(i);
+        return URL.createObjectURL(new Blob([u8], { type: mime }));
+      }
     }
   } catch (_) {}
   return null;
