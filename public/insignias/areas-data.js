@@ -89,8 +89,10 @@ function conquistouArea(estado, areaId, teamId) {
 
 // ── Boletim do Torneio ────────────────────────────────────────────
 // Armazenado no Firebase RTDB para ser visível em todos os dispositivos.
-const STORAGE_KEY_BOLETIM = "torneio-boletim:v1"; // cache local
-const RTDB_BOLETIM_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/boletim.json";
+// Vídeos são guardados em /bol-videos/{id} separadamente para não pesar o nó principal.
+const STORAGE_KEY_BOLETIM = "torneio-boletim:v1"; // cache local (sem dataUrl de vídeo)
+const RTDB_BOLETIM_URL    = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/boletim.json";
+const RTDB_BOL_VIDEOS_BASE = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/bol-videos";
 
 let _boletimCache = null;
 
@@ -110,26 +112,55 @@ async function carregarBoletim() {
     if (resp.ok) {
       const data = await resp.json();
       _boletimCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
-      localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(_boletimCache));
+      // Salva no localStorage apenas os metadados (sem dataUrl de vídeo)
+      const semVideos = { itens: _boletimCache.itens.map(i => i.videoId ? { ...i, url: '' } : i) };
+      try { localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(semVideos)); } catch (_) {}
       return _boletimCache;
     }
   } catch (_) {}
-  // Fallback: usa cache local
   _boletimCache = lerBoletim();
   return _boletimCache;
 }
 
-// Salva no Firebase e atualiza cache local.
+// Salva metadados do boletim no Firebase (sem dataUrl de vídeo).
 async function salvarBoletim(dados) {
   _boletimCache = dados;
-  localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(dados));
+  const semVideos = { itens: dados.itens.map(i => i.videoId ? { ...i, url: '' } : i) };
+  try { localStorage.setItem(STORAGE_KEY_BOLETIM, JSON.stringify(semVideos)); } catch (_) {}
+  const resp = await fetch(RTDB_BOLETIM_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(semVideos)
+  });
+  if (!resp.ok) throw new Error('RTDB boletim: ' + resp.status);
+}
+
+// Salva o dataUrl de um vídeo num nó separado. Retorna a URL pública de acesso.
+async function salvarVideoBoletim(id, dataUrl) {
+  const url = `${RTDB_BOL_VIDEOS_BASE}/${id}.json`;
+  const resp = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dataUrl)
+  });
+  if (!resp.ok) throw new Error('RTDB bol-video: ' + resp.status);
+  return `${RTDB_BOL_VIDEOS_BASE}/${id}.json`;
+}
+
+// Carrega o dataUrl de um vídeo individual (chamado sob demanda na tela pública).
+async function carregarVideoBoletim(id) {
   try {
-    await fetch(RTDB_BOLETIM_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dados)
-    });
-  } catch (_) {} // Falha silenciosa — localStorage mantém cópia
+    const resp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}.json`);
+    if (resp.ok) return await resp.json(); // retorna o dataUrl
+  } catch (_) {}
+  return null;
+}
+
+// Remove o vídeo separado ao deletar um item.
+async function removerVideoBoletim(id) {
+  try {
+    await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}.json`, { method: 'DELETE' });
+  } catch (_) {}
 }
 
 // ── Recados dos Professores ───────────────────────────────────────

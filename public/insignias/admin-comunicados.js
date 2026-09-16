@@ -616,18 +616,37 @@ async function boletimConfirmarPendente() {
   if (!_pendingMedia) return;
   const titulo  = (document.getElementById('bol-titulo')?.value  || '').trim();
   const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
-  const dados = lerBoletim();
-  dados.itens.unshift({
-    id: Date.now().toString(36),
-    tipo: _pendingMedia.tipo,
-    url: _pendingMedia.dataUrl,
-    titulo,
-    legenda,
-    ts: Date.now()
-  });
-  await salvarBoletim(dados);
-  _pendingMedia = null;
-  renderPainelCom();
+
+  // Feedback visual: desabilita botão e mostra progresso
+  const btn = document.querySelector('[onclick="boletimConfirmarPendente()"]');
+  const erroEl = document.getElementById('bol-erro');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
+  if (erroEl) erroEl.textContent = '';
+
+  const id = Date.now().toString(36);
+  let url = _pendingMedia.dataUrl;
+  let videoId = null;
+
+  try {
+    if (_pendingMedia.tipo === 'video') {
+      // Salva o dataUrl do vídeo num nó separado (/bol-videos/{id})
+      if (btn) btn.textContent = '⏳ Enviando vídeo…';
+      await salvarVideoBoletim(id, _pendingMedia.dataUrl);
+      videoId = id;
+      url = ''; // não guardamos o dataUrl no nó principal
+    }
+
+    const dados = lerBoletim();
+    dados.itens.unshift({ id, tipo: _pendingMedia.tipo, url, videoId, titulo, legenda, ts: Date.now() });
+    if (btn) btn.textContent = '⏳ Salvando boletim…';
+    await salvarBoletim(dados);
+
+    _pendingMedia = null;
+    renderPainelCom();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Adicionar ao boletim'; }
+    if (erroEl) erroEl.textContent = '⚠ Falha ao salvar. Verifique a conexão e tente novamente.';
+  }
 }
 
 function boletimCancelarPendente() {
@@ -667,7 +686,8 @@ async function boletimAdicionar() {
 async function boletimRemover(idx) {
   if (!confirm('Remover este item do boletim?')) return;
   const dados = lerBoletim();
-  dados.itens.splice(idx, 1);
+  const [removido] = dados.itens.splice(idx, 1);
+  if (removido?.videoId) removerVideoBoletim(removido.videoId); // apaga vídeo separado
   await salvarBoletim(dados);
   renderPainelCom();
 }

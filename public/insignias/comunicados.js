@@ -431,13 +431,21 @@ function renderBoletimCom(boletim) {
     <div class="boletim-galeria">
       ${itens.map(item => {
         if (item.tipo === 'noticia') return renderNoticiaCard(item);
-        const tipo = detectarTipoMidia(item.url || '');
+        const tipo = item.videoId ? 'video' : detectarTipoMidia(item.url || '');
         const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
         const midia = vid
           ? `<div class="bol-video-wrap">
                <iframe src="https://www.youtube.com/embed/${vid}?rel=0" frameborder="0"
                  allowfullscreen allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
                  class="bol-iframe"></iframe>
+             </div>`
+          : item.videoId
+          ? `<div class="bol-video-wrap">
+               <video data-video-id="${item.videoId}" controls playsinline class="bol-iframe bol-video-lazy"
+                 style="background:#111;width:100%;max-height:360px;object-fit:contain">
+                 <source src="" type="video/webm">
+               </video>
+               <div class="bol-video-carregando" data-for="${item.videoId}">⏳ Carregando vídeo…</div>
              </div>`
           : tipo === 'video'
           ? `<div class="bol-video-wrap">
@@ -457,6 +465,27 @@ function renderBoletimCom(boletim) {
       }).join('')}
     </div>`;
   document.getElementById('app').appendChild(secao);
+}
+
+// ── Carrega vídeos lazy (buscados do RTDB após render) ────────────
+async function carregarVideosPendentes() {
+  const videos = document.querySelectorAll('video[data-video-id]');
+  for (const video of videos) {
+    const id = video.dataset.videoId;
+    const aviso = document.querySelector(`.bol-video-carregando[data-for="${id}"]`);
+    try {
+      const dataUrl = await carregarVideoBoletim(id);
+      if (dataUrl) {
+        video.src = dataUrl;
+        video.load();
+      } else {
+        if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
+      }
+    } catch (_) {
+      if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
+    }
+    if (aviso && video.src && video.src !== location.href) aviso.remove();
+  }
 }
 
 // ── Página principal ──────────────────────────────────────────────
@@ -493,6 +522,7 @@ async function renderComunicados() {
   renderRecados(recados);
   renderDicas(dicas);
   renderBoletimCom(boletim);
+  carregarVideosPendentes();
 
   app.insertAdjacentHTML('beforeend', `
     <div class="com-rodape">${tc('rodape')}</div>`);
