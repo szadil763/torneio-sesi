@@ -433,9 +433,7 @@ function renderPaginaEstojos() {
             : item.videoId
             ? `<div class="bol-video-wrap">
                  <video data-video-id="${item.videoId}" controls playsinline class="bol-iframe bol-video-lazy"
-                   style="background:#111;width:100%;max-height:360px;object-fit:contain">
-                   <source src="" type="video/webm">
-                 </video>
+                   style="background:#111;width:100%;max-height:360px;object-fit:contain"></video>
                  <div class="bol-video-carregando" data-for="${item.videoId}">⏳ Carregando vídeo…</div>
                </div>`
             : tipo === 'video'
@@ -460,6 +458,15 @@ function renderPaginaEstojos() {
   }
 }
 
+function _dataUrlToBlobUrlAlunos(dataUrl) {
+  const arr  = dataUrl.split(',');
+  const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'video/webm';
+  const bstr = atob(arr[1]);
+  const u8   = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+  return URL.createObjectURL(new Blob([u8], { type: mime }));
+}
+
 async function carregarVideosPendentesAlunos() {
   const videos = document.querySelectorAll('video[data-video-id]');
   for (const video of videos) {
@@ -468,15 +475,15 @@ async function carregarVideosPendentesAlunos() {
     try {
       const dataUrl = await carregarVideoBoletim(id);
       if (dataUrl) {
-        video.src = dataUrl;
+        video.src = _dataUrlToBlobUrlAlunos(dataUrl);
         video.load();
+        if (aviso) aviso.remove();
       } else {
         if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
       }
     } catch (_) {
       if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
     }
-    if (aviso && video.src && video.src !== location.href) aviso.remove();
   }
 }
 

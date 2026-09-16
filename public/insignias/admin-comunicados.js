@@ -573,32 +573,38 @@ async function boletimHandleVideo(input) {
     return;
   }
 
-  // Comprime o vídeo para ~10–15 MB (640px, 700 kbps)
-  _avisoComp(`
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
-      ⚙️ Comprimindo vídeo — aguarde…
-      <span id="bol-comp-pct" style="font-weight:700">0%</span>
-    </div>
-    <div style="height:5px;background:var(--card-line);border-radius:999px;overflow:hidden">
-      <div id="bol-comp-fill" style="height:100%;background:#2F8FE0;width:0%;transition:width .4s"></div>
-    </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px">
-      Comprimindo para envio — leva até ${Math.ceil(meta.duration)}s.
-    </div>`);
-
+  // Arquivo já pequeno o suficiente (< 6 MB) — pula a compressão.
+  // 6 MB binário → ~8 MB base64, bem abaixo do limite de 10 MB do RTDB.
+  const SKIP_SIZE = 6_000_000;
   let blob;
-  try {
-    blob = await _comprimirVideo(file, meta, pct => {
-      const fill = document.getElementById('bol-comp-fill');
-      const txt  = document.getElementById('bol-comp-pct');
-      if (fill) fill.style.width = Math.round(pct * 100) + '%';
-      if (txt)  txt.textContent  = Math.round(pct * 100) + '%';
-    });
-  } catch (e) {
-    // Fallback: lê o arquivo original sem compressão
-    console.warn('Compressão falhou, usando arquivo original:', e);
-    _avisoComp('⏳ Carregando vídeo original…');
+  if (file.size <= SKIP_SIZE) {
+    _avisoComp('⏳ Vídeo já compacto, carregando…');
     blob = file;
+  } else {
+    _avisoComp(`
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+        ⚙️ Comprimindo vídeo — aguarde…
+        <span id="bol-comp-pct" style="font-weight:700">0%</span>
+      </div>
+      <div style="height:5px;background:var(--card-line);border-radius:999px;overflow:hidden">
+        <div id="bol-comp-fill" style="height:100%;background:#2F8FE0;width:0%;transition:width .4s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">
+        Comprimindo para envio — leva até ${Math.ceil(meta.duration)}s.
+      </div>`);
+
+    try {
+      blob = await _comprimirVideo(file, meta, pct => {
+        const fill = document.getElementById('bol-comp-fill');
+        const txt  = document.getElementById('bol-comp-pct');
+        if (fill) fill.style.width = Math.round(pct * 100) + '%';
+        if (txt)  txt.textContent  = Math.round(pct * 100) + '%';
+      });
+    } catch (e) {
+      console.warn('Compressão falhou, usando arquivo original:', e);
+      _avisoComp('⏳ Carregando vídeo original…');
+      blob = file;
+    }
   }
 
   _avisoComp('⏳ Preparando pré-visualização…');
