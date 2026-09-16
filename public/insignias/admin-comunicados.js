@@ -615,9 +615,9 @@ async function boletimHandleVideo(input) {
     return;
   }
 
-  // Arquivo já pequeno o suficiente (< 6 MB) — pula a compressão.
-  // 6 MB binário → ~8 MB base64, bem abaixo do limite de 10 MB do RTDB.
-  const SKIP_SIZE = 6_000_000;
+  // Upload é feito em chunks — sem limite de tamanho por requisição.
+  // Pula compressão para arquivos já pequenos (< 20 MB).
+  const SKIP_SIZE = 20_000_000;
   let blob;
   if (file.size <= SKIP_SIZE) {
     _avisoComp('⏳ Vídeo já compacto, carregando…');
@@ -655,20 +655,6 @@ async function boletimHandleVideo(input) {
     reader.onload = e => resolve(e.target.result);
     reader.readAsDataURL(blob);
   });
-
-  // Firebase RTDB REST API tem limite de ~10 MB por requisição.
-  // Base64 adiciona ~33% — limite seguro: 8 MB binário → ~10,7 MB base64.
-  const MAX_B64 = 10_500_000; // ~10 MB
-  if (dataUrl.length > MAX_B64) {
-    const mbStr = (dataUrl.length / 1_048_576).toFixed(1);
-    const elErr = document.getElementById('bol-video-aviso');
-    if (elErr) {
-      elErr.style.display = 'block';
-      elErr.style.color = '#e05';
-      elErr.innerHTML = `⚠ Vídeo muito grande (${mbStr} MB após compressão). Grave em menor qualidade ou encurte para menos de 1 minuto. Para vídeos mais longos, envie ao YouTube e cole o link.`;
-    }
-    return;
-  }
 
   _pendingMedia = { dataUrl, tipo: 'video' };
   renderPainelCom();
