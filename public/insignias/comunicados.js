@@ -495,6 +495,7 @@ async function renderComunicados() {
       ${_langCom === 'pt' ? '🇺🇸 EN' : '🇧🇷 PT'}
     </button>
     <div class="com-header">
+      <img src="/torneio-sesi.jpg" alt="Torneio Infantil SESI" class="com-header-img">
       <div class="com-logo">
         <span class="com-logo-detalhe"></span>
         SESI TORNEIO INFANTIL
