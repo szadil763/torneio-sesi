@@ -467,43 +467,147 @@ async function boletimHandleFile(input) {
   renderPainelCom();
 }
 
-function _getVideoDuration(file) {
+function _getVideoMeta(file) {
   return new Promise(resolve => {
     const blobUrl = URL.createObjectURL(file);
     const v = document.createElement('video');
     v.preload = 'metadata';
-    v.onloadedmetadata = () => { URL.revokeObjectURL(blobUrl); resolve(v.duration); };
-    v.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(0); };
+    v.onloadedmetadata = () => {
+      URL.revokeObjectURL(blobUrl);
+      resolve({ duration: v.duration, w: v.videoWidth, h: v.videoHeight });
+    };
+    v.onerror = () => { URL.revokeObjectURL(blobUrl); resolve({ duration: 0, w: 0, h: 0 }); };
     v.src = blobUrl;
   });
+}
+
+// Comprime vídeo via canvas + MediaRecorder.
+// Reproduz o vídeo em velocidade normal (necessário para captura de áudio correta).
+function _comprimirVideo(file, meta, onProgress) {
+  return new Promise((resolve, reject) => {
+    const MAX_W = 640;
+    const scale = Math.min(1, MAX_W / (meta.w || MAX_W));
+    const w = Math.max(2, Math.round((meta.w || MAX_W) * scale));
+    const h = Math.max(2, Math.round((meta.h || 360) * scale));
+
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(file);
+    video.muted = true; // sem auto-play com som
+    video.preload = 'auto';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']
+      .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
+
+    video.oncanplaythrough = () => {
+      const videoStream = canvas.captureStream(24);
+
+      // Adiciona áudio se possível
+      let combinedStream = videoStream;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = audioCtx.createMediaElementSource(video);
+        const audioDest = audioCtx.createMediaStreamDestination();
+        src.connect(audioDest);
+        combinedStream = new MediaStream([
+          ...videoStream.getVideoTracks(),
+          ...audioDest.stream.getAudioTracks()
+        ]);
+      } catch (_) { /* sem áudio — continua só com vídeo */ }
+
+      const recOpts = { videoBitsPerSecond: 700_000, audioBitsPerSecond: 64_000 };
+      if (mimeType) recOpts.mimeType = mimeType;
+      const recorder = new MediaRecorder(combinedStream, recOpts);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(new Blob(chunks, { type: mimeType || 'video/webm' }));
+      };
+      recorder.onerror = reject;
+
+      recorder.start(200);
+      video.muted = false;
+      video.play().catch(() => {});
+
+      let frameId;
+      const draw = () => {
+        if (video.ended || video.paused) return;
+        ctx.drawImage(video, 0, 0, w, h);
+        if (onProgress && meta.duration) onProgress(video.currentTime / meta.duration);
+        frameId = requestAnimationFrame(draw);
+      };
+      video.onplay  = () => { frameId = requestAnimationFrame(draw); };
+      video.onended = () => { cancelAnimationFrame(frameId); recorder.stop(); };
+      video.onerror = reject;
+    };
+
+    video.onerror = reject;
+  });
+}
+
+function _avisoComp(html) {
+  const el = document.getElementById('bol-video-aviso');
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = html;
 }
 
 async function boletimHandleVideo(input) {
   const file = input.files[0];
   if (!file) return;
-  const aviso = document.getElementById('bol-video-aviso');
-  if (aviso) aviso.style.display = 'block';
+  input.value = '';
 
-  const MAX_MB  = 200;
+  _avisoComp('⏳ Verificando vídeo…');
+
   const MAX_SEG = 120;
-  if (file.size > MAX_MB * 1024 * 1024) {
-    alert(`Vídeo muito grande (${(file.size/1024/1024).toFixed(0)} MB). Limite: ${MAX_MB} MB.\nPara vídeos maiores, envie para o YouTube e cole o link.`);
-    input.value = ''; if (aviso) aviso.style.display = 'none'; return;
-  }
-
-  const duracao = await _getVideoDuration(file);
-  if (duracao > MAX_SEG) {
-    const min = Math.floor(duracao / 60), seg = Math.round(duracao % 60);
+  const meta = await _getVideoMeta(file);
+  if (meta.duration > MAX_SEG) {
+    const min = Math.floor(meta.duration / 60), seg = Math.round(meta.duration % 60);
     alert(`Vídeo muito longo (${min}m ${seg}s). Limite: 2 minutos.\nPara vídeos mais longos, envie para o YouTube e cole o link.`);
-    input.value = ''; if (aviso) aviso.style.display = 'none'; return;
+    const el = document.getElementById('bol-video-aviso');
+    if (el) el.style.display = 'none';
+    return;
   }
 
-  if (aviso) aviso.textContent = '⏳ Carregando vídeo…';
+  // Comprime o vídeo para ~10–15 MB (640px, 700 kbps)
+  _avisoComp(`
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+      ⚙️ Comprimindo vídeo — aguarde…
+      <span id="bol-comp-pct" style="font-weight:700">0%</span>
+    </div>
+    <div style="height:5px;background:var(--card-line);border-radius:999px;overflow:hidden">
+      <div id="bol-comp-fill" style="height:100%;background:#2F8FE0;width:0%;transition:width .4s"></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px">
+      O vídeo é reproduzido internamente para compressão — leva até ${Math.ceil(meta.duration)}s.
+    </div>`);
+
+  let blob;
+  try {
+    blob = await _comprimirVideo(file, meta, pct => {
+      const fill = document.getElementById('bol-comp-fill');
+      const txt  = document.getElementById('bol-comp-pct');
+      if (fill) fill.style.width = Math.round(pct * 100) + '%';
+      if (txt)  txt.textContent  = Math.round(pct * 100) + '%';
+    });
+  } catch (e) {
+    // Fallback: lê o arquivo original sem compressão
+    console.warn('Compressão falhou, usando arquivo original:', e);
+    _avisoComp('⏳ Carregando vídeo original…');
+    blob = file;
+  }
+
+  _avisoComp('⏳ Preparando pré-visualização…');
   const dataUrl = await new Promise(resolve => {
     const reader = new FileReader();
     reader.onload = e => resolve(e.target.result);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
+
   _pendingMedia = { dataUrl, tipo: 'video' };
   renderPainelCom();
 }
