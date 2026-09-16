@@ -135,23 +135,58 @@ async function salvarBoletim(dados) {
   if (!resp.ok) throw new Error('RTDB boletim: ' + resp.status);
 }
 
-// Salva o dataUrl de um vídeo num nó separado. Retorna a URL pública de acesso.
-async function salvarVideoBoletim(id, dataUrl) {
-  const url = `${RTDB_BOL_VIDEOS_BASE}/${id}.json`;
-  const resp = await fetch(url, {
+// Salva o dataUrl de um vídeo dividido em chunks de 1,4 MB para contornar
+// o limite de 10 MB por requisição REST do Firebase RTDB.
+// onProgress(atual, total) é opcional — chamado após cada chunk enviado.
+const _CHUNK_SIZE = 1_400_000; // 1,4 MB por chunk em base64
+
+async function salvarVideoBoletim(id, dataUrl, onProgress) {
+  const chunks = [];
+  for (let i = 0; i < dataUrl.length; i += _CHUNK_SIZE) {
+    chunks.push(dataUrl.slice(i, i + _CHUNK_SIZE));
+  }
+  const n = chunks.length;
+  for (let i = 0; i < n; i++) {
+    const resp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/c${i}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(chunks[i])
+    });
+    if (!resp.ok) throw new Error(`RTDB bol-video chunk ${i}: ${resp.status}`);
+    if (onProgress) onProgress(i + 1, n);
+  }
+  // Salva o total por último — serve como marcador de conclusão
+  const metaResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/n.json`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dataUrl)
+    body: JSON.stringify(n)
   });
-  if (!resp.ok) throw new Error('RTDB bol-video: ' + resp.status);
-  return `${RTDB_BOL_VIDEOS_BASE}/${id}.json`;
+  if (!metaResp.ok) throw new Error('RTDB bol-video meta: ' + metaResp.status);
+  return `${RTDB_BOL_VIDEOS_BASE}/${id}`;
 }
 
-// Carrega o dataUrl de um vídeo individual (chamado sob demanda na tela pública).
+// Carrega o dataUrl de um vídeo — suporta formato chunked (novo) e legado (string direta).
 async function carregarVideoBoletim(id) {
   try {
-    const resp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}.json`);
-    if (resp.ok) return await resp.json(); // retorna o dataUrl
+    // Novo formato: nó {n, c0, c1, ...}
+    const nResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/n.json`);
+    if (nResp.ok) {
+      const n = await nResp.json();
+      if (typeof n === 'number' && n > 0) {
+        const parts = await Promise.all(
+          Array.from({ length: n }, (_, i) =>
+            fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}/c${i}.json`).then(r => r.json())
+          )
+        );
+        return parts.join('');
+      }
+    }
+    // Formato legado: dataUrl direto no nó raiz
+    const legacyResp = await fetch(`${RTDB_BOL_VIDEOS_BASE}/${id}.json`);
+    if (legacyResp.ok) {
+      const data = await legacyResp.json();
+      return typeof data === 'string' ? data : null;
+    }
   } catch (_) {}
   return null;
 }

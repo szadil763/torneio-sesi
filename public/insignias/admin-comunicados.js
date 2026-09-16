@@ -649,11 +649,12 @@ async function boletimConfirmarPendente() {
 
   try {
     if (_pendingMedia.tipo === 'video') {
-      // Salva o dataUrl do vídeo num nó separado (/bol-videos/{id})
       if (btn) btn.textContent = '⏳ Enviando vídeo…';
-      await salvarVideoBoletim(id, _pendingMedia.dataUrl);
+      await salvarVideoBoletim(id, _pendingMedia.dataUrl, (atual, total) => {
+        if (btn) btn.textContent = `⏳ Enviando vídeo (${atual}/${total})…`;
+      });
       videoId = id;
-      url = ''; // não guardamos o dataUrl no nó principal
+      url = '';
     }
 
     const dados = lerBoletim();
