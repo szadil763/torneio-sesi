@@ -481,71 +481,113 @@ function _getVideoMeta(file) {
   });
 }
 
-// Comprime vídeo via canvas + MediaRecorder.
-// Reproduz o vídeo em velocidade normal (necessário para captura de áudio correta).
+// Comprime vídeo via canvas + MediaRecorder (apenas vídeo, sem captura de áudio).
+// Robusto em mobile/iOS: falha rápido se browser não suporta captureStream/MediaRecorder.
 function _comprimirVideo(file, meta, onProgress) {
   return new Promise((resolve, reject) => {
+    // Verificações de suporte antes de qualquer coisa
+    if (typeof document.createElement('canvas').captureStream !== 'function') {
+      return reject(new Error('captureStream não suportado'));
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      return reject(new Error('MediaRecorder não suportado'));
+    }
+
+    const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']
+      .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
+
+    if (!mimeType) return reject(new Error('Nenhum codec suportado'));
+
     const MAX_W = 480;
     const scale = Math.min(1, MAX_W / (meta.w || MAX_W));
     const w = Math.max(2, Math.round((meta.w || MAX_W) * scale));
     const h = Math.max(2, Math.round((meta.h || 360) * scale));
 
+    const blobUrl = URL.createObjectURL(file);
     const video = document.createElement('video');
-    video.src = URL.createObjectURL(file);
-    video.muted = true; // sem auto-play com som
+    video.muted = true;
+    video.playsInline = true;
     video.preload = 'auto';
+    video.src = blobUrl;
 
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
 
-    const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']
-      .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
+    let frameId = null;
+    let recorder = null;
+    let settled = false;
+    let timeoutId = null;
+
+    function cleanup() {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (frameId) cancelAnimationFrame(frameId);
+      try { video.pause(); } catch (_) {}
+      URL.revokeObjectURL(blobUrl);
+    }
+
+    function done(result) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
+    }
+
+    function fail(err) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      try { if (recorder && recorder.state !== 'inactive') recorder.stop(); } catch (_) {}
+      reject(err);
+    }
+
+    // Timeout: duração do vídeo + 30s de margem
+    const timeoutMs = ((meta.duration || 120) + 30) * 1000;
+    timeoutId = setTimeout(() => fail(new Error('Timeout na compressão')), timeoutMs);
 
     video.oncanplaythrough = () => {
-      const videoStream = canvas.captureStream(24);
-
-      // Adiciona áudio se possível
-      let combinedStream = videoStream;
+      let stream;
       try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const src = audioCtx.createMediaElementSource(video);
-        const audioDest = audioCtx.createMediaStreamDestination();
-        src.connect(audioDest);
-        combinedStream = new MediaStream([
-          ...videoStream.getVideoTracks(),
-          ...audioDest.stream.getAudioTracks()
-        ]);
-      } catch (_) { /* sem áudio — continua só com vídeo */ }
+        stream = canvas.captureStream(24);
+      } catch (e) {
+        return fail(e);
+      }
 
-      const recOpts = { videoBitsPerSecond: 300_000, audioBitsPerSecond: 48_000 };
+      const recOpts = { videoBitsPerSecond: 300_000 };
       if (mimeType) recOpts.mimeType = mimeType;
-      const recorder = new MediaRecorder(combinedStream, recOpts);
+
+      try {
+        recorder = new MediaRecorder(stream, recOpts);
+      } catch (e) {
+        return fail(e);
+      }
+
       const chunks = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = () => {
-        URL.revokeObjectURL(video.src);
-        resolve(new Blob(chunks, { type: mimeType || 'video/webm' }));
-      };
-      recorder.onerror = reject;
+      recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => done(new Blob(chunks, { type: mimeType || 'video/webm' }));
+      recorder.onerror = e => fail(e.error || new Error('MediaRecorder error'));
 
-      recorder.start(200);
-      video.muted = false;
-      video.play().catch(() => {});
-
-      let frameId;
       const draw = () => {
-        if (video.ended || video.paused) return;
-        ctx.drawImage(video, 0, 0, w, h);
-        if (onProgress && meta.duration) onProgress(video.currentTime / meta.duration);
+        if (settled) return;
+        if (!video.ended && !video.paused) {
+          ctx.drawImage(video, 0, 0, w, h);
+          if (onProgress && meta.duration) onProgress(video.currentTime / meta.duration);
+        }
         frameId = requestAnimationFrame(draw);
       };
+
       video.onplay  = () => { frameId = requestAnimationFrame(draw); };
-      video.onended = () => { cancelAnimationFrame(frameId); recorder.stop(); };
-      video.onerror = reject;
+      video.onended = () => {
+        cancelAnimationFrame(frameId);
+        if (recorder.state !== 'inactive') recorder.stop();
+      };
+      video.onerror = () => fail(new Error('Erro ao reproduzir vídeo'));
+
+      recorder.start(200);
+      video.play().then(() => {}).catch(e => fail(e));
     };
 
-    video.onerror = reject;
+    video.onerror = () => fail(new Error('Erro ao carregar vídeo'));
   });
 }
 
