@@ -528,8 +528,15 @@ async function renderComunicados() {
 }
 
 // ── Auto-refresh a cada 60 s ──────────────────────────────────────
+// Não recarrega enquanto algum vídeo estiver tocando.
 function agendarRefresh() {
   setTimeout(async () => {
+    const videoAtivo = Array.from(document.querySelectorAll('video'))
+      .some(v => !v.paused && !v.ended);
+    if (videoAtivo) {
+      agendarRefresh();
+      return;
+    }
     _recadosCache = null;
     _dicasCache   = null;
     _boletimCache = null;
