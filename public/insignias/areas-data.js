@@ -2,7 +2,7 @@
 // Sistema paralelo ao estojo por equipe/atividade.
 // Compartilha ADMIN_PIN, TEAMS (cor/id) e estilo visual com data.js / style.css.
 
-const ADMIN_PIN = "1234"; // mesmo PIN de data.js
+const ADMIN_PIN = "patorneio";
 
 const TEAMS = [
   { id: "vermelha", nome: "Turma A · Vermelha", cor: "#E5484D", corEscura: "#7A1F22", token: "tA9rV2" },
