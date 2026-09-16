@@ -8,7 +8,7 @@ function renderLoginAdmin() {
     <div class="pin-caixa">
       <div class="marca">Gerenciamento do Torneio · Insígnias por Área</div>
       <h2 class="titulo-principal">Digite o PIN</h2>
-      <input id="campo-pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
+      <input id="campo-pin" type="password" inputmode="text" maxlength="20" placeholder="PIN">
       <button onclick="tentarEntrar()">Entrar</button>
       <div class="erro" id="erro-pin"></div>
     </div>
@@ -64,7 +64,7 @@ function pedirPinSalvar() {
       <div class="pin-salvar-caixa" onclick="event.stopPropagation()">
         <h3 class="pin-salvar-titulo">Confirmar salvamento</h3>
         <p class="pin-salvar-sub">Digite o PIN para salvar as insígnias no servidor</p>
-        <input id="pin-salvar-input" type="password" inputmode="numeric" maxlength="8"
+        <input id="pin-salvar-input" type="password" inputmode="text" maxlength="20"
                placeholder="••••" class="pin-salvar-input"
                onkeydown="if(event.key==='Enter') tentarSalvarComPin()">
         <div class="pin-salvar-acoes">

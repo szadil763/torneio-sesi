@@ -8,7 +8,7 @@ function renderLoginCom() {
     <div class="pin-caixa">
       <div class="marca">Gerenciamento de Comunicados</div>
       <h2 class="titulo-principal">Digite o PIN</h2>
-      <input id="campo-pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
+      <input id="campo-pin" type="password" inputmode="text" maxlength="20" placeholder="PIN">
       <button onclick="tentarEntrarCom()">Entrar</button>
       <div class="erro" id="erro-pin"></div>
     </div>
