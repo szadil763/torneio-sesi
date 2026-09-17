@@ -348,6 +348,13 @@ function abrirEstojoCom(teamId) {
   const card = document.getElementById('mini-com-' + teamId);
   if (card) card.classList.add('aberto');
 
+  // Reposiciona o expand após a linha do card clicado
+  const teamIndex = TEAMS.findIndex(t => t.id === teamId);
+  const rowLastIndex = teamIndex % 2 === 0 ? teamIndex + 1 : teamIndex;
+  const safeIndex = Math.min(rowLastIndex, TEAMS.length - 1);
+  const anchorCard = document.getElementById('mini-com-' + TEAMS[safeIndex].id);
+  if (anchorCard) anchorCard.after(expandWrap);
+
   expandWrap.hidden = false;
   expandWrap.innerHTML = '';
   renderEstojoNoContainerCom(equipe, expandWrap);
@@ -377,8 +384,8 @@ function renderEstojosSection() {
             <div class="mini-count">${n} / ${AREAS.length} ${tc('insignias')}</div>
           </div>`;
       }).join('')}
-    </div>
-    <div id="estojos-expand-com" class="estojos-expand-wrap" hidden></div>`;
+      <div id="estojos-expand-com" class="estojos-expand-wrap" hidden></div>
+    </div>`;
   document.getElementById('app').appendChild(secao);
 }
 

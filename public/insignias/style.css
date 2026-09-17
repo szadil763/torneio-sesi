@@ -1818,7 +1818,8 @@ tfoot tr { border-top: 2px solid var(--card-line); }
 
 /* Área de expansão do estojo clicado */
 .estojos-expand-wrap {
-  margin-top: 12px;
+  grid-column: 1 / -1;   /* ocupa as 2 colunas do grid */
+  margin-top: 4px;
   animation: expand-in .25s ease;
 }
 @keyframes expand-in {
