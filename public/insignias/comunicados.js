@@ -465,6 +465,24 @@ function renderBoletimCom(boletim) {
   document.getElementById('app').appendChild(secao);
 }
 
+// ── Controle de reprodução ativa ──────────────────────────────────
+// Flag persistente: true enquanto qualquer vídeo estiver tocando ou
+// tiver sido iniciado recentemente. Evita refresh durante reprodução.
+let _videoEmReproducao = false;
+
+function _atualizarFlagVideo() {
+  _videoEmReproducao = Array.from(document.querySelectorAll('video'))
+    .some(v => !v.paused && !v.ended);
+}
+
+function _monitorarVideo(video) {
+  video.addEventListener('play',  () => { _videoEmReproducao = true; });
+  video.addEventListener('pause', _atualizarFlagVideo);
+  video.addEventListener('ended', _atualizarFlagVideo);
+  // Também marca como ativo quando o usuário interage (antes do play disparar)
+  video.addEventListener('seeking', () => { _videoEmReproducao = true; });
+}
+
 // ── Carrega vídeos lazy (buscados do RTDB após render) ────────────
 // carregarVideoBoletim() já retorna uma Blob URL — usa direto no src.
 async function carregarVideosPendentes() {
@@ -477,6 +495,7 @@ async function carregarVideosPendentes() {
       if (blobUrl) {
         video.src = blobUrl;
         video.load();
+        _monitorarVideo(video);
         if (aviso) aviso.remove();
       } else {
         if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
@@ -532,9 +551,7 @@ async function renderComunicados() {
 // Não recarrega enquanto algum vídeo estiver tocando.
 function agendarRefresh() {
   setTimeout(async () => {
-    const videoAtivo = Array.from(document.querySelectorAll('video'))
-      .some(v => !v.paused && !v.ended);
-    if (videoAtivo) {
+    if (_videoEmReproducao) {
       agendarRefresh();
       return;
     }
