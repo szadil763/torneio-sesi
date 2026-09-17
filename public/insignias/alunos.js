@@ -360,12 +360,18 @@ function abrirEstojo(teamId) {
   const card = document.getElementById('mini-' + teamId);
   if (card) card.classList.add('aberto');
 
-  // Reposiciona o expand após a linha do card clicado
+  // Linha de cima → insere dentro do grid (entre as duas linhas)
+  // Linha de baixo → insere fora do grid (abaixo dele), sem stacking conflict
   const teamIndex = TEAMS.findIndex(t => t.id === teamId);
-  const rowLastIndex = teamIndex % 2 === 0 ? teamIndex + 1 : teamIndex;
-  const safeIndex = Math.min(rowLastIndex, TEAMS.length - 1);
-  const anchorCard = document.getElementById('mini-' + TEAMS[safeIndex].id);
-  if (anchorCard) anchorCard.after(expandWrap);
+  const isLinhaDeСima = teamIndex < 2;
+  if (isLinhaDeСima) {
+    const rowLastIndex = Math.min(teamIndex % 2 === 0 ? teamIndex + 1 : teamIndex, TEAMS.length - 1);
+    const anchorCard = document.getElementById('mini-' + TEAMS[rowLastIndex].id);
+    if (anchorCard) anchorCard.after(expandWrap);
+  } else {
+    const gridEl = document.querySelector('.mini-estojos-grid');
+    if (gridEl) gridEl.after(expandWrap);
+  }
 
   expandWrap.hidden = false;
   expandWrap.innerHTML = '';
@@ -413,8 +419,8 @@ function renderPaginaEstojos() {
             <div class="mini-count">${n} / ${AREAS.length} ${_lang === 'pt' ? 'insígnias' : 'badges'}</div>
           </div>`;
       }).join('')}
-      <div id="estojos-expand" class="estojos-expand-wrap" hidden></div>
-    </div>`);
+    </div>
+    <div id="estojos-expand" class="estojos-expand-wrap" hidden></div>`);
 
   // Boletim abaixo dos estojos
   const boletim = lerBoletim();
