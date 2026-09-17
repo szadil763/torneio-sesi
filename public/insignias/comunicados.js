@@ -555,6 +555,8 @@ async function renderComunicados() {
   renderRecados(recados);
   renderDicas(dicas);
   renderBoletimCom(boletim);
+  // Monitora vídeos com src direto (sem data-video-id) imediatamente após render
+  document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
   carregarVideosPendentes();
 
   app.insertAdjacentHTML('beforeend', `
