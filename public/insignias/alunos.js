@@ -67,7 +67,7 @@ function alternarIdioma() {
 
 // ── Configuração do torneio ───────────────────────────────────────
 // Data de início: 03/10/2026 às 08h00 (horário de Brasília)
-const TORNEIO_INICIO = new Date('2026-10-03T08:00:00-03:00');
+const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
 // Link da abertura ao vivo (Microsoft Teams) — atualize aqui quando tiver o link:
 const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
 

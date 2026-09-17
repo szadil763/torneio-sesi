@@ -1,7 +1,7 @@
 // Página pública de comunicados — pais e alunos.
 // Sem token, acessível a todos. Dados do Firebase RTDB.
 
-const TORNEIO_INICIO = new Date('2026-10-03T08:00:00-03:00');
+const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
 const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
 
 // ── Idioma ────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ const STRINGS_COM = {
     rodape:           'Atualizado automaticamente · SESI Torneio Infantil 2026',
     andamento:        'TORNEIO EM ANDAMENTO!',
     comeca_em:        'começa em',
-    data_evento:      '📅 03 de outubro de 2026 · 08h00',
+    data_evento:      '📅 02 de outubro de 2026 · 14h50',
     dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
     ao_vivo:          '📺 Assistir abertura ao vivo',
     ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
@@ -41,7 +41,7 @@ const STRINGS_COM = {
     rodape:           'Auto-updated · SESI Children\'s Tournament 2026',
     andamento:        'TOURNAMENT IN PROGRESS!',
     comeca_em:        'starts in',
-    data_evento:      '📅 October 3, 2026 · 8:00 AM',
+    data_evento:      '📅 October 2, 2026 · 2:50 PM',
     dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
     ao_vivo:          '📺 Watch opening ceremony live',
     ao_vivo_btn:      '📺 Live opening — Teams',
