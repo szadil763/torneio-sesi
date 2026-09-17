@@ -566,7 +566,9 @@ async function renderComunicados() {
 // Não recarrega enquanto algum vídeo estiver tocando.
 function agendarRefresh() {
   setTimeout(async () => {
-    if (_videoAtivo()) {
+    // Dupla guarda: timestamp do último timeupdate E verificação direta do DOM
+    const domAtivo = Array.from(document.querySelectorAll('video')).some(v => !v.paused && !v.ended);
+    if (_videoAtivo() || domAtivo) {
       agendarRefresh();
       return;
     }
