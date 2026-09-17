@@ -479,22 +479,21 @@ function renderBoletimCom(boletim) {
 }
 
 // ── Controle de reprodução ativa ──────────────────────────────────
-// Flag persistente: true enquanto qualquer vídeo estiver tocando ou
-// tiver sido iniciado recentemente. Evita refresh durante reprodução.
-let _videoEmReproducao = false;
+// Usa timestamp do último timeupdate (que só dispara durante playback real)
+// como fonte de verdade. Assim buffering/seeking em desktop não enganam a guarda.
+let _ultimoPlayMs = 0;
+const _GRACE_MS = 15_000; // 15 s de graça após o último frame avançar
 
-function _atualizarFlagVideo() {
-  _videoEmReproducao = Array.from(document.querySelectorAll('video'))
-    .some(v => !v.paused && !v.ended);
+function _videoAtivo() {
+  return Date.now() - _ultimoPlayMs < _GRACE_MS;
 }
 
 function _monitorarVideo(video) {
-  video.addEventListener('play',  () => { _videoEmReproducao = true; });
-  video.addEventListener('pause', _atualizarFlagVideo);
-  video.addEventListener('ended', _atualizarFlagVideo);
-  video.addEventListener('error', _atualizarFlagVideo);
-  // Também marca como ativo quando o usuário interage (antes do play disparar)
-  video.addEventListener('seeking', () => { _videoEmReproducao = true; });
+  // timeupdate → só dispara quando currentTime avança (playback real, não pausa)
+  video.addEventListener('timeupdate', () => { _ultimoPlayMs = Date.now(); });
+  // play/seeking: cobre o intervalo antes do 1.º timeupdate
+  video.addEventListener('play',    () => { _ultimoPlayMs = Date.now(); });
+  video.addEventListener('seeking', () => { _ultimoPlayMs = Date.now(); });
 }
 
 // ── Carrega vídeos lazy (buscados do RTDB após render) ────────────
@@ -567,7 +566,7 @@ async function renderComunicados() {
 // Não recarrega enquanto algum vídeo estiver tocando.
 function agendarRefresh() {
   setTimeout(async () => {
-    if (_videoEmReproducao) {
+    if (_videoAtivo()) {
       agendarRefresh();
       return;
     }
