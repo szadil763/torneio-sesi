@@ -479,6 +479,7 @@ function _monitorarVideo(video) {
   video.addEventListener('play',  () => { _videoEmReproducao = true; });
   video.addEventListener('pause', _atualizarFlagVideo);
   video.addEventListener('ended', _atualizarFlagVideo);
+  video.addEventListener('error', _atualizarFlagVideo);
   // Também marca como ativo quando o usuário interage (antes do play disparar)
   video.addEventListener('seeking', () => { _videoEmReproducao = true; });
 }
