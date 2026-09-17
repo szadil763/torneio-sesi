@@ -563,12 +563,18 @@ async function renderComunicados() {
 }
 
 // ── Auto-refresh a cada 60 s ──────────────────────────────────────
-// Não recarrega enquanto algum vídeo estiver tocando.
+// Não recarrega enquanto algum vídeo / iframe YouTube estiver ativo.
 function agendarRefresh() {
   setTimeout(async () => {
-    // Dupla guarda: timestamp do último timeupdate E verificação direta do DOM
-    const domAtivo = Array.from(document.querySelectorAll('video')).some(v => !v.paused && !v.ended);
-    if (_videoAtivo() || domAtivo) {
+    // 1) timestamp do último timeupdate real (15 s de graça)
+    // 2) <video> não pausado no DOM
+    // 3) <video> já iniciado (currentTime > 0) — cobre buffering onde paused=false é falso
+    // 4) iframe YouTube presente — JS não consegue detectar estado interno, assume ativo
+    const videos    = Array.from(document.querySelectorAll('video'));
+    const domAtivo  = videos.some(v => !v.paused && !v.ended);
+    const iniciado  = videos.some(v => v.currentTime > 0 && !v.ended);
+    const ytAtivo   = !!document.querySelector('iframe[src*="youtube"]');
+    if (_videoAtivo() || domAtivo || iniciado || ytAtivo) {
       agendarRefresh();
       return;
     }
@@ -578,7 +584,7 @@ function agendarRefresh() {
     _estojoAtivoCom = null;
     await renderComunicados();
     agendarRefresh();
-  }, 60000);
+  }, 180_000); // 3 minutos — menos agressivo, menor risco de interromper mídia
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
