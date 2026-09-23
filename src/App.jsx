@@ -21,6 +21,7 @@ const TEAMS_KAHOOT = [
   { id: "D", label: "Equipe D", color: "#E0B23C", dark: true },
 ];
 const SITE_URL = "https://torneio-sesi-20de0.web.app";
+const PUBLIC_URL = "https://torneio-sesi-20de0.web.app/insignias/areas.html";
 const ROUNDS = [1, 2, 3, 4];
 const AZUL = "#004B8D";
 const AZUL_ESCURO = "#002B52";
@@ -1194,7 +1195,7 @@ function PonteTelaoView() {
   );
 }
 
-// ── QR Code ───────────────────────────────────────────────────────
+// ── Tela Home — QR Code para pais e alunos ───────────────────────
 function QRPrintModal({ onClose }) {
   const handlePrint = () => {
     const win = window.open("", "_blank");
@@ -1206,16 +1207,16 @@ function QRPrintModal({ onClose }) {
   .card { text-align: center; padding: 40px 48px; border: 3px solid #004B8D; border-radius: 24px; max-width: 380px; }
   h1 { color: #004B8D; font-size: 22px; margin-bottom: 6px; }
   .sub { color: #555; font-size: 13px; margin-bottom: 24px; }
-  img { display: block; margin: 0 auto 20px; width: 200px; height: 200px; }
+  img { display: block; margin: 0 auto 20px; width: 220px; height: 220px; }
   .url { color: #004B8D; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
   .hint { color: #888; font-size: 12px; }
   @media print { body { margin: 0; } }
 </style></head><body>
 <div class="card">
   <h1>🏆 Torneio SESI</h1>
-  <p class="sub">Acompanhe os rankings e insígnias</p>
-  <img src="https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(SITE_URL)}&size=200x200&color=004B8D" alt="QR Code">
-  <p class="url">${SITE_URL}</p>
+  <p class="sub">Página de pais e alunos — insígnias e resultados</p>
+  <img src="https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(PUBLIC_URL)}&size=220x220&color=004B8D" alt="QR Code">
+  <p class="url">${PUBLIC_URL}</p>
   <p class="hint">Escaneie com a câmera do celular</p>
 </div>
 </body></html>`);
@@ -1231,18 +1232,18 @@ function QRPrintModal({ onClose }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl max-w-sm w-full"
+        className="bg-white rounded-3xl p-8 flex flex-col items-center gap-5 shadow-2xl max-w-sm w-full"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center font-extrabold text-xl" style={{ color: AZUL }}>
           📱 Site para pais e alunos
         </div>
-        <QRCodeSVG value={SITE_URL} size={220} bgColor="#ffffff" fgColor={AZUL} level="M" />
-        <div className="text-xs text-gray-500 text-center break-all">{SITE_URL}</div>
+        <QRCodeSVG value={PUBLIC_URL} size={240} bgColor="#ffffff" fgColor={AZUL} level="M" />
+        <div className="text-xs text-gray-500 text-center break-all">{PUBLIC_URL}</div>
         <div className="text-xs text-gray-400 text-center">
-          Escaneie com a câmera do celular para acompanhar rankings e insígnias
+          Escaneie com a câmera do celular para acessar insígnias e resultados
         </div>
-        <div className="flex gap-3 mt-1 w-full">
+        <div className="flex gap-3 w-full">
           <button
             onClick={handlePrint}
             className="flex-1 py-2.5 rounded-full font-bold text-white text-sm"
@@ -1263,25 +1264,57 @@ function QRPrintModal({ onClose }) {
   );
 }
 
-function QRInline() {
+function HomeView() {
   const [open, setOpen] = useState(false);
   return (
     <>
       {open && <QRPrintModal onClose={() => setOpen(false)} />}
-      <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col items-center gap-3">
-        <div className="text-center font-extrabold text-base" style={{ color: AZUL }}>
-          📱 Compartilhe com pais e alunos
+      <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
+        <div className="text-center">
+          <div className="text-3xl font-extrabold mb-1" style={{ color: AZUL }}>🏆 Torneio SESI</div>
+          <div className="text-sm text-gray-500">Painel do Professor</div>
         </div>
-        <button
-          onClick={() => setOpen(true)}
-          className="p-3 rounded-2xl shadow-lg hover:shadow-xl transition-shadow"
-          style={{ background: "#fff", border: `3px solid ${AZUL}` }}
-          title="Clique para imprimir o QR Code"
-        >
-          <QRCodeSVG value={SITE_URL} size={160} bgColor="#ffffff" fgColor={AZUL} level="M" />
-        </button>
-        <div className="text-xs text-gray-500 text-center break-all">{SITE_URL}</div>
-        <div className="text-xs text-gray-400 text-center">Clique no QR para imprimir e afixar</div>
+
+        <div className="bg-white rounded-3xl shadow-xl p-8 flex flex-col items-center gap-4 w-full"
+          style={{ border: `2px solid #E5E7EB` }}>
+          <div className="font-extrabold text-base text-center" style={{ color: AZUL }}>
+            📱 Página para pais e alunos
+          </div>
+          <div className="text-xs text-gray-500 text-center">
+            Compartilhe o QR Code para que pais e alunos acompanhem insígnias e resultados
+          </div>
+          <button
+            onClick={() => setOpen(true)}
+            className="rounded-2xl shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+            style={{ padding: "12px", background: "#fff", border: `3px solid ${AZUL}` }}
+            title="Clique para ampliar e imprimir"
+          >
+            <QRCodeSVG value={PUBLIC_URL} size={200} bgColor="#ffffff" fgColor={AZUL} level="M" />
+          </button>
+          <div className="text-xs text-gray-400 text-center break-all">{PUBLIC_URL}</div>
+          <button
+            onClick={() => setOpen(true)}
+            className="w-full py-2.5 rounded-full font-bold text-white text-sm"
+            style={{ backgroundColor: LARANJA }}
+          >
+            🖨️ Imprimir QR Code
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow p-5 w-full flex flex-col gap-2"
+          style={{ border: `1px solid #E5E7EB` }}>
+          <div className="font-bold text-sm" style={{ color: AZUL }}>Acesso rápido</div>
+          <a href="/insignias/areas.html"
+            className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl"
+            style={{ background: "#F0F4FF", color: AZUL }}>
+            🏅 Insígnias por Área
+          </a>
+          <a href="/insignias/admin-areas.html"
+            className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl"
+            style={{ background: "#FFF4EC", color: LARANJA }}>
+            ⚙️ Admin — Insígnias
+          </a>
+        </div>
       </div>
     </>
   );
@@ -1659,65 +1692,64 @@ function KahootTelaoView() {
 }
 
 export default function App() {
-  const [prova, setProva] = useState("propulsao"); // "propulsao" | "ponte" | "kahoot"
-  const [mode, setMode]   = useState("monitor");   // "monitor" | "telao" | "buzzer"
-  const provaLabel = prova === "propulsao" ? "🌀 Lançador de Spinner"
-    : prova === "ponte" ? "🌉 Ponte de Da Vinci"
+  const [page, setPage] = useState("home");  // "home" | "propulsao" | "ponte" | "kahoot"
+  const [mode, setMode] = useState("monitor"); // "monitor" | "telao" | "buzzer"
+
+  const pageLabel = page === "home"      ? "🏠 Início"
+    : page === "propulsao" ? "🌀 Lançador de Spinner"
+    : page === "ponte"     ? "🌉 Ponte de Da Vinci"
     : "🎓 Kahoot English";
 
-  const handleSetProva = (p) => {
-    setProva(p);
+  const handleSetPage = (p) => {
+    setPage(p);
     setMode("monitor");
   };
+
+  const isHome = page === "home";
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex flex-col gap-2 px-4 py-3">
-          {/* Linha 1: título + botões */}
+          {/* Linha 1: título + seletor de modo (só quando não é home) */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-white font-bold text-sm md:text-base">{provaLabel}</span>
-              <a href="/insignias/areas.html"
-                className="text-xs px-2.5 py-1 rounded-full font-semibold"
-                style={{ background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.85)" }}>
-                🏅 Insígnias
-              </a>
-            </div>
-            {/* Seletor de modo */}
-            <div className="flex gap-1 bg-white bg-opacity-10 rounded-full p-1">
-              <button onClick={() => setMode("monitor")}
-                className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
-                style={{ backgroundColor: mode === "monitor" ? LARANJA : "transparent" }}>
-                Monitor
-              </button>
-              {prova === "kahoot" && (
-                <button onClick={() => setMode("buzzer")}
+            <span className="text-white font-bold text-sm md:text-base">{pageLabel}</span>
+            {!isHome && (
+              <div className="flex gap-1 bg-white bg-opacity-10 rounded-full p-1">
+                <button onClick={() => setMode("monitor")}
                   className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: mode === "buzzer" ? LARANJA : "transparent" }}>
-                  Botoeira
+                  style={{ backgroundColor: mode === "monitor" ? LARANJA : "transparent" }}>
+                  Monitor
                 </button>
-              )}
-              <button onClick={() => setMode("telao")}
-                className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
-                style={{ backgroundColor: mode === "telao" ? LARANJA : "transparent" }}>
-                Telão
-              </button>
-            </div>
+                {page === "kahoot" && (
+                  <button onClick={() => setMode("buzzer")}
+                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
+                    style={{ backgroundColor: mode === "buzzer" ? LARANJA : "transparent" }}>
+                    Botoeira
+                  </button>
+                )}
+                <button onClick={() => setMode("telao")}
+                  className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
+                  style={{ backgroundColor: mode === "telao" ? LARANJA : "transparent" }}>
+                  Telão
+                </button>
+              </div>
+            )}
           </div>
-          {/* Linha 2: seletor de prova */}
+          {/* Linha 2: navegação entre páginas */}
           <div className="flex gap-2">
             {[
+              { id: "home",      label: "🏠 Início" },
               { id: "propulsao", label: "🌀 Spinner" },
               { id: "ponte",     label: "🌉 Ponte" },
-              { id: "kahoot",    label: "🎓 Kahoot English" },
+              { id: "kahoot",    label: "🎓 Kahoot" },
             ].map(({ id, label }) => (
-              <button key={id} onClick={() => handleSetProva(id)}
+              <button key={id} onClick={() => handleSetPage(id)}
                 className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
                 style={{
-                  backgroundColor: prova === id ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)",
-                  color: prova === id ? "#fff" : "rgba(255,255,255,0.55)",
-                  border: prova === id ? "1.5px solid rgba(255,255,255,0.4)" : "1.5px solid transparent",
+                  backgroundColor: page === id ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)",
+                  color: page === id ? "#fff" : "rgba(255,255,255,0.55)",
+                  border: page === id ? "1.5px solid rgba(255,255,255,0.4)" : "1.5px solid transparent",
                 }}>
                 {label}
               </button>
@@ -1726,11 +1758,10 @@ export default function App() {
         </div>
       </div>
 
-      {mode === "monitor" && <QRInline />}
-
-      {prova === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
-      {prova === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
-      {prova === "kahoot"    && (
+      {isHome && <HomeView />}
+      {page === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
+      {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
+      {page === "kahoot"    && (
         mode === "monitor" ? <KahootMonitorView /> :
         mode === "buzzer"  ? <KahootBuzzerView /> :
         <KahootTelaoView />
