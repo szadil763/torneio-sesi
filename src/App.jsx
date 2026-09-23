@@ -128,9 +128,6 @@ function MonitorView() {
   const [giroStart, setGiroStart] = useState(null);
   const [giroFinal, setGiroFinal] = useState(null);
 
-  const [cargaFinal, setCargaFinal] = useState(null);
-  const [cargaInput, setCargaInput] = useState("");
-
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -148,8 +145,6 @@ function MonitorView() {
         setExisting(data);
         setMontagemFinal(data?.montagem ?? null);
         setGiroFinal(data?.giro ?? null);
-        setCargaFinal(data?.carga ?? null);
-        setCargaInput(data?.carga != null ? String(data.carga) : "");
         setMontagemElapsed(data?.montagem ?? 0);
         setGiroElapsed(data?.giro ?? 0);
         setSaved(false);
@@ -229,20 +224,19 @@ function MonitorView() {
   };
 
   const canSave =
-    montagemFinal !== null && giroFinal !== null && cargaFinal !== null && !montagemRunning && !giroRunning;
+    montagemFinal !== null && giroFinal !== null && !montagemRunning && !giroRunning;
 
   const handleSave = async () => {
     setSaving(true);
     setSaveError(false);
     const ok = await safeSet(keyFor(round, teamId), {
       montagem: montagemFinal,
-      carga: cargaFinal,
       giro: giroFinal,
     });
     setSaving(false);
     if (ok) {
       setSaved(true);
-      const newData = { montagem: montagemFinal, carga: cargaFinal, giro: giroFinal };
+      const newData = { montagem: montagemFinal, giro: giroFinal };
       setExisting(newData);
       setAllRounds((prev) => ({ ...prev, [round]: newData }));
     } else {
@@ -259,8 +253,6 @@ function MonitorView() {
     await safeDelete(keyFor(round, teamId));
     setMontagemFinal(null);
     setGiroFinal(null);
-    setCargaFinal(null);
-    setCargaInput("");
     setMontagemElapsed(0);
     setGiroElapsed(0);
     setExisting(null);
@@ -283,8 +275,6 @@ function MonitorView() {
     setExisting(null);
     setMontagemFinal(null);
     setGiroFinal(null);
-    setCargaFinal(null);
-    setCargaInput("");
     setMontagemElapsed(0);
     setGiroElapsed(0);
     setSaved(false);
@@ -362,31 +352,6 @@ function MonitorView() {
         />
       </div>
 
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
-        <div className="text-sm font-semibold mb-2" style={{ color: AZUL }}>⚖️ Carga suportada (g)</div>
-        <div className="flex gap-2 items-center">
-          <input
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Ex: 250"
-            value={cargaInput}
-            onChange={(e) => {
-              setCargaInput(e.target.value);
-              const n = parseFloat(e.target.value);
-              setCargaFinal(!isNaN(n) && n >= 0 ? n : null);
-              setSaved(false);
-            }}
-            className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-lg font-bold text-center tabular-nums focus:outline-none focus:ring-2"
-            style={{ color: AZUL }}
-          />
-          <span className="text-sm text-gray-500 font-medium">gramas</span>
-        </div>
-        {cargaFinal !== null && (
-          <div className="text-xs text-gray-500 mt-1 text-center">✓ {cargaFinal} g registrado</div>
-        )}
-      </div>
-
       <button
         disabled={!canSave || saving}
         onClick={handleSave}
@@ -404,7 +369,7 @@ function MonitorView() {
 
       {existing && (existing.montagem !== null || existing.giro !== null) && (
         <div className="text-center text-sm text-gray-500">
-          Último salvo — Montagem: {formatTime(existing.montagem)} · Carga: {existing.carga != null ? `${existing.carga} g` : "--"} · Giro:{" "}
+          Último salvo — Montagem: {formatTime(existing.montagem)} · Giro:{" "}
           {formatTime(existing.giro)}
           <button onClick={handleReset} className="ml-3 underline text-red-600">
             Refazer
@@ -422,7 +387,6 @@ function MonitorView() {
               <tr style={{ backgroundColor: "#EAF2FB" }}>
                 <th className="text-left px-2 py-1">Rodada</th>
                 <th className="px-2 py-1">Montagem</th>
-                <th className="px-2 py-1">Carga</th>
                 <th className="px-2 py-1">Giro</th>
               </tr>
             </thead>
@@ -444,9 +408,6 @@ function MonitorView() {
                     </td>
                     <td className="px-2 py-1 text-center text-gray-600">
                       {formatTime(v?.montagem)}
-                    </td>
-                    <td className="px-2 py-1 text-center text-gray-600">
-                      {v?.carga != null ? `${v.carga} g` : "--"}
                     </td>
                     <td className="px-2 py-1 text-center text-gray-600">
                       {formatTime(v?.giro)}
@@ -508,22 +469,19 @@ function TelaoView() {
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS.map((t) => {
       const v = data[keyFor(r, t.id)];
-      return { team: t.id, montagem: v?.montagem ?? null, carga: v?.carga ?? null, giro: v?.giro ?? null };
+      return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
     });
-    const complete = items.every((it) => it.montagem !== null && it.carga !== null && it.giro !== null);
-    const hasAny   = items.some((it) => it.montagem !== null || it.carga !== null || it.giro !== null);
+    const complete = items.every((it) => it.montagem !== null && it.giro !== null);
+    const hasAny   = items.some((it) => it.montagem !== null || it.giro !== null);
     let montPts = {};
-    let cargaPts = {};
     let giroPts = {};
     if (hasAny) {
       const comMontagem = items.filter((it) => it.montagem !== null);
-      const comCarga    = items.filter((it) => it.carga !== null);
       const comGiro     = items.filter((it) => it.giro !== null);
-      montPts  = rankPoints(comMontagem.map((it) => ({ team: it.team, value: it.montagem })), false);
-      cargaPts = rankPoints(comCarga.map((it)    => ({ team: it.team, value: it.carga })),    true);
-      giroPts  = rankPoints(comGiro.map((it)     => ({ team: it.team, value: it.giro })),     true);
+      montPts = rankPoints(comMontagem.map((it) => ({ team: it.team, value: it.montagem })), false);
+      giroPts = rankPoints(comGiro.map((it)     => ({ team: it.team, value: it.giro })),     true);
     }
-    return { round: r, items, complete, hasAny, montPts, cargaPts, giroPts };
+    return { round: r, items, complete, hasAny, montPts, giroPts };
   });
 
   const totals = {};
@@ -531,7 +489,7 @@ function TelaoView() {
   roundResults.forEach((rr) => {
     if (rr.hasAny) {
       TEAMS.forEach((t) => {
-        totals[t.id] += (rr.montPts[t.id] || 0) + (rr.cargaPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
+        totals[t.id] += (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
       });
     }
   });
@@ -627,7 +585,7 @@ function TelaoView() {
             let maxPts = 0;
             if (rr.hasAny) {
               TEAMS.forEach((t) => {
-                const pts = (rr.montPts[t.id] || 0) + (rr.cargaPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
+                const pts = (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
                 if (pts > maxPts) { maxPts = pts; winners = [t]; }
                 else if (pts === maxPts && pts > 0) { winners.push(t); }
               });
@@ -685,7 +643,6 @@ function TelaoView() {
                 <tr style={{ backgroundColor: "#EAF2FB" }}>
                   <th className="text-left px-3 py-2">Equipe</th>
                   <th className="px-3 py-2">Montagem</th>
-                  <th className="px-3 py-2">Carga</th>
                   <th className="px-3 py-2">Giro</th>
                   <th className="px-3 py-2">Pontos</th>
                 </tr>
@@ -694,7 +651,7 @@ function TelaoView() {
                 {rr.items.map((it) => {
                   const t = TEAMS.find((x) => x.id === it.team);
                   const pts = rr.complete
-                    ? (rr.montPts[it.team] || 0) + (rr.cargaPts[it.team] || 0) + (rr.giroPts[it.team] || 0)
+                    ? (rr.montPts[it.team] || 0) + (rr.giroPts[it.team] || 0)
                     : null;
                   const isLive = !!liveKeys[`${rr.round}_${it.team}`];
                   return (
@@ -708,7 +665,6 @@ function TelaoView() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-center">{formatTime(it.montagem)}</td>
-                      <td className="px-3 py-2 text-center">{it.carga != null ? `${it.carga} g` : "--"}</td>
                       <td className="px-3 py-2 text-center">{formatTime(it.giro)}</td>
                       <td className="px-3 py-2 text-center font-bold">
                         {pts !== null ? pts : "--"}
@@ -766,6 +722,8 @@ function PonteMonitorView() {
   const [startTs, setStartTs] = useState(null);
   const [tempoFinal, setTempoFinal] = useState(null);
 
+  const [cargaOk, setCargaOk] = useState(null); // null | true | false
+
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -782,6 +740,7 @@ function PonteMonitorView() {
         setExisting(data);
         setTempoFinal(data?.tempo ?? null);
         setElapsed(data?.tempo ?? 0);
+        setCargaOk(data?.carga ?? null);
         setSaved(false);
         setSaveError(false);
       }
@@ -828,12 +787,12 @@ function PonteMonitorView() {
   const handleSave = async () => {
     setSaving(true);
     setSaveError(false);
-    const ok = await safeSet(ponteKeyFor(round, teamId), { tempo: tempoFinal });
+    const ok = await safeSet(ponteKeyFor(round, teamId), { tempo: tempoFinal, carga: cargaOk });
     setSaving(false);
     if (ok) {
       setSaved(true);
-      setExisting({ tempo: tempoFinal });
-      setAllRounds((prev) => ({ ...prev, [round]: { tempo: tempoFinal } }));
+      setExisting({ tempo: tempoFinal, carga: cargaOk });
+      setAllRounds((prev) => ({ ...prev, [round]: { tempo: tempoFinal, carga: cargaOk } }));
     } else {
       setSaveError(true);
     }
@@ -844,6 +803,7 @@ function PonteMonitorView() {
     if (!window.confirm(`Apagar resultado de ${team?.label} na Rodada ${round}?`)) return;
     await safeDelete(ponteKeyFor(round, teamId));
     setTempoFinal(null);
+    setCargaOk(null);
     setElapsed(0);
     setExisting(null);
     setSaved(false);
@@ -860,6 +820,7 @@ function PonteMonitorView() {
       }
     }
     setTempoFinal(null);
+    setCargaOk(null);
     setElapsed(0);
     setExisting(null);
     setSaved(false);
@@ -868,7 +829,7 @@ function PonteMonitorView() {
   };
 
   const team = TEAMS_1ANO.find((t) => t.id === teamId);
-  const canSave = tempoFinal !== null && !running;
+  const canSave = tempoFinal !== null && cargaOk !== null && !running;
   const hasHistory = Object.values(allRounds).some((v) => v !== null && v !== undefined);
 
   return (
@@ -914,6 +875,37 @@ function PonteMonitorView() {
         )}
       </div>
 
+      {/* Carga */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-sm font-bold text-gray-600 mb-3 text-center">
+          ⚖️ A carga equilibrou na ponte?
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => { setCargaOk(true); setSaved(false); }}
+            className="py-3 rounded-xl font-bold text-base border-2 transition-all"
+            style={{
+              backgroundColor: cargaOk === true ? "#2E9E4F" : "#F3F4F6",
+              color: cargaOk === true ? "#fff" : "#374151",
+              borderColor: cargaOk === true ? "#2E9E4F" : "#E5E7EB",
+            }}
+          >
+            ✓ Sim — 4 pts
+          </button>
+          <button
+            onClick={() => { setCargaOk(false); setSaved(false); }}
+            className="py-3 rounded-xl font-bold text-base border-2 transition-all"
+            style={{
+              backgroundColor: cargaOk === false ? "#D92B2B" : "#F3F4F6",
+              color: cargaOk === false ? "#fff" : "#374151",
+              borderColor: cargaOk === false ? "#D92B2B" : "#E5E7EB",
+            }}
+          >
+            ✗ Não — 0 pts
+          </button>
+        </div>
+      </div>
+
       {/* Salvar */}
       <button disabled={!canSave || saving} onClick={handleSave}
         className="w-full py-3 rounded-2xl font-bold text-lg disabled:opacity-40"
@@ -929,7 +921,7 @@ function PonteMonitorView() {
 
       {existing?.tempo != null && (
         <div className="text-center text-sm text-gray-500">
-          Salvo: {formatTime(existing.tempo)}
+          Salvo: {formatTime(existing.tempo)} · Carga: {existing.carga === true ? "✓ equilibrou" : existing.carga === false ? "✗ caiu" : "--"}
           <button onClick={handleReset} className="ml-3 underline text-red-600">Refazer</button>
         </div>
       )}
@@ -945,6 +937,7 @@ function PonteMonitorView() {
               <tr style={{ backgroundColor: "#EAF2FB" }}>
                 <th className="text-left px-2 py-1">Rodada</th>
                 <th className="px-2 py-1">Tempo</th>
+                <th className="px-2 py-1">Carga</th>
               </tr>
             </thead>
             <tbody>
@@ -957,6 +950,9 @@ function PonteMonitorView() {
                       R{r}{r === round && <span className="ml-1 text-xs" style={{ color: LARANJA }}>←</span>}
                     </td>
                     <td className="px-2 py-1 text-center text-gray-600">{formatTime(v?.tempo)}</td>
+                    <td className="px-2 py-1 text-center text-gray-600">
+                      {v?.carga === true ? "✓" : v?.carga === false ? "✗" : "--"}
+                    </td>
                   </tr>
                 );
               })}
@@ -1010,22 +1006,28 @@ function PonteTelaoView() {
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS_1ANO.map((t) => {
       const v = data[ponteKeyFor(r, t.id)];
-      return { team: t.id, tempo: v?.tempo ?? null };
+      return { team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null };
     });
-    const complete = items.every((it) => it.tempo !== null);
-    const hasAny   = items.some((it) => it.tempo !== null);
-    let pts = {};
+    const complete = items.every((it) => it.tempo !== null && it.carga !== null);
+    const hasAny   = items.some((it) => it.tempo !== null || it.carga !== null);
+    let tempoPts = {};
+    const cargaPts = {};
     if (hasAny) {
       const comTempo = items.filter((it) => it.tempo !== null);
-      pts = rankPoints(comTempo.map((it) => ({ team: it.team, value: it.tempo })), false);
+      tempoPts = rankPoints(comTempo.map((it) => ({ team: it.team, value: it.tempo })), false);
+      items.forEach((it) => {
+        if (it.carga !== null) cargaPts[it.team] = it.carga === true ? 4 : 0;
+      });
     }
-    return { round: r, items, complete, hasAny, pts };
+    return { round: r, items, complete, hasAny, tempoPts, cargaPts };
   });
 
   const totals = {};
   TEAMS_1ANO.forEach((t) => (totals[t.id] = 0));
   roundResults.forEach((rr) => {
-    if (rr.hasAny) TEAMS_1ANO.forEach((t) => { totals[t.id] += rr.pts[t.id] || 0; });
+    if (rr.hasAny) TEAMS_1ANO.forEach((t) => {
+      totals[t.id] += (rr.tempoPts[t.id] || 0) + (rr.cargaPts[t.id] || 0);
+    });
   });
 
   const ranking = [...TEAMS_1ANO].sort((a, b) => totals[b.id] - totals[a.id]);
@@ -1090,7 +1092,7 @@ function PonteTelaoView() {
             let bestTime = null;
             if (rr.hasAny) {
               TEAMS_1ANO.forEach((t) => {
-                const p = rr.pts[t.id] || 0;
+                const p = (rr.tempoPts[t.id] || 0) + (rr.cargaPts[t.id] || 0);
                 if (p > maxPts) { maxPts = p; winners = [t]; }
                 else if (p === maxPts && p > 0) winners.push(t);
               });
@@ -1140,6 +1142,7 @@ function PonteTelaoView() {
                 <tr style={{ backgroundColor: "#EAF2FB" }}>
                   <th className="text-left px-3 py-2">Equipe</th>
                   <th className="px-3 py-2">Tempo</th>
+                  <th className="px-3 py-2">Carga</th>
                   <th className="px-3 py-2">Pontos</th>
                 </tr>
               </thead>
@@ -1150,7 +1153,7 @@ function PonteTelaoView() {
                   return a.tempo - b.tempo;
                 }).map((it) => {
                   const t = TEAMS_1ANO.find((x) => x.id === it.team);
-                  const pts = rr.hasAny ? (rr.pts[it.team] || 0) : null;
+                  const pts = rr.hasAny ? (rr.tempoPts[it.team] || 0) + (rr.cargaPts[it.team] || 0) : null;
                   const isLive = !!liveKeys[`${rr.round}_${it.team}`];
                   return (
                     <tr key={it.team} className="border-t border-gray-100">
@@ -1159,6 +1162,11 @@ function PonteTelaoView() {
                         {isLive && <span className="ml-1 text-xs font-bold" style={{ color: "#D92B2B" }}>🔴</span>}
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums">{formatTime(it.tempo)}</td>
+                      <td className="px-3 py-2 text-center">
+                        {it.carga === true ? <span style={{ color: "#2E9E4F", fontWeight: 700 }}>✓ 4pts</span>
+                          : it.carga === false ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>✗ 0pts</span>
+                          : "--"}
+                      </td>
                       <td className="px-3 py-2 text-center font-bold">{pts !== null ? pts : "--"}</td>
                     </tr>
                   );
