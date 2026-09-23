@@ -1194,35 +1194,96 @@ function PonteTelaoView() {
   );
 }
 
-// ── QR Code Modal ────────────────────────────────────────────────
-function QRModal({ onClose }) {
+// ── QR Code ───────────────────────────────────────────────────────
+function QRPrintModal({ onClose }) {
+  const handlePrint = () => {
+    const win = window.open("", "_blank");
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>QR Code — Torneio SESI</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; }
+  .card { text-align: center; padding: 40px 48px; border: 3px solid #004B8D; border-radius: 24px; max-width: 380px; }
+  h1 { color: #004B8D; font-size: 22px; margin-bottom: 6px; }
+  .sub { color: #555; font-size: 13px; margin-bottom: 24px; }
+  img { display: block; margin: 0 auto 20px; width: 200px; height: 200px; }
+  .url { color: #004B8D; font-size: 12px; word-break: break-all; margin-bottom: 16px; }
+  .hint { color: #888; font-size: 12px; }
+  @media print { body { margin: 0; } }
+</style></head><body>
+<div class="card">
+  <h1>🏆 Torneio SESI</h1>
+  <p class="sub">Acompanhe os rankings e insígnias</p>
+  <img src="https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(SITE_URL)}&size=200x200&color=004B8D" alt="QR Code">
+  <p class="url">${SITE_URL}</p>
+  <p class="hint">Escaneie com a câmera do celular</p>
+</div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+      style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl max-w-xs w-full"
+        className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl max-w-sm w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-center font-extrabold text-lg" style={{ color: AZUL }}>
-          📱 Acesse o site do torneio
+        <div className="text-center font-extrabold text-xl" style={{ color: AZUL }}>
+          📱 Site para pais e alunos
         </div>
-        <QRCodeSVG value={SITE_URL} size={200} bgColor="#ffffff" fgColor={AZUL} level="M" />
+        <QRCodeSVG value={SITE_URL} size={220} bgColor="#ffffff" fgColor={AZUL} level="M" />
         <div className="text-xs text-gray-500 text-center break-all">{SITE_URL}</div>
         <div className="text-xs text-gray-400 text-center">
-          Escaneie para acompanhar rankings e insígnias
+          Escaneie com a câmera do celular para acompanhar rankings e insígnias
         </div>
-        <button
-          onClick={onClose}
-          className="mt-1 px-6 py-2 rounded-full font-bold text-white text-sm"
-          style={{ backgroundColor: AZUL }}
-        >
-          Fechar
-        </button>
+        <div className="flex gap-3 mt-1 w-full">
+          <button
+            onClick={handlePrint}
+            className="flex-1 py-2.5 rounded-full font-bold text-white text-sm"
+            style={{ backgroundColor: LARANJA }}
+          >
+            🖨️ Imprimir
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-full font-bold text-sm border-2"
+            style={{ borderColor: AZUL, color: AZUL }}
+          >
+            Fechar
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function QRInline() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {open && <QRPrintModal onClose={() => setOpen(false)} />}
+      <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col items-center gap-3">
+        <div className="text-center font-extrabold text-base" style={{ color: AZUL }}>
+          📱 Compartilhe com pais e alunos
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          className="p-3 rounded-2xl shadow-lg hover:shadow-xl transition-shadow"
+          style={{ background: "#fff", border: `3px solid ${AZUL}` }}
+          title="Clique para imprimir o QR Code"
+        >
+          <QRCodeSVG value={SITE_URL} size={160} bgColor="#ffffff" fgColor={AZUL} level="M" />
+        </button>
+        <div className="text-xs text-gray-500 text-center break-all">{SITE_URL}</div>
+        <div className="text-xs text-gray-400 text-center">Clique no QR para imprimir e afixar</div>
+      </div>
+    </>
   );
 }
 
@@ -1600,8 +1661,6 @@ function KahootTelaoView() {
 export default function App() {
   const [prova, setProva] = useState("propulsao"); // "propulsao" | "ponte" | "kahoot"
   const [mode, setMode]   = useState("monitor");   // "monitor" | "telao" | "buzzer"
-  const [showQR, setShowQR] = useState(false);
-
   const provaLabel = prova === "propulsao" ? "🌀 Lançador de Spinner"
     : prova === "ponte" ? "🌉 Ponte de Da Vinci"
     : "🎓 Kahoot English";
@@ -1613,8 +1672,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {showQR && <QRModal onClose={() => setShowQR(false)} />}
-
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex flex-col gap-2 px-4 py-3">
           {/* Linha 1: título + botões */}
@@ -1626,12 +1683,6 @@ export default function App() {
                 style={{ background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.85)" }}>
                 🏅 Insígnias
               </a>
-              <button
-                onClick={() => setShowQR(true)}
-                className="text-xs px-2.5 py-1 rounded-full font-semibold"
-                style={{ background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.85)" }}>
-                📱 QR
-              </button>
             </div>
             {/* Seletor de modo */}
             <div className="flex gap-1 bg-white bg-opacity-10 rounded-full p-1">
@@ -1674,6 +1725,8 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {mode === "monitor" && <QRInline />}
 
       {prova === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
       {prova === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
