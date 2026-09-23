@@ -7,6 +7,12 @@ const TEAMS = [
   { id: "2C", label: "2º C", color: "#2E9E4F" },
   { id: "2D", label: "2º D", color: "#F0B800", dark: true },
 ];
+const TEAMS_1ANO = [
+  { id: "1A", label: "1º A", color: "#D92B2B" },
+  { id: "1B", label: "1º B", color: "#004B8D" },
+  { id: "1C", label: "1º C", color: "#2E9E4F" },
+  { id: "1D", label: "1º D", color: "#F0B800", dark: true },
+];
 const ROUNDS = [1, 2, 3, 4];
 const AZUL = "#004B8D";
 const AZUL_ESCURO = "#002B52";
@@ -122,6 +128,9 @@ function MonitorView() {
   const [giroStart, setGiroStart] = useState(null);
   const [giroFinal, setGiroFinal] = useState(null);
 
+  const [cargaFinal, setCargaFinal] = useState(null);
+  const [cargaInput, setCargaInput] = useState("");
+
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -139,6 +148,8 @@ function MonitorView() {
         setExisting(data);
         setMontagemFinal(data?.montagem ?? null);
         setGiroFinal(data?.giro ?? null);
+        setCargaFinal(data?.carga ?? null);
+        setCargaInput(data?.carga != null ? String(data.carga) : "");
         setMontagemElapsed(data?.montagem ?? 0);
         setGiroElapsed(data?.giro ?? 0);
         setSaved(false);
@@ -218,19 +229,20 @@ function MonitorView() {
   };
 
   const canSave =
-    montagemFinal !== null && giroFinal !== null && !montagemRunning && !giroRunning;
+    montagemFinal !== null && giroFinal !== null && cargaFinal !== null && !montagemRunning && !giroRunning;
 
   const handleSave = async () => {
     setSaving(true);
     setSaveError(false);
     const ok = await safeSet(keyFor(round, teamId), {
       montagem: montagemFinal,
+      carga: cargaFinal,
       giro: giroFinal,
     });
     setSaving(false);
     if (ok) {
       setSaved(true);
-      const newData = { montagem: montagemFinal, giro: giroFinal };
+      const newData = { montagem: montagemFinal, carga: cargaFinal, giro: giroFinal };
       setExisting(newData);
       setAllRounds((prev) => ({ ...prev, [round]: newData }));
     } else {
@@ -247,6 +259,8 @@ function MonitorView() {
     await safeDelete(keyFor(round, teamId));
     setMontagemFinal(null);
     setGiroFinal(null);
+    setCargaFinal(null);
+    setCargaInput("");
     setMontagemElapsed(0);
     setGiroElapsed(0);
     setExisting(null);
@@ -269,6 +283,8 @@ function MonitorView() {
     setExisting(null);
     setMontagemFinal(null);
     setGiroFinal(null);
+    setCargaFinal(null);
+    setCargaInput("");
     setMontagemElapsed(0);
     setGiroElapsed(0);
     setSaved(false);
@@ -346,6 +362,31 @@ function MonitorView() {
         />
       </div>
 
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-sm font-semibold mb-2" style={{ color: AZUL }}>⚖️ Carga suportada (g)</div>
+        <div className="flex gap-2 items-center">
+          <input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Ex: 250"
+            value={cargaInput}
+            onChange={(e) => {
+              setCargaInput(e.target.value);
+              const n = parseFloat(e.target.value);
+              setCargaFinal(!isNaN(n) && n >= 0 ? n : null);
+              setSaved(false);
+            }}
+            className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-lg font-bold text-center tabular-nums focus:outline-none focus:ring-2"
+            style={{ color: AZUL }}
+          />
+          <span className="text-sm text-gray-500 font-medium">gramas</span>
+        </div>
+        {cargaFinal !== null && (
+          <div className="text-xs text-gray-500 mt-1 text-center">✓ {cargaFinal} g registrado</div>
+        )}
+      </div>
+
       <button
         disabled={!canSave || saving}
         onClick={handleSave}
@@ -363,7 +404,7 @@ function MonitorView() {
 
       {existing && (existing.montagem !== null || existing.giro !== null) && (
         <div className="text-center text-sm text-gray-500">
-          Último salvo — Montagem: {formatTime(existing.montagem)} · Giro:{" "}
+          Último salvo — Montagem: {formatTime(existing.montagem)} · Carga: {existing.carga != null ? `${existing.carga} g` : "--"} · Giro:{" "}
           {formatTime(existing.giro)}
           <button onClick={handleReset} className="ml-3 underline text-red-600">
             Refazer
@@ -381,6 +422,7 @@ function MonitorView() {
               <tr style={{ backgroundColor: "#EAF2FB" }}>
                 <th className="text-left px-2 py-1">Rodada</th>
                 <th className="px-2 py-1">Montagem</th>
+                <th className="px-2 py-1">Carga</th>
                 <th className="px-2 py-1">Giro</th>
               </tr>
             </thead>
@@ -402,6 +444,9 @@ function MonitorView() {
                     </td>
                     <td className="px-2 py-1 text-center text-gray-600">
                       {formatTime(v?.montagem)}
+                    </td>
+                    <td className="px-2 py-1 text-center text-gray-600">
+                      {v?.carga != null ? `${v.carga} g` : "--"}
                     </td>
                     <td className="px-2 py-1 text-center text-gray-600">
                       {formatTime(v?.giro)}
@@ -463,19 +508,22 @@ function TelaoView() {
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS.map((t) => {
       const v = data[keyFor(r, t.id)];
-      return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
+      return { team: t.id, montagem: v?.montagem ?? null, carga: v?.carga ?? null, giro: v?.giro ?? null };
     });
-    const complete = items.every((it) => it.montagem !== null && it.giro !== null);
-    const hasAny   = items.some((it) => it.montagem !== null && it.giro !== null);
+    const complete = items.every((it) => it.montagem !== null && it.carga !== null && it.giro !== null);
+    const hasAny   = items.some((it) => it.montagem !== null || it.carga !== null || it.giro !== null);
     let montPts = {};
+    let cargaPts = {};
     let giroPts = {};
     if (hasAny) {
       const comMontagem = items.filter((it) => it.montagem !== null);
+      const comCarga    = items.filter((it) => it.carga !== null);
       const comGiro     = items.filter((it) => it.giro !== null);
-      montPts = rankPoints(comMontagem.map((it) => ({ team: it.team, value: it.montagem })), false);
-      giroPts = rankPoints(comGiro.map((it)     => ({ team: it.team, value: it.giro })),     true);
+      montPts  = rankPoints(comMontagem.map((it) => ({ team: it.team, value: it.montagem })), false);
+      cargaPts = rankPoints(comCarga.map((it)    => ({ team: it.team, value: it.carga })),    true);
+      giroPts  = rankPoints(comGiro.map((it)     => ({ team: it.team, value: it.giro })),     true);
     }
-    return { round: r, items, complete, hasAny, montPts, giroPts };
+    return { round: r, items, complete, hasAny, montPts, cargaPts, giroPts };
   });
 
   const totals = {};
@@ -483,7 +531,7 @@ function TelaoView() {
   roundResults.forEach((rr) => {
     if (rr.hasAny) {
       TEAMS.forEach((t) => {
-        totals[t.id] += (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
+        totals[t.id] += (rr.montPts[t.id] || 0) + (rr.cargaPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
       });
     }
   });
@@ -508,7 +556,7 @@ function TelaoView() {
           className="text-center text-3xl md:text-4xl font-extrabold"
           style={{ color: AZUL }}
         >
-          🏆 Ranking — Prova da Propulsão
+          🏆 Ranking — Lançador de Spinner
         </h1>
       </div>
 
@@ -579,7 +627,7 @@ function TelaoView() {
             let maxPts = 0;
             if (rr.hasAny) {
               TEAMS.forEach((t) => {
-                const pts = (rr.montPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
+                const pts = (rr.montPts[t.id] || 0) + (rr.cargaPts[t.id] || 0) + (rr.giroPts[t.id] || 0);
                 if (pts > maxPts) { maxPts = pts; winners = [t]; }
                 else if (pts === maxPts && pts > 0) { winners.push(t); }
               });
@@ -637,6 +685,7 @@ function TelaoView() {
                 <tr style={{ backgroundColor: "#EAF2FB" }}>
                   <th className="text-left px-3 py-2">Equipe</th>
                   <th className="px-3 py-2">Montagem</th>
+                  <th className="px-3 py-2">Carga</th>
                   <th className="px-3 py-2">Giro</th>
                   <th className="px-3 py-2">Pontos</th>
                 </tr>
@@ -645,7 +694,7 @@ function TelaoView() {
                 {rr.items.map((it) => {
                   const t = TEAMS.find((x) => x.id === it.team);
                   const pts = rr.complete
-                    ? (rr.montPts[it.team] || 0) + (rr.giroPts[it.team] || 0)
+                    ? (rr.montPts[it.team] || 0) + (rr.cargaPts[it.team] || 0) + (rr.giroPts[it.team] || 0)
                     : null;
                   const isLive = !!liveKeys[`${rr.round}_${it.team}`];
                   return (
@@ -659,6 +708,7 @@ function TelaoView() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-center">{formatTime(it.montagem)}</td>
+                      <td className="px-3 py-2 text-center">{it.carga != null ? `${it.carga} g` : "--"}</td>
                       <td className="px-3 py-2 text-center">{formatTime(it.giro)}</td>
                       <td className="px-3 py-2 text-center font-bold">
                         {pts !== null ? pts : "--"}
@@ -709,7 +759,7 @@ function TelaoView() {
 // ── Ponte de Da Vinci — Monitor ───────────────────────────────────
 function PonteMonitorView() {
   const [round, setRound] = useState(1);
-  const [teamId, setTeamId] = useState("2A");
+  const [teamId, setTeamId] = useState("1A");
 
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -790,7 +840,7 @@ function PonteMonitorView() {
   };
 
   const handleReset = async () => {
-    const team = TEAMS.find((t) => t.id === teamId);
+    const team = TEAMS_1ANO.find((t) => t.id === teamId);
     if (!window.confirm(`Apagar resultado de ${team?.label} na Rodada ${round}?`)) return;
     await safeDelete(ponteKeyFor(round, teamId));
     setTempoFinal(null);
@@ -804,7 +854,7 @@ function PonteMonitorView() {
   const handleResetAll = async () => {
     if (!window.confirm("⚠️ ZERAR TORNEIO INTEIRO — PONTE?\n\nTodos os resultados serão apagados.\n\nOK para confirmar.")) return;
     for (const r of ROUNDS) {
-      for (const t of TEAMS) {
+      for (const t of TEAMS_1ANO) {
         await safeDelete(ponteKeyFor(r, t.id));
         await safeDelete(ponteLiveKeyFor(r, t.id));
       }
@@ -817,7 +867,7 @@ function PonteMonitorView() {
     setAllRounds({});
   };
 
-  const team = TEAMS.find((t) => t.id === teamId);
+  const team = TEAMS_1ANO.find((t) => t.id === teamId);
   const canSave = tempoFinal !== null && !running;
   const hasHistory = Object.values(allRounds).some((v) => v !== null && v !== undefined);
 
@@ -836,7 +886,7 @@ function PonteMonitorView() {
         </div>
         <div className="text-xs font-bold uppercase tracking-wide mb-2 text-gray-500">Equipe</div>
         <div className="grid grid-cols-4 gap-2">
-          {TEAMS.map((t) => (
+          {TEAMS_1ANO.map((t) => (
             <button key={t.id} onClick={() => setTeamId(t.id)} className="py-2 rounded-xl font-bold text-sm"
               style={{ backgroundColor: t.id === teamId ? t.color : "#F3F4F6", color: t.id === teamId ? (t.dark ? "#3A3000" : "#fff") : "#374151" }}>
               {t.label}
@@ -939,7 +989,7 @@ function PonteTelaoView() {
     const entries = {};
     const live = {};
     for (const r of ROUNDS) {
-      for (const t of TEAMS) {
+      for (const t of TEAMS_1ANO) {
         const v = await safeGet(ponteKeyFor(r, t.id));
         if (v) entries[ponteKeyFor(r, t.id)] = v;
         const lv = await safeGet(ponteLiveKeyFor(r, t.id));
@@ -958,7 +1008,7 @@ function PonteTelaoView() {
   }, [fetchAll]);
 
   const roundResults = ROUNDS.map((r) => {
-    const items = TEAMS.map((t) => {
+    const items = TEAMS_1ANO.map((t) => {
       const v = data[ponteKeyFor(r, t.id)];
       return { team: t.id, tempo: v?.tempo ?? null };
     });
@@ -973,13 +1023,13 @@ function PonteTelaoView() {
   });
 
   const totals = {};
-  TEAMS.forEach((t) => (totals[t.id] = 0));
+  TEAMS_1ANO.forEach((t) => (totals[t.id] = 0));
   roundResults.forEach((rr) => {
-    if (rr.hasAny) TEAMS.forEach((t) => { totals[t.id] += rr.pts[t.id] || 0; });
+    if (rr.hasAny) TEAMS_1ANO.forEach((t) => { totals[t.id] += rr.pts[t.id] || 0; });
   });
 
-  const ranking = [...TEAMS].sort((a, b) => totals[b.id] - totals[a.id]);
-  const maxTotal = Math.max(1, ...TEAMS.map((t) => totals[t.id]));
+  const ranking = [...TEAMS_1ANO].sort((a, b) => totals[b.id] - totals[a.id]);
+  const maxTotal = Math.max(1, ...TEAMS_1ANO.map((t) => totals[t.id]));
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
@@ -1039,7 +1089,7 @@ function PonteTelaoView() {
             let maxPts = 0;
             let bestTime = null;
             if (rr.hasAny) {
-              TEAMS.forEach((t) => {
+              TEAMS_1ANO.forEach((t) => {
                 const p = rr.pts[t.id] || 0;
                 if (p > maxPts) { maxPts = p; winners = [t]; }
                 else if (p === maxPts && p > 0) winners.push(t);
@@ -1099,7 +1149,7 @@ function PonteTelaoView() {
                   if (b.tempo === null) return -1;
                   return a.tempo - b.tempo;
                 }).map((it) => {
-                  const t = TEAMS.find((x) => x.id === it.team);
+                  const t = TEAMS_1ANO.find((x) => x.id === it.team);
                   const pts = rr.hasAny ? (rr.pts[it.team] || 0) : null;
                   const isLive = !!liveKeys[`${rr.round}_${it.team}`];
                   return (
@@ -1132,7 +1182,7 @@ export default function App() {
   const [prova, setProva] = useState("propulsao"); // "propulsao" | "ponte"
   const [mode, setMode]   = useState("monitor");   // "monitor"   | "telao"
 
-  const provaLabel = prova === "propulsao" ? "🌀 Propulsão" : "🌉 Ponte de Da Vinci";
+  const provaLabel = prova === "propulsao" ? "🌀 Lançador de Spinner" : "🌉 Ponte de Da Vinci";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1171,7 +1221,7 @@ export default function App() {
                 color: prova === "propulsao" ? "#fff" : "rgba(255,255,255,0.55)",
                 border: prova === "propulsao" ? "1.5px solid rgba(255,255,255,0.4)" : "1.5px solid transparent",
               }}>
-              🌀 Prova da Propulsão
+              🌀 Lançador de Spinner
             </button>
             <button onClick={() => setProva("ponte")}
               className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
