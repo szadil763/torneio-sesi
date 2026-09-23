@@ -1226,18 +1226,80 @@ function QRModal({ onClose }) {
   );
 }
 
+// ── Sons das botoeiras ────────────────────────────────────────────
+function playBuzzSound(teamId) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+
+    const play = (type, freq, start, dur, vol = 0.5) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      g.gain.setValueAtTime(0, ctx.currentTime + start);
+      g.gain.linearRampToValueAtTime(vol, ctx.currentTime + start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur + 0.02);
+    };
+
+    if (teamId === "A") {
+      // Vermelha — alarme: duas notas alternadas 3x (sawtooth agressivo)
+      [0, 0.15, 0.30].forEach((t) => {
+        play("sawtooth", 880, t,       0.12, 0.45);
+        play("sawtooth", 660, t + 0.13, 0.12, 0.45);
+      });
+    } else if (teamId === "B") {
+      // Azul — beep eletrônico duplo limpo (sine)
+      play("sine", 880, 0,    0.18, 0.5);
+      play("sine", 880, 0.22, 0.18, 0.5);
+      play("sine", 440, 0,    0.40, 0.15); // sub baixo
+    } else if (teamId === "C") {
+      // Verde — sobe rápido (sweep sine)
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.45);
+      g.gain.setValueAtTime(0.5, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.55);
+    } else if (teamId === "D") {
+      // Amarela — três notas ascendentes (fanfarra triangle)
+      play("triangle", 523, 0,    0.16, 0.5); // C5
+      play("triangle", 659, 0.18, 0.16, 0.5); // E5
+      play("triangle", 784, 0.36, 0.25, 0.5); // G5
+    }
+
+    setTimeout(() => ctx.close(), 1500);
+  } catch (_) {}
+}
+
 // ── Kahoot English — Botoeira (modo aluno) ────────────────────────
 function KahootBuzzerView() {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz] = useState(null);
   const [pressed, setPressed] = useState(false);
+  const prevBuzzRef = useRef(null);
   const pollRef = useRef(null);
 
   const fetchState = useCallback(async () => {
     const a = await safeGet("kahoot_active");
     const b = await safeGet("kahoot_buzz");
     setActive(!!a);
-    setBuzz(b ?? null);
+    setBuzz((prev) => {
+      // toca som quando o buzz chega do servidor (outro dispositivo ou confirmação)
+      if (!prevBuzzRef.current && b?.teamId) {
+        playBuzzSound(b.teamId);
+      }
+      prevBuzzRef.current = b ?? null;
+      return b ?? null;
+    });
   }, []);
 
   useEffect(() => {
@@ -1249,11 +1311,13 @@ function KahootBuzzerView() {
   const handlePress = async (teamId) => {
     if (!active || buzz) return;
     setPressed(true);
+    playBuzzSound(teamId); // feedback imediato local
     const existing = await safeGet("kahoot_buzz");
     if (!existing) {
       await safeSet("kahoot_buzz", { teamId, ts: Date.now() });
     }
     const updated = await safeGet("kahoot_buzz");
+    prevBuzzRef.current = updated;
     setBuzz(updated);
   };
 
