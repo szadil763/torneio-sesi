@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { safeGet, safeSet, safeDelete } from "./firebase.js";
+import { QRCodeSVG } from "qrcode.react";
 
 const TEAMS = [
   { id: "2A", label: "2º A", color: "#D92B2B" },
@@ -13,6 +14,13 @@ const TEAMS_1ANO = [
   { id: "1C", label: "1º C", color: "#2E9E4F" },
   { id: "1D", label: "1º D", color: "#F0B800", dark: true },
 ];
+const TEAMS_KAHOOT = [
+  { id: "A", label: "Equipe A", color: "#E5484D" },
+  { id: "B", label: "Equipe B", color: "#2F8FE0" },
+  { id: "C", label: "Equipe C", color: "#3C9A5F" },
+  { id: "D", label: "Equipe D", color: "#E0B23C", dark: true },
+];
+const SITE_URL = "https://torneio-sesi-20de0.web.app";
 const ROUNDS = [1, 2, 3, 4];
 const AZUL = "#004B8D";
 const AZUL_ESCURO = "#002B52";
@@ -1186,33 +1194,395 @@ function PonteTelaoView() {
   );
 }
 
-export default function App() {
-  const [prova, setProva] = useState("propulsao"); // "propulsao" | "ponte"
-  const [mode, setMode]   = useState("monitor");   // "monitor"   | "telao"
+// ── QR Code Modal ────────────────────────────────────────────────
+function QRModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl max-w-xs w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-center font-extrabold text-lg" style={{ color: AZUL }}>
+          📱 Acesse o site do torneio
+        </div>
+        <QRCodeSVG value={SITE_URL} size={200} bgColor="#ffffff" fgColor={AZUL} level="M" />
+        <div className="text-xs text-gray-500 text-center break-all">{SITE_URL}</div>
+        <div className="text-xs text-gray-400 text-center">
+          Escaneie para acompanhar rankings e insígnias
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-1 px-6 py-2 rounded-full font-bold text-white text-sm"
+          style={{ backgroundColor: AZUL }}
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
+}
 
-  const provaLabel = prova === "propulsao" ? "🌀 Lançador de Spinner" : "🌉 Ponte de Da Vinci";
+// ── Kahoot English — Botoeira (modo aluno) ────────────────────────
+function KahootBuzzerView() {
+  const [active, setActive] = useState(false);
+  const [buzz, setBuzz] = useState(null);
+  const [pressed, setPressed] = useState(false);
+  const pollRef = useRef(null);
+
+  const fetchState = useCallback(async () => {
+    const a = await safeGet("kahoot_active");
+    const b = await safeGet("kahoot_buzz");
+    setActive(!!a);
+    setBuzz(b ?? null);
+  }, []);
+
+  useEffect(() => {
+    fetchState();
+    pollRef.current = setInterval(fetchState, 500);
+    return () => clearInterval(pollRef.current);
+  }, [fetchState]);
+
+  const handlePress = async (teamId) => {
+    if (!active || buzz) return;
+    setPressed(true);
+    const existing = await safeGet("kahoot_buzz");
+    if (!existing) {
+      await safeSet("kahoot_buzz", { teamId, ts: Date.now() });
+    }
+    const updated = await safeGet("kahoot_buzz");
+    setBuzz(updated);
+  };
+
+  const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0d1018" }}>
+      <div className="text-center py-6 px-4">
+        <div className="text-white font-extrabold text-2xl mb-1">🎓 Kahoot English</div>
+        {!active && !buzz && (
+          <div className="text-gray-400 text-sm">Aguardando a próxima pergunta…</div>
+        )}
+        {active && !buzz && (
+          <div className="text-yellow-400 font-bold text-lg animate-pulse">
+            ⚡ Aperte o botão da sua equipe!
+          </div>
+        )}
+        {buzz && winner && (
+          <div className="text-white font-extrabold text-xl mt-2">
+            🏆 <span style={{ color: winner.color }}>{winner.label}</span> foi primeiro!
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 grid grid-cols-2 gap-3 p-4 pb-8">
+        {TEAMS_KAHOOT.map((t) => {
+          const isWinner = buzz?.teamId === t.id;
+          const isLoser = buzz && !isWinner;
+          return (
+            <button
+              key={t.id}
+              onClick={() => handlePress(t.id)}
+              disabled={!active || !!buzz}
+              className="rounded-3xl font-extrabold text-3xl flex items-center justify-center transition-all"
+              style={{
+                backgroundColor: isLoser ? "#333" : t.color,
+                color: isLoser ? "#555" : (t.dark ? "#3A3000" : "#fff"),
+                opacity: isLoser ? 0.35 : 1,
+                transform: isWinner ? "scale(1.04)" : "scale(1)",
+                boxShadow: isWinner ? `0 0 32px ${t.color}88` : "none",
+                minHeight: "120px",
+                border: isWinner ? `3px solid #fff` : "3px solid transparent",
+              }}
+            >
+              {isWinner ? "✓ " : ""}{t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {!active && !buzz && (
+        <div className="text-center text-gray-600 text-xs pb-6">
+          {pressed ? "Registrado — aguarde a próxima pergunta" : "Botoeira bloqueada"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Kahoot English — Monitor (admin) ─────────────────────────────
+function KahootMonitorView() {
+  const [active, setActive] = useState(false);
+  const [buzz, setBuzz] = useState(null);
+  const [pts, setPts] = useState({});
+  const pollRef = useRef(null);
+
+  const fetchState = useCallback(async () => {
+    const a = await safeGet("kahoot_active");
+    const b = await safeGet("kahoot_buzz");
+    const p = await safeGet("kahoot_pts");
+    setActive(!!a);
+    setBuzz(b ?? null);
+    setPts(p ?? {});
+  }, []);
+
+  useEffect(() => {
+    fetchState();
+    pollRef.current = setInterval(fetchState, 800);
+    return () => clearInterval(pollRef.current);
+  }, [fetchState]);
+
+  const novaPergunta = async () => {
+    await safeDelete("kahoot_buzz");
+    await safeSet("kahoot_active", true);
+    setBuzz(null);
+    setActive(true);
+  };
+
+  const awarPoint = async (teamId) => {
+    const newPts = { ...pts, [teamId]: (pts[teamId] || 0) + 1 };
+    await safeSet("kahoot_pts", newPts);
+    await safeDelete("kahoot_active");
+    await safeDelete("kahoot_buzz");
+    setPts(newPts);
+    setActive(false);
+    setBuzz(null);
+  };
+
+  const errado = async () => {
+    await safeDelete("kahoot_active");
+    await safeDelete("kahoot_buzz");
+    setActive(false);
+    setBuzz(null);
+  };
+
+  const resetAll = async () => {
+    if (!window.confirm("Zerar toda a pontuação do Kahoot English?")) return;
+    await safeDelete("kahoot_pts");
+    await safeDelete("kahoot_buzz");
+    await safeDelete("kahoot_active");
+    setPts({});
+    setBuzz(null);
+    setActive(false);
+  };
+
+  const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+
+  return (
+    <div className="flex flex-col gap-5 p-4 max-w-xl mx-auto">
+      {/* Status */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 text-center">
+        {!active && !buzz && (
+          <div className="text-gray-400 font-semibold">Botoeira inativa — pronta para nova pergunta</div>
+        )}
+        {active && !buzz && (
+          <div className="font-bold text-lg animate-pulse" style={{ color: LARANJA }}>
+            ⚡ Aguardando... botoeira ativa!
+          </div>
+        )}
+        {buzz && winner && (
+          <div>
+            <div className="font-extrabold text-2xl mb-2" style={{ color: winner.color }}>
+              🏆 {winner.label} foi primeiro!
+            </div>
+            <div className="flex gap-3 justify-center mt-3">
+              <button
+                onClick={() => awarPoint(winner.id)}
+                className="px-5 py-2 rounded-xl font-bold text-white text-sm"
+                style={{ backgroundColor: "#2E9E4F" }}
+              >
+                ✓ Correto (+1 pt)
+              </button>
+              <button
+                onClick={errado}
+                className="px-5 py-2 rounded-xl font-bold text-white text-sm"
+                style={{ backgroundColor: "#D92B2B" }}
+              >
+                ✗ Errado
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Nova pergunta */}
+      {!active && (
+        <button
+          onClick={novaPergunta}
+          className="w-full py-3 rounded-2xl font-bold text-lg text-white"
+          style={{ backgroundColor: AZUL }}
+        >
+          ▶ Nova Pergunta — Ativar Botoeira
+        </button>
+      )}
+
+      {/* Placar */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">Placar</div>
+        <div className="flex flex-col gap-2">
+          {ranking.map((t, idx) => (
+            <div key={t.id} className="flex items-center gap-3 rounded-xl px-3 py-2"
+              style={{ backgroundColor: t.color + "22" }}>
+              <span className="text-lg font-bold w-7 text-center" style={{ color: t.color }}>{idx + 1}º</span>
+              <span className="flex-1 font-semibold text-gray-700">{t.label}</span>
+              <span className="font-extrabold text-xl" style={{ color: t.color }}>
+                {pts[t.id] || 0} pts
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-gray-200 pt-3 pb-4">
+        <button onClick={resetAll}
+          className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
+          ⚠️ Zerar pontuação do Kahoot
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Kahoot English — Telão ────────────────────────────────────────
+function KahootTelaoView() {
+  const [pts, setPts] = useState({});
+  const [buzz, setBuzz] = useState(null);
+  const [active, setActive] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  const fetchAll = useCallback(async () => {
+    const p = await safeGet("kahoot_pts");
+    const b = await safeGet("kahoot_buzz");
+    const a = await safeGet("kahoot_active");
+    setPts(p ?? {});
+    setBuzz(b ?? null);
+    setActive(!!a);
+    setLastUpdate(new Date());
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+    const id = setInterval(fetchAll, 1500);
+    return () => clearInterval(id);
+  }, [fetchAll]);
+
+  const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const maxPts = Math.max(1, ...TEAMS_KAHOOT.map((t) => pts[t.id] || 0));
+  const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
+      <div>
+        <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
+          SESI — TORNEIO INFANTIL
+        </div>
+        <h1 className="text-center text-3xl md:text-4xl font-extrabold" style={{ color: AZUL }}>
+          🎓 Kahoot English
+        </h1>
+        {active && !buzz && (
+          <div className="text-center font-bold text-lg mt-2 animate-pulse" style={{ color: LARANJA }}>
+            ⚡ Botoeira ativa — primeira equipe a responder ganha!
+          </div>
+        )}
+        {buzz && winner && (
+          <div className="text-center font-extrabold text-2xl mt-2" style={{ color: winner.color }}>
+            🏆 {winner.label} foi primeiro!
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {ranking.map((t, idx) => (
+          <div key={t.id} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
+            style={{ backgroundColor: t.color }}>
+            <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
+              style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
+              {idx + 1}º
+            </div>
+            <div className="font-bold text-xl md:text-2xl flex items-center gap-2 flex-1"
+              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
+              {t.label}
+              {buzz?.teamId === t.id && <span className="text-sm font-bold px-2 py-0.5 rounded-full bg-white" style={{ color: t.color }}>🔔 BUZZ!</span>}
+            </div>
+            <div className="h-4 rounded-full overflow-hidden hidden md:block"
+              style={{ flex: "1", backgroundColor: "rgba(255,255,255,0.3)" }}>
+              <div className="h-full rounded-full" style={{
+                width: `${((pts[t.id] || 0) / maxPts) * 100}%`,
+                backgroundColor: "rgba(255,255,255,0.85)",
+                transition: "width 0.7s ease",
+              }} />
+            </div>
+            <div className="font-extrabold text-2xl md:text-3xl tabular-nums"
+              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
+              {pts[t.id] || 0} pts
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {lastUpdate && (
+        <div className="text-center text-xs text-gray-400">
+          Atualizado às {lastUpdate.toLocaleTimeString("pt-BR")}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  const [prova, setProva] = useState("propulsao"); // "propulsao" | "ponte" | "kahoot"
+  const [mode, setMode]   = useState("monitor");   // "monitor" | "telao" | "buzzer"
+  const [showQR, setShowQR] = useState(false);
+
+  const provaLabel = prova === "propulsao" ? "🌀 Lançador de Spinner"
+    : prova === "ponte" ? "🌉 Ponte de Da Vinci"
+    : "🎓 Kahoot English";
+
+  const handleSetProva = (p) => {
+    setProva(p);
+    setMode("monitor");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {showQR && <QRModal onClose={() => setShowQR(false)} />}
+
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex flex-col gap-2 px-4 py-3">
-          {/* Linha 1: título + insígnias */}
+          {/* Linha 1: título + botões */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-white font-bold text-sm md:text-base">{provaLabel}</span>
               <a href="/insignias/areas.html"
                 className="text-xs px-2.5 py-1 rounded-full font-semibold"
                 style={{ background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.85)" }}>
                 🏅 Insígnias
               </a>
+              <button
+                onClick={() => setShowQR(true)}
+                className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                style={{ background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.85)" }}>
+                📱 QR
+              </button>
             </div>
-            {/* Seletor Monitor / Telão */}
+            {/* Seletor de modo */}
             <div className="flex gap-1 bg-white bg-opacity-10 rounded-full p-1">
               <button onClick={() => setMode("monitor")}
                 className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
                 style={{ backgroundColor: mode === "monitor" ? LARANJA : "transparent" }}>
                 Monitor
               </button>
+              {prova === "kahoot" && (
+                <button onClick={() => setMode("buzzer")}
+                  className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
+                  style={{ backgroundColor: mode === "buzzer" ? LARANJA : "transparent" }}>
+                  Botoeira
+                </button>
+              )}
               <button onClick={() => setMode("telao")}
                 className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
                 style={{ backgroundColor: mode === "telao" ? LARANJA : "transparent" }}>
@@ -1222,32 +1592,32 @@ export default function App() {
           </div>
           {/* Linha 2: seletor de prova */}
           <div className="flex gap-2">
-            <button onClick={() => setProva("propulsao")}
-              className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
-              style={{
-                backgroundColor: prova === "propulsao" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)",
-                color: prova === "propulsao" ? "#fff" : "rgba(255,255,255,0.55)",
-                border: prova === "propulsao" ? "1.5px solid rgba(255,255,255,0.4)" : "1.5px solid transparent",
-              }}>
-              🌀 Lançador de Spinner
-            </button>
-            <button onClick={() => setProva("ponte")}
-              className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
-              style={{
-                backgroundColor: prova === "ponte" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)",
-                color: prova === "ponte" ? "#fff" : "rgba(255,255,255,0.55)",
-                border: prova === "ponte" ? "1.5px solid rgba(255,255,255,0.4)" : "1.5px solid transparent",
-              }}>
-              🌉 Ponte de Da Vinci
-            </button>
+            {[
+              { id: "propulsao", label: "🌀 Spinner" },
+              { id: "ponte",     label: "🌉 Ponte" },
+              { id: "kahoot",    label: "🎓 Kahoot English" },
+            ].map(({ id, label }) => (
+              <button key={id} onClick={() => handleSetProva(id)}
+                className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
+                style={{
+                  backgroundColor: prova === id ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)",
+                  color: prova === id ? "#fff" : "rgba(255,255,255,0.55)",
+                  border: prova === id ? "1.5px solid rgba(255,255,255,0.4)" : "1.5px solid transparent",
+                }}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {prova === "propulsao"
-        ? (mode === "monitor" ? <MonitorView />      : <TelaoView />)
-        : (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)
-      }
+      {prova === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
+      {prova === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
+      {prova === "kahoot"    && (
+        mode === "monitor" ? <KahootMonitorView /> :
+        mode === "buzzer"  ? <KahootBuzzerView /> :
+        <KahootTelaoView />
+      )}
     </div>
   );
 }
