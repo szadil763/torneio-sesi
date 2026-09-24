@@ -32,7 +32,12 @@ function tentarEntrarCom() {
 // ── Abas ──────────────────────────────────────────────────────────
 let abaComAtiva = 'boletim'; // 'boletim' | 'comunicados'
 
-function trocarAbaCom(aba) { abaComAtiva = aba; renderPainelCom(); }
+// ── Estado de edição inline ────────────────────────────────────────
+let _editRecadoIdx = null;
+let _editDicaIdx   = null;
+let _editBolIdx    = null;
+
+function trocarAbaCom(aba) { abaComAtiva = aba; _editRecadoIdx = null; _editDicaIdx = null; _editBolIdx = null; renderPainelCom(); }
 
 function renderPainelCom() {
   const app     = document.getElementById("admin-app");
@@ -170,6 +175,21 @@ function renderAbaBoletimCom(boletim) {
         ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhum item ainda.</p>`
         : `<div class="boletim-lista-admin">
             ${itens.map((item, i) => {
+              if (_editBolIdx === i) {
+                const tituloEdit = item.tipo === 'noticia' ? (item.manchete||'') : (item.titulo||'');
+                const legendaEdit = item.legenda || item.subtitulo || '';
+                return `
+                  <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
+                    <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando item do boletim</div>
+                    <input id="bol-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${tituloEdit.replace(/"/g,'&quot;')}" placeholder="Título">
+                    <input id="bol-edit-legenda" type="text" class="boletim-input" style="margin:0" value="${legendaEdit.replace(/"/g,'&quot;')}" placeholder="Legenda">
+                    ${_seletorArea('bol-edit-area', '📍 EM QUAL ÁREA ESTE ITEM PERTENCE?')}
+                    <div style="display:flex;gap:8px;margin-top:4px">
+                      <button class="boletim-btn-add" style="flex:1;margin:0" onclick="boletimSalvarEdicao(${i})">💾 Salvar</button>
+                      <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editBolIdx=null;renderPainelCom()">✕ Cancelar</button>
+                    </div>
+                  </div>`;
+              }
               let thumb, badge;
               if (item.tipo === 'noticia') {
                 const fotoSrc = item.imagem || '';
@@ -201,6 +221,7 @@ function renderAbaBoletimCom(boletim) {
                   <div class="bol-item-acoes">
                     ${i > 0               ? `<button class="bol-btn-ord" onclick="boletimMover(${i},-1)">↑</button>` : ''}
                     ${i < itens.length-1  ? `<button class="bol-btn-ord" onclick="boletimMover(${i},+1)">↓</button>` : ''}
+                    <button class="bol-btn-ord" onclick="_editBolIdx=${i};_editRecadoIdx=null;_editDicaIdx=null;renderPainelCom()" title="Editar">✏️</button>
                     <button class="bol-btn-rem" onclick="boletimRemover(${i})">🗑</button>
                   </div>
                 </div>`;
@@ -253,7 +274,21 @@ function renderSubRecadosCom(recados) {
     ${itens.length === 0
       ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhum recado ainda.</p>`
       : `<div class="boletim-lista-admin" style="margin-top:16px">
-          ${itens.map((item, i) => `
+          ${itens.map((item, i) => _editRecadoIdx === i ? `
+            <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando recado</div>
+              <input id="rec-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${(item.titulo||'').replace(/"/g,'&quot;')}" placeholder="Título (opcional)">
+              <textarea id="rec-edit-texto" class="boletim-input boletim-textarea" rows="3" style="margin:0">${item.texto||''}</textarea>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="rec-edit-destaque" ${item.destaque?'checked':''}> Destacar (laranja)
+              </label>
+              ${_seletorInicio('rec-edit-inicio')}
+              ${_seletorArea('rec-edit-area')}
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <button class="boletim-btn-add" style="flex:1;margin:0" onclick="recadoSalvarEdicao(${i})">💾 Salvar</button>
+                <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editRecadoIdx=null;renderPainelCom()">✕ Cancelar</button>
+              </div>
+            </div>` : `
             <div class="bol-item-admin">
               <div class="bol-item-info" style="flex:1">
                 <strong class="bol-item-titulo">${item.titulo || '(sem título)'}${_badgeAreaAdmin(item.area)}${_badgeInicioAdmin(item.inicioAte)}</strong>
@@ -262,6 +297,7 @@ function renderSubRecadosCom(recados) {
               <div class="bol-item-acoes">
                 ${i > 0              ? `<button class="bol-btn-ord" onclick="recadoMover(${i},-1)">↑</button>` : ''}
                 ${i < itens.length-1 ? `<button class="bol-btn-ord" onclick="recadoMover(${i},+1)">↓</button>` : ''}
+                <button class="bol-btn-ord" onclick="_editRecadoIdx=${i};_editDicaIdx=null;_editBolIdx=null;renderPainelCom()" title="Editar">✏️</button>
                 <button class="bol-btn-rem" onclick="recadoRemover(${i})">🗑</button>
               </div>
             </div>`).join('')}
@@ -292,7 +328,20 @@ function renderSubDicasCom(dicas) {
     ${itens.length === 0
       ? `<p style="color:var(--muted);font-size:14px;margin-top:24px;text-align:center">Nenhuma dica ainda.</p>`
       : `<div class="boletim-lista-admin" style="margin-top:16px">
-          ${itens.map((item, i) => `
+          ${itens.map((item, i) => _editDicaIdx === i ? `
+            <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando dica</div>
+              <div style="display:flex;gap:8px">
+                <input id="dic-edit-icone" type="text" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0;margin:0" value="${item.icone||'💡'}">
+                <input id="dic-edit-texto" type="text" class="boletim-input" style="flex:1;margin:0" value="${(item.texto||'').replace(/"/g,'&quot;')}">
+              </div>
+              ${_seletorInicio('dic-edit-inicio')}
+              ${_seletorArea('dic-edit-area')}
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <button class="boletim-btn-add" style="flex:1;margin:0" onclick="dicaSalvarEdicao(${i})">💾 Salvar</button>
+                <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editDicaIdx=null;renderPainelCom()">✕ Cancelar</button>
+              </div>
+            </div>` : `
             <div class="bol-item-admin">
               <div style="font-size:24px;flex-shrink:0">${item.icone || '💡'}</div>
               <div class="bol-item-info" style="flex:1">
@@ -301,13 +350,14 @@ function renderSubDicasCom(dicas) {
               <div class="bol-item-acoes">
                 ${i > 0              ? `<button class="bol-btn-ord" onclick="dicaMover(${i},-1)">↑</button>` : ''}
                 ${i < itens.length-1 ? `<button class="bol-btn-ord" onclick="dicaMover(${i},+1)">↓</button>` : ''}
+                <button class="bol-btn-ord" onclick="_editDicaIdx=${i};_editRecadoIdx=null;_editBolIdx=null;renderPainelCom()" title="Editar">✏️</button>
                 <button class="bol-btn-rem" onclick="dicaRemover(${i})">🗑</button>
               </div>
             </div>`).join('')}
         </div>`}`;
 }
 
-function comTrocarSubAba(sub) { comSubAba = sub; renderPainelCom(); }
+function comTrocarSubAba(sub) { comSubAba = sub; _editRecadoIdx = null; _editDicaIdx = null; renderPainelCom(); }
 
 // ── Helpers de formulário ─────────────────────────────────────────
 function _seletorArea(id, label) {
@@ -810,6 +860,21 @@ async function boletimAdicionar() {
   renderPainelCom();
 }
 
+async function boletimSalvarEdicao(idx) {
+  const dados = lerBoletim();
+  const item  = dados.itens[idx];
+  if (!item) return;
+  const titulo  = (document.getElementById('bol-edit-titulo')?.value  || '').trim();
+  const legenda = (document.getElementById('bol-edit-legenda')?.value || '').trim();
+  const area    = document.getElementById('bol-edit-area')?.value || '';
+  if (item.tipo === 'noticia') { if (titulo) item.manchete  = titulo; if (legenda) item.subtitulo = legenda; }
+  else                         { if (titulo) item.titulo    = titulo; if (legenda) item.legenda   = legenda; }
+  item.area = area || undefined;
+  await salvarBoletim(dados);
+  _editBolIdx = null;
+  renderPainelCom();
+}
+
 async function boletimRemover(idx) {
   if (!confirm('Remover este item do boletim?')) return;
   const dados = lerBoletim();
@@ -954,6 +1019,22 @@ async function recadoAdicionar() {
   renderPainelCom();
 }
 
+async function recadoSalvarEdicao(idx) {
+  const dados = lerRecados();
+  const item  = dados.itens[idx];
+  if (!item) return;
+  item.titulo    = (document.getElementById('rec-edit-titulo')?.value || '').trim();
+  item.texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim() || item.texto;
+  item.destaque  = document.getElementById('rec-edit-destaque')?.checked || false;
+  const area     = document.getElementById('rec-edit-area')?.value || '';
+  item.area      = area || undefined;
+  const inicioDias = document.getElementById('rec-edit-inicio')?.value ?? '0';
+  item.inicioAte = _calcInicioAte(inicioDias);
+  await salvarRecados(dados);
+  _editRecadoIdx = null;
+  renderPainelCom();
+}
+
 async function recadoRemover(idx) {
   if (!confirm('Remover este recado?')) return;
   const dados = lerRecados();
@@ -984,6 +1065,21 @@ async function dicaAdicionar() {
   const dados = lerDicas();
   dados.itens.push({ id: Date.now().toString(36), icone, texto, area: area || undefined, inicioAte });
   await salvarDicas(dados);
+  renderPainelCom();
+}
+
+async function dicaSalvarEdicao(idx) {
+  const dados = lerDicas();
+  const item  = dados.itens[idx];
+  if (!item) return;
+  item.icone   = (document.getElementById('dic-edit-icone')?.value || '').trim() || item.icone || '💡';
+  item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim() || item.texto;
+  const area   = document.getElementById('dic-edit-area')?.value || '';
+  item.area    = area || undefined;
+  const inicioDias = document.getElementById('dic-edit-inicio')?.value ?? '0';
+  item.inicioAte = _calcInicioAte(inicioDias);
+  await salvarDicas(dados);
+  _editDicaIdx = null;
   renderPainelCom();
 }
 
