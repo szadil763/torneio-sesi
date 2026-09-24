@@ -150,3 +150,168 @@
   font-size: 12px;
   color: var(--muted);
 }
+
+/* ── Tab bar ──────────────────────────────────────────────── */
+.com-tabs-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg, #F8F9FA);
+  border-bottom: 1px solid var(--card-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0 8px;
+  margin: 0 -16px 20px;
+}
+.com-tabs-bar::-webkit-scrollbar { display: none; }
+.com-tabs-inner {
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 0;
+  min-width: max-content;
+}
+.com-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 16px 10px;
+  border-radius: 12px 12px 0 0;
+  border: 1.5px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .03em;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.com-tab-btn:hover:not(.ativo) {
+  background: color-mix(in srgb, #004B8D 8%, transparent);
+  color: #004B8D;
+}
+.com-tab-btn.ativo {
+  background: #004B8D;
+  color: #fff;
+  border-color: rgba(0,75,141,.25);
+}
+.com-tab-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+.com-tab-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Content area fade-in */
+.com-content-area {
+  animation: com-fade-in .2s ease;
+}
+@keyframes com-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Início cards 2×2 ─────────────────────────────────────── */
+.com-inicio-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.com-inicio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px 14px;
+  background: var(--card);
+  border: 2px solid var(--cc, #004B8D);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform .12s, box-shadow .12s;
+}
+.com-inicio-card:active {
+  transform: scale(.97);
+}
+.com-inicio-card-emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+.com-inicio-card-label {
+  font-size: 12px;
+  font-weight: 800;
+  font-family: 'Baloo 2', sans-serif;
+  color: var(--cc, #004B8D);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.com-inicio-card-count {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Boletim preview button */
+.com-inicio-boletim-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  margin-bottom: 12px;
+  transition: background .12s;
+}
+.com-inicio-boletim-btn:hover {
+  background: color-mix(in srgb, #004B8D 5%, var(--card));
+}
+.com-inicio-boletim-emoji {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.com-inicio-boletim-info { flex: 1; }
+.com-inicio-boletim-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  font-family: 'Baloo 2', sans-serif;
+  margin-bottom: 2px;
+}
+.com-inicio-boletim-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+.com-inicio-boletim-arrow {
+  font-size: 18px;
+  color: var(--muted);
+}
+
+/* Recado clicável (prévia no Início) */
+.com-recado-clicavel {
+  cursor: pointer;
+  transition: opacity .12s;
+}
+.com-recado-clicavel:active { opacity: .8; }
+
+/* Ver mais link */
+.com-inicio-ver-mais {
+  display: block;
+  text-align: center;
+  color: #004B8D;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px;
+  cursor: pointer;
+  margin-top: 8px;
+}

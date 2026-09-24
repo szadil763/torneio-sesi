@@ -25,6 +25,17 @@ const STRINGS_COM = {
     dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
     ao_vivo:          '📺 Assistir abertura ao vivo',
     ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
+    aba_inicio:    'Início',
+    aba_insignias: 'Insígnias',
+    aba_recados:   'Recados',
+    aba_boletim:   'Boletim',
+    aba_dicas:     'Dicas',
+    inicio_boas_vindas: 'Bem-vindo ao Torneio!',
+    inicio_nav:         'Navegue pelas abas para ver tudo',
+    inicio_ultimo_recado: 'Último recado',
+    inicio_ver_recados:   'Ver todos os recados →',
+    inicio_no_boletim:    'No boletim',
+    inicio_ver_boletim:   'Ver boletim →',
   },
   en: {
     titulo_pagina:    'Updates',
@@ -45,6 +56,17 @@ const STRINGS_COM = {
     dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
     ao_vivo:          '📺 Watch opening ceremony live',
     ao_vivo_btn:      '📺 Live opening — Teams',
+    aba_inicio:    'Home',
+    aba_insignias: 'Badges',
+    aba_recados:   'Messages',
+    aba_boletim:   'Bulletin',
+    aba_dicas:     'Tips',
+    inicio_boas_vindas: 'Welcome to the Tournament!',
+    inicio_nav:         'Use the tabs to explore',
+    inicio_ultimo_recado: 'Latest message',
+    inicio_ver_recados:   'See all messages →',
+    inicio_no_boletim:    'In the bulletin',
+    inicio_ver_boletim:   'View bulletin →',
   }
 };
 
@@ -69,6 +91,152 @@ function alternarIdiomaCom() {
 
 let _countdownInterval = null;
 
+// ── Abas ──────────────────────────────────────────────────────────
+let _abaAtiva  = 'inicio';
+let _dadosCache = null; // { recados, dicas, boletim }
+
+const ABAS_CONFIG = [
+  { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
+  { id: 'insignias', emoji: '🏅', labelKey: 'aba_insignias' },
+  { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
+  { id: 'boletim',   emoji: '🎬', labelKey: 'aba_boletim'   },
+  { id: 'dicas',     emoji: '💡', labelKey: 'aba_dicas'     },
+];
+
+function getMountEl() {
+  return document.getElementById('com-content') || document.getElementById('app');
+}
+
+function renderTabBar() {
+  return `
+    <nav class="com-tabs-bar" id="com-tabs-bar" role="tablist">
+      <div class="com-tabs-inner">
+        ${ABAS_CONFIG.map(aba => `
+          <button class="com-tab-btn${_abaAtiva === aba.id ? ' ativo' : ''}"
+                  onclick="trocarAba('${aba.id}')"
+                  data-aba="${aba.id}"
+                  role="tab"
+                  aria-selected="${_abaAtiva === aba.id}">
+            <span class="com-tab-emoji">${aba.emoji}</span>
+            <span class="com-tab-label">${tc(aba.labelKey)}</span>
+          </button>`).join('')}
+      </div>
+    </nav>`;
+}
+
+function trocarAba(id) {
+  if (!_dadosCache) return;
+  _abaAtiva = id;
+  _estojoAtivoCom = null;
+
+  // Para o countdown se estava rodando e vai sair de Início
+  if (id !== 'inicio' && _countdownInterval) {
+    clearInterval(_countdownInterval);
+    _countdownInterval = null;
+  }
+
+  // Atualiza estado visual das abas
+  document.querySelectorAll('.com-tab-btn').forEach(btn => {
+    const ativo = btn.dataset.aba === id;
+    btn.classList.toggle('ativo', ativo);
+    btn.setAttribute('aria-selected', ativo);
+  });
+
+  // Re-renderiza conteúdo
+  const content = document.getElementById('com-content');
+  if (content) {
+    content.innerHTML = '';
+    renderConteudoAba(_dadosCache);
+    content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function renderConteudoAba(dados) {
+  switch (_abaAtiva) {
+    case 'inicio':    renderInicio(dados);             break;
+    case 'insignias': renderEstojosSection();           break;
+    case 'recados':   renderRecados(dados.recados);    break;
+    case 'boletim':
+      renderBoletimCom(dados.boletim);
+      document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
+      carregarVideosPendentes();
+      break;
+    case 'dicas':     renderDicas(dados.dicas);        break;
+  }
+  getMountEl().insertAdjacentHTML('beforeend',
+    `<div class="com-rodape">${tc('rodape')}</div>`);
+}
+
+// ── Aba Início ────────────────────────────────────────────────────
+function renderInicio(dados) {
+  // Countdown sempre no topo
+  renderContadorCom();
+
+  const recados = (dados.recados && dados.recados.itens) || [];
+  const boletim = (dados.boletim && dados.boletim.itens) || [];
+
+  // Cards de acesso rápido
+  const totalInsignias = (() => {
+    try {
+      const estado = lerEstadoAreas();
+      return TEAMS.reduce((acc, tm) =>
+        acc + AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length, 0);
+    } catch (_) { return 0; }
+  })();
+
+  const cards = [
+    { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
+    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} item${boletim.length !== 1 ? 's' : ''}`,  cor: '#2E9E4F' },
+    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
+  ];
+
+  const divCards = document.createElement('div');
+  divCards.className = 'com-secao';
+  divCards.innerHTML = `
+    <div class="com-inicio-cards">
+      ${cards.map(c => `
+        <button class="com-inicio-card" onclick="trocarAba('${c.id}')" style="--cc:${c.cor}">
+          <span class="com-inicio-card-emoji">${c.emoji}</span>
+          <span class="com-inicio-card-label">${c.label}</span>
+          <span class="com-inicio-card-count">${c.count}</span>
+        </button>`).join('')}
+    </div>`;
+  getMountEl().appendChild(divCards);
+
+  // Preview do último recado
+  if (recados.length > 0) {
+    const ultimo = recados[0];
+    const texto  = ultimo.texto || '';
+    const preview = texto.length > 120 ? texto.substring(0, 120) + '…' : texto;
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_ultimo_recado')}</div>
+      <div class="com-recado${ultimo.destaque ? ' com-recado-destaque' : ''} com-recado-clicavel"
+           onclick="trocarAba('recados')" role="button" tabindex="0">
+        ${ultimo.titulo ? `<div class="com-recado-titulo">${ultimo.titulo}</div>` : ''}
+        <div class="com-recado-texto">${preview}</div>
+        <div class="com-recado-data">${formatarDataCom(ultimo.ts)}</div>
+        <div class="com-inicio-ver-mais">${tc('inicio_ver_recados')}</div>
+      </div>`;
+    getMountEl().appendChild(div);
+  }
+
+  // Preview do boletim
+  if (boletim.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_no_boletim')}</div>
+      <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
+        <span>🎬 ${boletim.length} item${boletim.length !== 1 ? 's' : ''}</span>
+        <span class="com-inicio-ver-mais">${tc('inicio_ver_boletim')}</span>
+      </button>`;
+    getMountEl().appendChild(div);
+  }
+}
+
 // ── Contador regressivo ───────────────────────────────────────────
 function renderContadorCom() {
   function calcular() {
@@ -86,7 +254,7 @@ function renderContadorCom() {
   secao.id = 'contador-torneio';
   secao.className = 'contador-secao';
   secao.innerHTML = `<div id="contador-inner"></div>`;
-  document.getElementById('app').appendChild(secao);
+  getMountEl().appendChild(secao);
 
   function atualizar() {
     const tempo = calcular();
@@ -102,6 +270,7 @@ function renderContadorCom() {
           ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">${tc('ao_vivo')}</a>`
           : ''}`;
       clearInterval(_countdownInterval);
+      _countdownInterval = null;
       return;
     }
 
@@ -333,7 +502,6 @@ function abrirEstojoCom(teamId) {
   const expandWrap = document.getElementById('estojos-expand-com');
   if (!expandWrap) return;
 
-  // Toggle: clicando no aberto fecha
   if (_estojoAtivoCom === teamId) {
     _estojoAtivoCom = null;
     expandWrap.hidden = true;
@@ -342,14 +510,11 @@ function abrirEstojoCom(teamId) {
     return;
   }
 
-  // Troca: fecha anterior, abre novo
   _estojoAtivoCom = teamId;
   document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
   const card = document.getElementById('mini-com-' + teamId);
   if (card) card.classList.add('aberto');
 
-  // Linha de cima → insere dentro do grid (entre as duas linhas)
-  // Linha de baixo → insere fora do grid (abaixo dele), sem stacking conflict
   const teamIndex = TEAMS.findIndex(t => t.id === teamId);
   const isLinhaDeСima = teamIndex < 2;
   if (isLinhaDeСima) {
@@ -392,7 +557,7 @@ function renderEstojosSection() {
       }).join('')}
     </div>
     <div id="estojos-expand-com" class="estojos-expand-wrap" hidden></div>`;
-  document.getElementById('app').appendChild(secao);
+  getMountEl().appendChild(secao);
 }
 
 // ── Renderização de recados ───────────────────────────────────────
@@ -410,7 +575,7 @@ function renderRecados(recados) {
             <div class="com-recado-texto">${r.texto}</div>
             <div class="com-recado-data">${formatarDataCom(r.ts)}</div>
           </div>`).join('')}`;
-  document.getElementById('app').appendChild(secao);
+  getMountEl().appendChild(secao);
 }
 
 // ── Renderização de dicas ─────────────────────────────────────────
@@ -429,13 +594,21 @@ function renderDicas(dicas) {
               <span class="com-dica-texto">${d.texto}</span>
             </div>`).join('')}
         </div>`}`;
-  document.getElementById('app').appendChild(secao);
+  getMountEl().appendChild(secao);
 }
 
 // ── Renderização do boletim ───────────────────────────────────────
 function renderBoletimCom(boletim) {
   const itens = boletim.itens || [];
-  if (itens.length === 0) return;
+  if (itens.length === 0) {
+    const secao = document.createElement('div');
+    secao.className = 'com-secao';
+    secao.innerHTML = `
+      <div class="com-secao-titulo">${tc('boletim_titulo')}</div>
+      <div class="com-vazio">Nenhum item no boletim por enquanto.</div>`;
+    getMountEl().appendChild(secao);
+    return;
+  }
 
   const secao = document.createElement('div');
   secao.className = 'com-secao boletim-secao';
@@ -475,29 +648,23 @@ function renderBoletimCom(boletim) {
           </div>`;
       }).join('')}
     </div>`;
-  document.getElementById('app').appendChild(secao);
+  getMountEl().appendChild(secao);
 }
 
 // ── Controle de reprodução ativa ──────────────────────────────────
-// Usa timestamp do último timeupdate (que só dispara durante playback real)
-// como fonte de verdade. Assim buffering/seeking em desktop não enganam a guarda.
 let _ultimoPlayMs = 0;
-const _GRACE_MS = 15_000; // 15 s de graça após o último frame avançar
+const _GRACE_MS = 15_000;
 
 function _videoAtivo() {
   return Date.now() - _ultimoPlayMs < _GRACE_MS;
 }
 
 function _monitorarVideo(video) {
-  // timeupdate → só dispara quando currentTime avança (playback real, não pausa)
   video.addEventListener('timeupdate', () => { _ultimoPlayMs = Date.now(); });
-  // play/seeking: cobre o intervalo antes do 1.º timeupdate
   video.addEventListener('play',    () => { _ultimoPlayMs = Date.now(); });
   video.addEventListener('seeking', () => { _ultimoPlayMs = Date.now(); });
 }
 
-// ── Carrega vídeos lazy (buscados do RTDB após render) ────────────
-// carregarVideoBoletim() já retorna uma Blob URL — usa direto no src.
 async function carregarVideosPendentes() {
   const videos = document.querySelectorAll('video[data-video-id]');
   for (const video of videos) {
@@ -522,6 +689,8 @@ async function carregarVideosPendentes() {
 // ── Página principal ──────────────────────────────────────────────
 async function renderComunicados() {
   const app = document.getElementById('app');
+
+  // Estrutura fixa: header + barra de abas + área de conteúdo
   app.innerHTML = `
     <button class="lang-toggle-btn" onclick="alternarIdiomaCom()">
       ${_langCom === 'pt' ? '🇺🇸 EN' : '🇧🇷 PT'}
@@ -535,12 +704,11 @@ async function renderComunicados() {
       </div>
       <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
       <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
-    </div>`;
+    </div>
+    ${renderTabBar()}
+    <div id="com-content" class="com-content-area"></div>`;
 
-  // Contador
-  renderContadorCom();
-
-  // Carrega insígnias + comunicados do Firebase em paralelo
+  // Carrega dados em paralelo e cacheia
   const [, recados, dicas, boletim] = await Promise.all([
     carregarInsignias(),
     carregarRecados(),
@@ -548,43 +716,32 @@ async function renderComunicados() {
     carregarBoletim()
   ]);
 
-  // Estojos (renderiza após carregarInsignias resolver)
-  renderEstojosSection();
-
-  renderRecados(recados);
-  renderDicas(dicas);
-  renderBoletimCom(boletim);
-  // Monitora vídeos com src direto (sem data-video-id) imediatamente após render
-  document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
-  carregarVideosPendentes();
-
-  app.insertAdjacentHTML('beforeend', `
-    <div class="com-rodape">${tc('rodape')}</div>`);
+  _dadosCache = { recados, dicas, boletim };
+  renderConteudoAba(_dadosCache);
 }
 
-// ── Auto-refresh a cada 60 s ──────────────────────────────────────
-// Não recarrega enquanto algum vídeo / iframe YouTube estiver ativo.
+// ── Auto-refresh a cada 3 min ─────────────────────────────────────
+let _recadosCache = null;
+let _dicasCache   = null;
+let _boletimCache = null;
+
 function agendarRefresh() {
   setTimeout(async () => {
-    // 1) timestamp do último timeupdate real (15 s de graça)
-    // 2) <video> não pausado no DOM
-    // 3) <video> já iniciado (currentTime > 0) — cobre buffering onde paused=false é falso
-    // 4) iframe YouTube presente — JS não consegue detectar estado interno, assume ativo
-    const videos    = Array.from(document.querySelectorAll('video'));
-    const domAtivo  = videos.some(v => !v.paused && !v.ended);
-    const iniciado  = videos.some(v => v.currentTime > 0 && !v.ended);
-    const ytAtivo   = !!document.querySelector('iframe[src*="youtube"]');
+    const videos   = Array.from(document.querySelectorAll('video'));
+    const domAtivo = videos.some(v => !v.paused && !v.ended);
+    const iniciado = videos.some(v => v.currentTime > 0 && !v.ended);
+    const ytAtivo  = !!document.querySelector('iframe[src*="youtube"]');
     if (_videoAtivo() || domAtivo || iniciado || ytAtivo) {
       agendarRefresh();
       return;
     }
-    _recadosCache = null;
-    _dicasCache   = null;
-    _boletimCache = null;
-    _estojoAtivoCom = null;
+    _recadosCache    = null;
+    _dicasCache      = null;
+    _boletimCache    = null;
+    _estojoAtivoCom  = null;
     await renderComunicados();
     agendarRefresh();
-  }, 180_000); // 3 minutos — menos agressivo, menor risco de interromper mídia
+  }, 180_000);
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
