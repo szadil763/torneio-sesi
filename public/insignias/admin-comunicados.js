@@ -126,7 +126,8 @@ function renderAbaBoletimCom(boletim) {
 
           <input id="bol-titulo"  type="text" placeholder="Título (opcional)"  class="boletim-input">
           <input id="bol-legenda" type="text" placeholder="Legenda (opcional)" class="boletim-input">
-          ${_seletorArea('bol-area', '📍 EM QUAL ÁREA ESTE ITEM PERTENCE?')}
+          ${_seletorInicio('bol-inicio')}
+          ${_seletorArea('bol-area', '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?')}
 
           ${_pendingMedia
             ? `<button class="boletim-btn-add" style="margin-top:12px" onclick="boletimConfirmarPendente()">✅ Adicionar ao boletim</button>`
@@ -165,6 +166,7 @@ function renderAbaBoletimCom(boletim) {
               </div>`).join('')}
           </div>
           <input id="not-foto" type="url" placeholder="Ou cole link de uma foto extra" class="boletim-input" style="margin-top:4px">
+          ${_seletorInicio('not-inicio')}
           <button class="boletim-btn-add boletim-btn-noticia" onclick="boletimGerarNoticia()">✨ Gerar Notícia</button>
         </div>
         <div id="not-erro" class="erro" style="margin-top:8px"></div>
@@ -183,7 +185,8 @@ function renderAbaBoletimCom(boletim) {
                     <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando item do boletim</div>
                     <input id="bol-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${tituloEdit.replace(/"/g,'&quot;')}" placeholder="Título">
                     <input id="bol-edit-legenda" type="text" class="boletim-input" style="margin:0" value="${legendaEdit.replace(/"/g,'&quot;')}" placeholder="Legenda">
-                    ${_seletorArea('bol-edit-area', '📍 EM QUAL ÁREA ESTE ITEM PERTENCE?')}
+                    ${_seletorInicio('bol-edit-inicio')}
+                    ${_seletorArea('bol-edit-area', '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?')}
                     <div style="display:flex;gap:8px;margin-top:4px">
                       <button class="boletim-btn-add" style="flex:1;margin:0" onclick="boletimSalvarEdicao(${i})">💾 Salvar</button>
                       <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editBolIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -215,7 +218,7 @@ function renderAbaBoletimCom(boletim) {
                 <div class="bol-item-admin">
                   <div class="bol-item-preview">${thumb}${badge}</div>
                   <div class="bol-item-info">
-                    <strong class="bol-item-titulo">${tituloExibido}${_badgeAreaAdmin(item.area)}</strong>
+                    <strong class="bol-item-titulo">${tituloExibido}${_badgeAreaAdmin(item.area)}${_badgeInicioAdmin(item.inicioAte)}</strong>
                     <span class="bol-item-legenda">${item.legenda || item.subtitulo || ''}</span>
                   </div>
                   <div class="bol-item-acoes">
@@ -810,9 +813,11 @@ async function boletimConfirmarPendente() {
       url = '';
     }
 
-    const area  = document.getElementById('bol-area')?.value || '';
+    const area       = document.getElementById('bol-area')?.value || '';
+    const inicioDias = document.getElementById('bol-inicio')?.value ?? '0';
+    const inicioAte  = _calcInicioAte(inicioDias);
     const dados = lerBoletim();
-    dados.itens.unshift({ id, tipo: _pendingMedia.tipo, url, videoId, titulo, legenda, area: area || undefined, ts: Date.now() });
+    dados.itens.unshift({ id, tipo: _pendingMedia.tipo, url, videoId, titulo, legenda, area: area || undefined, inicioAte, ts: Date.now() });
     if (btn) btn.textContent = '⏳ Salvando boletim…';
     await salvarBoletim(dados);
 
@@ -850,12 +855,14 @@ async function boletimAdicionar() {
   const url     = (document.getElementById('bol-url')?.value || '').trim();
   const titulo  = (document.getElementById('bol-titulo')?.value || '').trim();
   const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
-  const area    = document.getElementById('bol-area')?.value || '';
+  const area       = document.getElementById('bol-area')?.value || '';
+  const inicioDias = document.getElementById('bol-inicio')?.value ?? '0';
+  const inicioAte  = _calcInicioAte(inicioDias);
   const erro    = document.getElementById('bol-erro');
   if (!url) { if(erro) erro.textContent = 'Informe um link.'; return; }
   try { new URL(url); } catch { if(erro) erro.textContent = 'Link inválido.'; return; }
   const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, area: area || undefined, ts: Date.now() });
+  dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, area: area || undefined, inicioAte, ts: Date.now() });
   await salvarBoletim(dados);
   renderPainelCom();
 }
@@ -864,12 +871,14 @@ async function boletimSalvarEdicao(idx) {
   const dados = lerBoletim();
   const item  = dados.itens[idx];
   if (!item) return;
-  const titulo  = (document.getElementById('bol-edit-titulo')?.value  || '').trim();
-  const legenda = (document.getElementById('bol-edit-legenda')?.value || '').trim();
-  const area    = document.getElementById('bol-edit-area')?.value || '';
+  const titulo     = (document.getElementById('bol-edit-titulo')?.value  || '').trim();
+  const legenda    = (document.getElementById('bol-edit-legenda')?.value || '').trim();
+  const area       = document.getElementById('bol-edit-area')?.value || '';
+  const inicioDias = document.getElementById('bol-edit-inicio')?.value ?? '0';
   if (item.tipo === 'noticia') { if (titulo) item.manchete  = titulo; if (legenda) item.subtitulo = legenda; }
   else                         { if (titulo) item.titulo    = titulo; if (legenda) item.legenda   = legenda; }
-  item.area = area || undefined;
+  item.area     = area || undefined;
+  item.inicioAte = _calcInicioAte(inicioDias);
   await salvarBoletim(dados);
   _editBolIdx = null;
   renderPainelCom();
@@ -994,8 +1003,10 @@ function boletimGerarNoticia() {
 
 async function boletimPublicarNoticia() {
   if (!window._noticiaRascunho) return;
+  const inicioDias = document.getElementById('not-inicio')?.value ?? '0';
+  const inicioAte  = _calcInicioAte(inicioDias);
   const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), ...window._noticiaRascunho });
+  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), inicioAte, ...window._noticiaRascunho });
   await salvarBoletim(dados);
   window._noticiaRascunho = null;
   _noticiaFotos = [null, null, null];

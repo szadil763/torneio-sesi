@@ -230,15 +230,38 @@ function renderInicio(dados) {
     getMountEl().appendChild(div);
   }
 
-  // Preview do boletim
-  if (boletim.length > 0) {
+  // Boletim — itens visíveis na Início (sem inicioAte=-1 e dentro do prazo)
+  const bolInicio = boletim.filter(b =>
+    b.inicioAte !== -1 && (b.inicioAte === null || b.inicioAte === undefined || agora <= b.inicioAte)
+  );
+  if (bolInicio.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'com-secao boletim-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_no_boletim')}</div>
+      <div class="boletim-galeria">${bolInicio.map(_renderBoletimItem).join('')}</div>
+      <div class="com-inicio-ver-mais" onclick="trocarAba('boletim')" role="button" style="cursor:pointer">
+        ${tc('inicio_ver_boletim')}
+      </div>`;
+    getMountEl().appendChild(div);
+    // Carrega vídeos do Firebase que aparecem no Início
+    setTimeout(() => {
+      getMountEl().querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
+      carregarVideosPendentes();
+    }, 0);
+  } else if (boletim.length > 0) {
+    // Tem itens mas nenhum visível na Início — mostra só o link
     const div = document.createElement('div');
     div.className = 'com-secao';
     div.innerHTML = `
       <div class="com-secao-titulo">${tc('inicio_no_boletim')}</div>
       <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
-        <span>🎬 ${boletim.length} item${boletim.length !== 1 ? 's' : ''}</span>
-        <span class="com-inicio-ver-mais">${tc('inicio_ver_boletim')}</span>
+        <span class="com-inicio-boletim-emoji">🎬</span>
+        <div class="com-inicio-boletim-info">
+          <div class="com-inicio-boletim-titulo">${boletim.length} item${boletim.length !== 1 ? 's' : ''} no boletim</div>
+          <div class="com-inicio-boletim-sub">${tc('inicio_ver_boletim')}</div>
+        </div>
+        <span class="com-inicio-boletim-arrow">›</span>
       </button>`;
     getMountEl().appendChild(div);
   }
@@ -675,13 +698,8 @@ function renderDicas(dicas) {
   getMountEl().appendChild(secao);
 }
 
-// ── Renderização do boletim ───────────────────────────────────────
-function renderBoletimCom(boletim) {
-  const todos = boletim.itens || [];
-  const secao = document.createElement('div');
-  secao.className = 'com-secao boletim-secao';
-
-  function _renderItem(item) {
+// ── Renderização de um item de boletim ───────────────────────────
+function _renderBoletimItem(item) {
     if (item.tipo === 'noticia') return renderNoticiaCard(item);
     const tipo = item.videoId ? 'video' : detectarTipoMidia(item.url || '');
     const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
@@ -713,7 +731,13 @@ function renderBoletimCom(boletim) {
         ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>`   : ''}
         ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
       </div>`;
-  }
+}
+
+// ── Renderização do boletim (aba Boletim) ────────────────────────
+function renderBoletimCom(boletim) {
+  const todos = boletim.itens || [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao boletim-secao';
 
   function desenhar() {
     const itens = _filtrarItens(todos, _filtroBoletim);
@@ -727,7 +751,7 @@ function renderBoletimCom(boletim) {
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
       ? `<div class="com-vazio">Nenhum item no boletim por enquanto.</div>`
-      : `<div class="boletim-galeria">${itens.map(_renderItem).join('')}</div>`;
+      : `<div class="boletim-galeria">${itens.map(_renderBoletimItem).join('')}</div>`;
     secao.appendChild(lista);
   }
 
