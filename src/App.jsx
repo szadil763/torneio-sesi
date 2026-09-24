@@ -20,8 +20,8 @@ const TEAMS_KAHOOT = [
   { id: "C", label: "Equipe C", color: "#3C9A5F" },
   { id: "D", label: "Equipe D", color: "#E0B23C", dark: true },
 ];
-const SITE_URL = "https://torneio-sesi-20de0.web.app";
-const PUBLIC_URL = "https://torneio-sesi-20de0.web.app/insignias/areas.html";
+const SITE_URL    = "https://torneio-sesi-20de0.web.app";
+const PUBLIC_URL  = "https://torneio-sesi-20de0.web.app/insignias/areas.html";
 const ROUNDS = [1, 2, 3, 4];
 const AZUL = "#004B8D";
 const AZUL_ESCURO = "#002B52";
