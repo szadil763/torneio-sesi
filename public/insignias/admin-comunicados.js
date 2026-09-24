@@ -121,7 +121,7 @@ function renderAbaBoletimCom(boletim) {
 
           <input id="bol-titulo"  type="text" placeholder="Título (opcional)"  class="boletim-input">
           <input id="bol-legenda" type="text" placeholder="Legenda (opcional)" class="boletim-input">
-          ${_seletorArea('bol-area')}
+          ${_seletorArea('bol-area', '📍 EM QUAL ÁREA ESTE ITEM PERTENCE?')}
 
           ${_pendingMedia
             ? `<button class="boletim-btn-add" style="margin-top:12px" onclick="boletimConfirmarPendente()">✅ Adicionar ao boletim</button>`
@@ -245,8 +245,8 @@ function renderSubRecadosCom(recados) {
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 4px;cursor:pointer">
         <input type="checkbox" id="rec-destaque"> Destacar este recado (laranja)
       </label>
-      ${_seletorArea('rec-area')}
       ${_seletorInicio('rec-inicio')}
+      ${_seletorArea('rec-area')}
       <button class="boletim-btn-add" style="margin-top:12px" onclick="recadoAdicionar()">📢 Publicar recado</button>
     </div>
     <div id="rec-erro" class="erro" style="margin-top:8px"></div>
@@ -284,6 +284,7 @@ function renderSubDicasCom(dicas) {
         <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
         <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
       </div>
+      ${_seletorInicio('dic-inicio')}
       ${_seletorArea('dic-area')}
       <button class="boletim-btn-add" style="margin-top:12px" onclick="dicaAdicionar()">+ Adicionar dica</button>
     </div>
@@ -295,7 +296,7 @@ function renderSubDicasCom(dicas) {
             <div class="bol-item-admin">
               <div style="font-size:24px;flex-shrink:0">${item.icone || '💡'}</div>
               <div class="bol-item-info" style="flex:1">
-                <span class="bol-item-titulo">${item.texto}${_badgeAreaAdmin(item.area)}</span>
+                <span class="bol-item-titulo">${item.texto}${_badgeAreaAdmin(item.area)}${_badgeInicioAdmin(item.inicioAte)}</span>
               </div>
               <div class="bol-item-acoes">
                 ${i > 0              ? `<button class="bol-btn-ord" onclick="dicaMover(${i},-1)">↑</button>` : ''}
@@ -311,9 +312,9 @@ function comTrocarSubAba(sub) { comSubAba = sub; renderPainelCom(); }
 // ── Helpers de formulário ─────────────────────────────────────────
 function _seletorArea(id, label) {
   return `
-    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">${label || 'ÁREA'}</label>
+    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">${label || '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?'}</label>
     <select id="${id}" class="boletim-input" style="margin-top:0">
-      <option value="">— Sem área específica —</option>
+      <option value="">— Todas as áreas (visível para todos) —</option>
       <option value="robotica">🤖 Robótica</option>
       <option value="ingles">🌎 Inglês</option>
       <option value="artes">🎨 Artes</option>
@@ -323,14 +324,14 @@ function _seletorArea(id, label) {
 
 function _seletorInicio(id) {
   return `
-    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">EXIBIR NA PÁGINA INÍCIO</label>
+    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">🏠 POR QUANTO TEMPO APARECE NA PÁGINA INÍCIO?</label>
     <select id="${id}" class="boletim-input" style="margin-top:0">
       <option value="0">✅ Sempre visível na Início</option>
-      <option value="1">⏱ Por 1 dia, depois só em Recados</option>
-      <option value="3">⏱ Por 3 dias, depois só em Recados</option>
-      <option value="7">⏱ Por 7 dias, depois só em Recados</option>
-      <option value="14">⏱ Por 14 dias, depois só em Recados</option>
-      <option value="-1">🚫 Não exibir na Início</option>
+      <option value="1">⏱ Por 1 dia, depois vai para a área escolhida</option>
+      <option value="3">⏱ Por 3 dias, depois vai para a área escolhida</option>
+      <option value="7">⏱ Por 7 dias, depois vai para a área escolhida</option>
+      <option value="14">⏱ Por 14 dias, depois vai para a área escolhida</option>
+      <option value="-1">🚫 Não exibir na Início (só na área escolhida)</option>
     </select>`;
 }
 
@@ -972,14 +973,16 @@ async function recadoMover(idx, delta) {
 
 // ── Dicas ─────────────────────────────────────────────────────────
 async function dicaAdicionar() {
-  const icone = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
-  const texto = (document.getElementById('dic-texto')?.value  || '').trim();
-  const area  = document.getElementById('dic-area')?.value || '';
+  const icone      = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
+  const texto      = (document.getElementById('dic-texto')?.value  || '').trim();
+  const area       = document.getElementById('dic-area')?.value || '';
+  const inicioDias = document.getElementById('dic-inicio')?.value ?? '0';
+  const inicioAte  = _calcInicioAte(inicioDias);
   const erro  = document.getElementById('dic-erro');
   if (!texto) { if(erro) erro.textContent = 'Escreva o texto da dica.'; return; }
   if(erro) erro.textContent = '';
   const dados = lerDicas();
-  dados.itens.push({ id: Date.now().toString(36), icone, texto, area: area || undefined });
+  dados.itens.push({ id: Date.now().toString(36), icone, texto, area: area || undefined, inicioAte });
   await salvarDicas(dados);
   renderPainelCom();
 }
