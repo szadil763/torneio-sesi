@@ -304,6 +304,61 @@
 }
 .com-recado-clicavel:active { opacity: .8; }
 
+/* ── Chips de filtro por área ─────────────────────────────────── */
+.com-area-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.com-area-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 13px;
+  border-radius: 100px;
+  border: 1.5px solid color-mix(in srgb, var(--chip-cor, #004B8D) 40%, transparent);
+  background: transparent;
+  color: var(--chip-cor, #004B8D);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .13s, color .13s, border-color .13s;
+  white-space: nowrap;
+}
+.com-area-chip:hover:not(.ativo) {
+  background: color-mix(in srgb, var(--chip-cor, #004B8D) 10%, transparent);
+}
+.com-area-chip.ativo {
+  background: var(--chip-cor, #004B8D);
+  color: #fff;
+  border-color: var(--chip-cor, #004B8D);
+}
+
+/* Badge de área nos cards */
+.com-area-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+/* Badge dentro de .com-dica (precisa de layout flexível) */
+.com-dica {
+  flex-wrap: wrap;
+}
+.com-dica .com-area-badge {
+  order: -1;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
 /* Ver mais link */
 .com-inicio-ver-mais {
   display: block;

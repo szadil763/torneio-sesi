@@ -128,6 +128,9 @@ function trocarAba(id) {
   if (!_dadosCache) return;
   _abaAtiva = id;
   _estojoAtivoCom = null;
+  _filtroRecados = 'todas';
+  _filtroDicas   = 'todas';
+  _filtroBoletim = 'todas';
 
   // Para o countdown se estava rodando e vai sair de Início
   if (id !== 'inicio' && _countdownInterval) {
@@ -560,94 +563,171 @@ function renderEstojosSection() {
   getMountEl().appendChild(secao);
 }
 
+// ── Filtro por área ───────────────────────────────────────────────
+const _AREAS_FILTRO = [
+  { id: 'todas',          label: 'Todas',          emoji: '🔵', cor: '#004B8D' },
+  { id: 'robotica',       label: 'Robótica',        emoji: '🤖', cor: '#7C3AED' },
+  { id: 'ingles',         label: 'Inglês',          emoji: '🌎', cor: '#2E9E4F' },
+  { id: 'artes',          label: 'Artes',           emoji: '🎨', cor: '#E53E3E' },
+  { id: 'educacao-fisica',label: 'Ed. Física',      emoji: '⚽', cor: '#F5821F' },
+];
+
+let _filtroRecados = 'todas';
+let _filtroDicas   = 'todas';
+let _filtroBoletim = 'todas';
+
+function _areaNome(id) {
+  const a = _AREAS_FILTRO.find(x => x.id === id);
+  return a ? `${a.emoji} ${a.label}` : '';
+}
+function _areaCor(id) {
+  const a = _AREAS_FILTRO.find(x => x.id === id);
+  return a ? a.cor : '#004B8D';
+}
+
+function _renderChips(filtroAtual, onChange) {
+  const wrap = document.createElement('div');
+  wrap.className = 'com-area-chips';
+  _AREAS_FILTRO.forEach(area => {
+    const btn = document.createElement('button');
+    btn.className = 'com-area-chip' + (filtroAtual === area.id ? ' ativo' : '');
+    btn.style.setProperty('--chip-cor', area.cor);
+    btn.textContent = `${area.emoji} ${area.label}`;
+    btn.onclick = () => onChange(area.id);
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+function _filtrarItens(itens, filtro) {
+  if (filtro === 'todas') return itens;
+  return itens.filter(i => (i.area || '') === filtro);
+}
+
+function _badgeArea(item) {
+  if (!item.area) return '';
+  const cor = _areaCor(item.area);
+  return `<span class="com-area-badge" style="background:${cor}">${_areaNome(item.area)}</span>`;
+}
+
 // ── Renderização de recados ───────────────────────────────────────
 function renderRecados(recados) {
-  const itens = recados.itens || [];
-  const secao = document.createElement('div');
+  const todos  = recados.itens || [];
+  const secao  = document.createElement('div');
   secao.className = 'com-secao';
-  secao.innerHTML = `
-    <div class="com-secao-titulo">${tc('recados_titulo')}</div>
-    ${itens.length === 0
+
+  function desenhar() {
+    const itens = _filtrarItens(todos, _filtroRecados);
+    secao.innerHTML = `<div class="com-secao-titulo">${tc('recados_titulo')}</div>`;
+    secao.appendChild(_renderChips(_filtroRecados, id => {
+      _filtroRecados = id;
+      desenhar();
+    }));
+    const lista = document.createElement('div');
+    lista.innerHTML = itens.length === 0
       ? `<div class="com-vazio">${tc('recados_vazio')}</div>`
       : itens.map(r => `
           <div class="com-recado ${r.destaque ? 'com-recado-destaque' : ''}">
+            ${_badgeArea(r)}
             ${r.titulo ? `<div class="com-recado-titulo">${r.titulo}</div>` : ''}
             <div class="com-recado-texto">${r.texto}</div>
             <div class="com-recado-data">${formatarDataCom(r.ts)}</div>
-          </div>`).join('')}`;
+          </div>`).join('');
+    secao.appendChild(lista);
+  }
+
+  desenhar();
   getMountEl().appendChild(secao);
 }
 
 // ── Renderização de dicas ─────────────────────────────────────────
 function renderDicas(dicas) {
-  const itens = dicas.itens || [];
+  const todos = dicas.itens || [];
   const secao = document.createElement('div');
   secao.className = 'com-secao';
-  secao.innerHTML = `
-    <div class="com-secao-titulo">${tc('dicas_titulo')}</div>
-    ${itens.length === 0
+
+  function desenhar() {
+    const itens = _filtrarItens(todos, _filtroDicas);
+    secao.innerHTML = `<div class="com-secao-titulo">${tc('dicas_titulo')}</div>`;
+    secao.appendChild(_renderChips(_filtroDicas, id => {
+      _filtroDicas = id;
+      desenhar();
+    }));
+    const lista = document.createElement('div');
+    lista.innerHTML = itens.length === 0
       ? `<div class="com-vazio">${tc('dicas_vazio')}</div>`
       : `<div class="com-dicas-lista">
           ${itens.map(d => `
             <div class="com-dica">
+              ${_badgeArea(d)}
               <span class="com-dica-icone">${d.icone || '💡'}</span>
               <span class="com-dica-texto">${d.texto}</span>
             </div>`).join('')}
-        </div>`}`;
+        </div>`;
+    secao.appendChild(lista);
+  }
+
+  desenhar();
   getMountEl().appendChild(secao);
 }
 
 // ── Renderização do boletim ───────────────────────────────────────
 function renderBoletimCom(boletim) {
-  const itens = boletim.itens || [];
-  if (itens.length === 0) {
-    const secao = document.createElement('div');
-    secao.className = 'com-secao';
-    secao.innerHTML = `
-      <div class="com-secao-titulo">${tc('boletim_titulo')}</div>
-      <div class="com-vazio">Nenhum item no boletim por enquanto.</div>`;
-    getMountEl().appendChild(secao);
-    return;
-  }
-
+  const todos = boletim.itens || [];
   const secao = document.createElement('div');
   secao.className = 'com-secao boletim-secao';
-  secao.innerHTML = `
-    <div class="com-secao-titulo">${tc('boletim_titulo')}</div>
-    <div class="boletim-galeria">
-      ${itens.map(item => {
-        if (item.tipo === 'noticia') return renderNoticiaCard(item);
-        const tipo = item.videoId ? 'video' : detectarTipoMidia(item.url || '');
-        const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
-        const midia = vid
-          ? `<div class="bol-video-wrap">
-               <iframe src="https://www.youtube.com/embed/${vid}?rel=0" frameborder="0"
-                 allowfullscreen allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
-                 class="bol-iframe"></iframe>
-             </div>`
-          : item.videoId
-          ? `<div class="bol-video-wrap">
-               <video data-video-id="${item.videoId}" controls playsinline class="bol-iframe bol-video-lazy"
-                 style="background:#111;width:100%;max-height:360px;object-fit:contain"></video>
-               <div class="bol-video-carregando" data-for="${item.videoId}">⏳ Carregando vídeo…</div>
-             </div>`
-          : tipo === 'video'
-          ? `<div class="bol-video-wrap">
-               <video src="${item.url}" controls playsinline class="bol-iframe"
-                 style="background:#000;width:100%;max-height:360px;object-fit:contain"></video>
-             </div>`
-          : `<div class="bol-img-wrap">
-               <img src="${item.url}" alt="${item.titulo || 'Foto'}" class="bol-img"
-                 onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
-             </div>`;
-        return `
-          <div class="bol-card">
-            ${midia}
-            ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>`   : ''}
-            ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
-          </div>`;
-      }).join('')}
-    </div>`;
+
+  function _renderItem(item) {
+    if (item.tipo === 'noticia') return renderNoticiaCard(item);
+    const tipo = item.videoId ? 'video' : detectarTipoMidia(item.url || '');
+    const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
+    const midia = vid
+      ? `<div class="bol-video-wrap">
+           <iframe src="https://www.youtube.com/embed/${vid}?rel=0" frameborder="0"
+             allowfullscreen allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+             class="bol-iframe"></iframe>
+         </div>`
+      : item.videoId
+      ? `<div class="bol-video-wrap">
+           <video data-video-id="${item.videoId}" controls playsinline class="bol-iframe bol-video-lazy"
+             style="background:#111;width:100%;max-height:360px;object-fit:contain"></video>
+           <div class="bol-video-carregando" data-for="${item.videoId}">⏳ Carregando vídeo…</div>
+         </div>`
+      : tipo === 'video'
+      ? `<div class="bol-video-wrap">
+           <video src="${item.url}" controls playsinline class="bol-iframe"
+             style="background:#000;width:100%;max-height:360px;object-fit:contain"></video>
+         </div>`
+      : `<div class="bol-img-wrap">
+           <img src="${item.url}" alt="${item.titulo || 'Foto'}" class="bol-img"
+             onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
+         </div>`;
+    return `
+      <div class="bol-card">
+        ${midia}
+        ${_badgeArea(item)}
+        ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>`   : ''}
+        ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
+      </div>`;
+  }
+
+  function desenhar() {
+    const itens = _filtrarItens(todos, _filtroBoletim);
+    secao.innerHTML = `<div class="com-secao-titulo">${tc('boletim_titulo')}</div>`;
+    secao.appendChild(_renderChips(_filtroBoletim, id => {
+      _filtroBoletim = id;
+      desenhar();
+      secao.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
+      carregarVideosPendentes();
+    }));
+    const lista = document.createElement('div');
+    lista.innerHTML = itens.length === 0
+      ? `<div class="com-vazio">Nenhum item no boletim por enquanto.</div>`
+      : `<div class="boletim-galeria">${itens.map(_renderItem).join('')}</div>`;
+    secao.appendChild(lista);
+  }
+
+  desenhar();
   getMountEl().appendChild(secao);
 }
 
