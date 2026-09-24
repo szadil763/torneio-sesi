@@ -334,6 +334,25 @@
       <p class="subtitulo">Escolha a modalidade que deseja acessar.</p>
     </div>
 
+    <!-- Card de estatísticas de fluxo -->
+    <div id="hub-stats" style="width:100%;max-width:540px;margin-bottom:20px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 20px;display:flex;gap:0;flex-direction:column">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">📊 Fluxo · Comunicados &amp; Insígnias</span>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span id="hub-stat-visitas" style="font-size:22px;font-weight:800;font-family:'Baloo 2',sans-serif;color:#fff">—</span>
+          <span style="font-size:11px;color:var(--muted)">visitas totais</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span id="hub-stat-unicos" style="font-size:22px;font-weight:800;font-family:'Baloo 2',sans-serif;color:#fff">—</span>
+          <span style="font-size:11px;color:var(--muted)">famílias únicas</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span id="hub-stat-online" style="font-size:22px;font-weight:800;font-family:'Baloo 2',sans-serif;color:#fff">—</span>
+          <span style="font-size:11px;color:var(--muted)">online agora</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Card principal: Comunicados + Insígnias (público) -->
     <div class="grade grade-full" style="margin-bottom:12px">
       <a href="/insignias/comunicados.html" class="modulo mod-comunicados mod-destaque">
@@ -426,5 +445,30 @@
 
   </main>
 
+  <script>
+    (async () => {
+      const BASE = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/stats';
+      try {
+        const resp = await fetch(BASE + '.json');
+        if (!resp.ok) return;
+        const s = await resp.json() || {};
+        const visitas = s.visitas || 0;
+        const unicos  = s['visitantes-unicos'] || 0;
+        const agora   = Date.now();
+        const online  = s.online
+          ? Object.values(s.online).filter(ts => ts > agora - 300_000).length
+          : 0;
+        const sv = document.getElementById('hub-stat-visitas');
+        const su = document.getElementById('hub-stat-unicos');
+        const so = document.getElementById('hub-stat-online');
+        if (sv) sv.textContent = visitas.toLocaleString('pt-BR');
+        if (su) su.textContent = unicos.toLocaleString('pt-BR');
+        if (so) {
+          so.textContent = online;
+          so.style.color = online > 0 ? '#4ade80' : '#fff';
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
 </html>
