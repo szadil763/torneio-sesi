@@ -167,7 +167,7 @@ function renderConteudoAba(dados) {
     case 'dicas':     renderDicas(dados.dicas);        break;
   }
   getMountEl().insertAdjacentHTML('beforeend',
-    `<div class="com-rodape">${tc('rodape')}</div>`);
+    `<div class="com-rodape">${tc('rodape')}<br><span id="com-stats-visitors" style="font-size:11px;color:var(--muted)"></span></div>`);
 }
 
 // ── Aba Início ────────────────────────────────────────────────────
@@ -637,6 +637,31 @@ function _badgeArea(item) {
   return `<span class="com-area-badge" style="background:${cor}">${_areaNome(item.area)}</span>`;
 }
 
+// ── Barra de reações emoji ────────────────────────────────────────
+function _reacoesBar(itemId) {
+  const locais = lerReacoesLocais();
+  const btns = EMOJIS_REACAO.map(e => {
+    const count = getContagemReacao(itemId, e.key);
+    const ativo = !!locais[`${itemId}:${e.key}`];
+    return `<button class="com-reacao-btn${ativo ? ' ativo' : ''}"
+              onclick="reagirComItem('${itemId}','${e.key}',this)" aria-label="${e.key}">
+              ${e.emoji}<span class="com-reacao-count">${count > 0 ? count : ''}</span>
+            </button>`;
+  }).join('');
+  return `<div class="com-reacoes-bar">${btns}</div>`;
+}
+
+async function reagirComItem(itemId, emojiKey, btn) {
+  const result = await reagirItem(itemId, emojiKey);
+  btn.classList.toggle('ativo', result.ativo);
+  const countEl = btn.querySelector('.com-reacao-count');
+  if (countEl) countEl.textContent = result.contagem > 0 ? result.contagem : '';
+  if (result.ativo) {
+    btn.classList.add('com-reacao-animando');
+    setTimeout(() => btn.classList.remove('com-reacao-animando'), 400);
+  }
+}
+
 // ── Renderização de recados ───────────────────────────────────────
 function renderRecados(recados) {
   const todos  = recados.itens || [];
@@ -653,13 +678,17 @@ function renderRecados(recados) {
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
       ? `<div class="com-vazio">${tc('recados_vazio')}</div>`
-      : itens.map(r => `
+      : itens.map(r => {
+          const id = `rec-${r.ts || Math.random().toString(36).slice(2)}`;
+          return `
           <div class="com-recado ${r.destaque ? 'com-recado-destaque' : ''}">
             ${_badgeArea(r)}
             ${r.titulo ? `<div class="com-recado-titulo">${r.titulo}</div>` : ''}
             <div class="com-recado-texto">${r.texto}</div>
             <div class="com-recado-data">${formatarDataCom(r.ts)}</div>
-          </div>`).join('');
+            ${_reacoesBar(id)}
+          </div>`;
+        }).join('');
     secao.appendChild(lista);
   }
 
@@ -684,12 +713,16 @@ function renderDicas(dicas) {
     lista.innerHTML = itens.length === 0
       ? `<div class="com-vazio">${tc('dicas_vazio')}</div>`
       : `<div class="com-dicas-lista">
-          ${itens.map(d => `
+          ${itens.map(d => {
+            const id = `dic-${d.ts || Math.random().toString(36).slice(2)}`;
+            return `
             <div class="com-dica">
               ${_badgeArea(d)}
               <span class="com-dica-icone">${d.icone || '💡'}</span>
               <span class="com-dica-texto">${d.texto}</span>
-            </div>`).join('')}
+              ${_reacoesBar(id)}
+            </div>`;
+          }).join('')}
         </div>`;
     secao.appendChild(lista);
   }
@@ -700,7 +733,8 @@ function renderDicas(dicas) {
 
 // ── Renderização de um item de boletim ───────────────────────────
 function _renderBoletimItem(item) {
-    if (item.tipo === 'noticia') return renderNoticiaCard(item);
+    const bolId = `bol-${item.ts || Math.random().toString(36).slice(2)}`;
+    if (item.tipo === 'noticia') return renderNoticiaCard(item) + _reacoesBar(bolId);
     const tipo = item.videoId ? 'video' : detectarTipoMidia(item.url || '');
     const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
     const midia = vid
@@ -730,6 +764,7 @@ function _renderBoletimItem(item) {
         ${_badgeArea(item)}
         ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>`   : ''}
         ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
+        ${_reacoesBar(bolId)}
       </div>`;
 }
 
@@ -816,16 +851,26 @@ async function renderComunicados() {
     ${renderTabBar()}
     <div id="com-content" class="com-content-area"></div>`;
 
-  // Carrega dados em paralelo e cacheia
+  // Carrega reações e registra visita em paralelo com os dados
   const [, recados, dicas, boletim] = await Promise.all([
     carregarInsignias(),
     carregarRecados(),
     carregarDicas(),
-    carregarBoletim()
+    carregarBoletim(),
+    carregarTodasReacoes().catch(() => {})
   ]);
+  registrarVisita().catch(() => {});
 
   _dadosCache = { recados, dicas, boletim };
   renderConteudoAba(_dadosCache);
+
+  // Atualiza rodapé com visitantes únicos após carregar stats
+  carregarStats().then(stats => {
+    const el = document.getElementById('com-stats-visitors');
+    if (el && stats['visitantes-unicos']) {
+      el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
+    }
+  }).catch(() => {});
 }
 
 // ── Auto-refresh a cada 3 min ─────────────────────────────────────

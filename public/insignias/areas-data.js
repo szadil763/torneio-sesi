@@ -296,6 +296,136 @@ async function salvarDicas(dados) {
   } catch (_) {}
 }
 
+// ── Reações com emoji ─────────────────────────────────────────────
+const RTDB_REACOES_BASE = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/reacoes";
+const STORAGE_KEY_REACOES = "torneio-reacoes:v1";
+const EMOJIS_REACAO = [
+  { key: 'heart', emoji: '❤️' },
+  { key: 'clap',  emoji: '👏' },
+  { key: 'fire',  emoji: '🔥' },
+  { key: 'star',  emoji: '⭐' },
+  { key: 'wow',   emoji: '😮' },
+];
+
+let _reacoesCache = null; // { [itemId]: { heart: N, clap: N, ... } }
+
+function lerReacoesLocais() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY_REACOES) || '{}'); } catch { return {}; }
+}
+
+function _salvarReacoesLocais(obj) {
+  try { localStorage.setItem(STORAGE_KEY_REACOES, JSON.stringify(obj)); } catch (_) {}
+}
+
+async function carregarTodasReacoes() {
+  try {
+    const resp = await fetch(RTDB_REACOES_BASE + '.json');
+    if (resp.ok) { _reacoesCache = (await resp.json()) || {}; return _reacoesCache; }
+  } catch (_) {}
+  _reacoesCache = {};
+  return _reacoesCache;
+}
+
+function getContagemReacao(itemId, emojiKey) {
+  if (!_reacoesCache) return 0;
+  const item = _reacoesCache[itemId];
+  return (item && item[emojiKey]) ? item[emojiKey] : 0;
+}
+
+async function reagirItem(itemId, emojiKey) {
+  const locais = lerReacoesLocais();
+  const chave = `${itemId}:${emojiKey}`;
+  const jareagiu = !!locais[chave];
+
+  if (jareagiu) { delete locais[chave]; } else { locais[chave] = 1; }
+  _salvarReacoesLocais(locais);
+
+  if (!_reacoesCache) _reacoesCache = {};
+  if (!_reacoesCache[itemId]) _reacoesCache[itemId] = {};
+  const novaContagem = Math.max(0, ((_reacoesCache[itemId][emojiKey]) || 0) + (jareagiu ? -1 : 1));
+  _reacoesCache[itemId][emojiKey] = novaContagem;
+
+  try {
+    await fetch(`${RTDB_REACOES_BASE}/${itemId}/${emojiKey}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novaContagem)
+    });
+  } catch (_) {}
+  return { contagem: novaContagem, ativo: !jareagiu };
+}
+
+// ── Estatísticas de visita ────────────────────────────────────────
+const RTDB_STATS_BASE = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/stats";
+const STORAGE_KEY_UUID = "torneio-visitor-uuid";
+
+function _getOuCriarUUID() {
+  try {
+    let id = localStorage.getItem(STORAGE_KEY_UUID);
+    if (!id) {
+      id = 'u' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+      localStorage.setItem(STORAGE_KEY_UUID, id);
+    }
+    return id;
+  } catch { return 'anon' + Math.random().toString(36).slice(2); }
+}
+
+async function registrarVisita() {
+  const uuid = _getOuCriarUUID();
+  try {
+    const visitaResp = await fetch(`${RTDB_STATS_BASE}/uuids/${uuid}.json`);
+    const jafoi = visitaResp.ok && (await visitaResp.json()) === true;
+
+    const totalResp = await fetch(`${RTDB_STATS_BASE}/visitas.json`);
+    const totalAtual = totalResp.ok ? (await totalResp.json() || 0) : 0;
+    await fetch(`${RTDB_STATS_BASE}/visitas.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(totalAtual + 1)
+    });
+
+    if (!jafoi) {
+      const univResp = await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`);
+      const univAtual = univResp.ok ? (await univResp.json() || 0) : 0;
+      await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(univAtual + 1)
+      });
+      await fetch(`${RTDB_STATS_BASE}/uuids/${uuid}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(true)
+      });
+    }
+    await _pingOnline(uuid);
+    setInterval(() => _pingOnline(uuid), 120_000);
+  } catch (_) {}
+}
+
+async function _pingOnline(uuid) {
+  try {
+    await fetch(`${RTDB_STATS_BASE}/online/${uuid}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Date.now())
+    });
+    const resp = await fetch(`${RTDB_STATS_BASE}/online.json`);
+    if (resp.ok) {
+      const todos = await resp.json();
+      if (todos) {
+        const limite = Date.now() - 300_000;
+        await Promise.all(Object.entries(todos)
+          .filter(([, ts]) => ts < limite)
+          .map(([id]) => fetch(`${RTDB_STATS_BASE}/online/${id}.json`, { method: 'DELETE' }).catch(() => {})));
+      }
+    }
+  } catch (_) {}
+}
+
+async function carregarStats() {
+  try {
+    const resp = await fetch(`${RTDB_STATS_BASE}.json`);
+    if (resp.ok) return (await resp.json()) || {};
+  } catch (_) {}
+  return {};
+}
+
 function detectarTipoMidia(url) {
   if (/youtu\.be\/|youtube\.com\/(watch|shorts|embed)/.test(url)) return 'youtube';
   if (/^data:video\//.test(url)) return 'video';

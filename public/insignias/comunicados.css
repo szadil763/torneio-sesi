@@ -359,6 +359,61 @@
   margin-bottom: 4px;
 }
 
+/* ── Barra de reações emoji ───────────────────────────────────── */
+.com-reacoes-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--card-line);
+}
+.com-reacao-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1.5px solid var(--card-line);
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .13s, border-color .13s, transform .1s;
+  line-height: 1;
+}
+.com-reacao-btn:hover {
+  background: color-mix(in srgb, #004B8D 8%, transparent);
+  border-color: color-mix(in srgb, #004B8D 30%, transparent);
+}
+.com-reacao-btn.ativo {
+  background: color-mix(in srgb, #F5821F 12%, transparent);
+  border-color: #F5821F;
+}
+.com-reacao-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 10px;
+}
+.com-reacao-btn.ativo .com-reacao-count {
+  color: #d9620a;
+}
+@keyframes com-reacao-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+.com-reacao-btn.com-reacao-animando {
+  animation: com-reacao-pop .35s ease;
+}
+
+/* Dentro de .com-dica — a barra ocupa linha inteira */
+.com-dica .com-reacoes-bar {
+  width: 100%;
+  margin-left: 0;
+}
+
 /* Ver mais link */
 .com-inicio-ver-mais {
   display: block;

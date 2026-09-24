@@ -64,6 +64,13 @@ function renderPainelCom() {
       </button>
     </div>
 
+    <div id="admin-stats-card" style="background:var(--card);border:1.5px solid var(--card-line);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12px;font-weight:700;color:var(--muted)">📊 Fluxo do site</span>
+      <span id="stat-visitas"   style="font-size:13px;font-weight:700">— visitas</span>
+      <span id="stat-unicos"    style="font-size:13px;font-weight:700">— famílias únicas</span>
+      <span id="stat-online"    style="font-size:13px;font-weight:700">— online agora</span>
+    </div>
+
     <div class="admin-abas">
       <button class="admin-aba ${abaComAtiva === 'boletim'      ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
       <button class="admin-aba ${abaComAtiva === 'comunicados'  ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
@@ -75,6 +82,21 @@ function renderPainelCom() {
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
     </p>
   `;
+  setTimeout(_carregarStatsAdmin, 0);
+}
+
+function _carregarStatsAdmin() {
+  carregarStats().then(stats => {
+    const visitas = stats.visitas || 0;
+    const unicos  = stats['visitantes-unicos'] || 0;
+    const online  = stats.online ? Object.values(stats.online).filter(ts => ts > Date.now() - 300_000).length : 0;
+    const sv = document.getElementById('stat-visitas');
+    const su = document.getElementById('stat-unicos');
+    const so = document.getElementById('stat-online');
+    if (sv) sv.textContent = `${visitas} visita${visitas !== 1 ? 's' : ''}`;
+    if (su) su.textContent = `${unicos} família${unicos !== 1 ? 's' : ''} única${unicos !== 1 ? 's' : ''}`;
+    if (so) so.innerHTML   = `<span style="color:${online > 0 ? '#2E9E4F' : 'var(--muted)'}">● ${online} online agora</span>`;
+  }).catch(() => {});
 }
 
 function copiarLinkComunicados() {
