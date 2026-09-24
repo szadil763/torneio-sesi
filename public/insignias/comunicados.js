@@ -721,10 +721,6 @@ async function renderComunicados() {
 }
 
 // ── Auto-refresh a cada 3 min ─────────────────────────────────────
-let _recadosCache = null;
-let _dicasCache   = null;
-let _boletimCache = null;
-
 function agendarRefresh() {
   setTimeout(async () => {
     const videos   = Array.from(document.querySelectorAll('video'));
