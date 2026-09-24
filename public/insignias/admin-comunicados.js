@@ -121,10 +121,11 @@ function renderAbaBoletimCom(boletim) {
 
           <input id="bol-titulo"  type="text" placeholder="Título (opcional)"  class="boletim-input">
           <input id="bol-legenda" type="text" placeholder="Legenda (opcional)" class="boletim-input">
+          ${_seletorArea('bol-area')}
 
           ${_pendingMedia
-            ? `<button class="boletim-btn-add" onclick="boletimConfirmarPendente()">✅ Adicionar ao boletim</button>`
-            : `<button class="boletim-btn-add" onclick="boletimAdicionar()">+ Adicionar por link</button>`}
+            ? `<button class="boletim-btn-add" style="margin-top:12px" onclick="boletimConfirmarPendente()">✅ Adicionar ao boletim</button>`
+            : `<button class="boletim-btn-add" style="margin-top:12px" onclick="boletimAdicionar()">+ Adicionar por link</button>`}
 
           <div class="bol-separador ia-separador"><span>✨ gere título e legenda com IA</span></div>
           <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Descreva o que aparece na foto ou no vídeo e a IA sugere título e legenda.</p>
@@ -194,7 +195,7 @@ function renderAbaBoletimCom(boletim) {
                 <div class="bol-item-admin">
                   <div class="bol-item-preview">${thumb}${badge}</div>
                   <div class="bol-item-info">
-                    <strong class="bol-item-titulo">${tituloExibido}</strong>
+                    <strong class="bol-item-titulo">${tituloExibido}${_badgeAreaAdmin(item.area)}</strong>
                     <span class="bol-item-legenda">${item.legenda || item.subtitulo || ''}</span>
                   </div>
                   <div class="bol-item-acoes">
@@ -241,10 +242,12 @@ function renderSubRecadosCom(recados) {
       <input id="rec-titulo" type="text" placeholder="Título do recado (opcional)" class="boletim-input">
       <textarea id="rec-texto" class="boletim-input boletim-textarea" rows="4"
         placeholder="Digite o recado para pais e alunos..."></textarea>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 8px;cursor:pointer">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 4px;cursor:pointer">
         <input type="checkbox" id="rec-destaque"> Destacar este recado (laranja)
       </label>
-      <button class="boletim-btn-add" onclick="recadoAdicionar()">📢 Publicar recado</button>
+      ${_seletorArea('rec-area')}
+      ${_seletorInicio('rec-inicio')}
+      <button class="boletim-btn-add" style="margin-top:12px" onclick="recadoAdicionar()">📢 Publicar recado</button>
     </div>
     <div id="rec-erro" class="erro" style="margin-top:8px"></div>
     ${itens.length === 0
@@ -253,7 +256,7 @@ function renderSubRecadosCom(recados) {
           ${itens.map((item, i) => `
             <div class="bol-item-admin">
               <div class="bol-item-info" style="flex:1">
-                <strong class="bol-item-titulo">${item.titulo || '(sem título)'}</strong>
+                <strong class="bol-item-titulo">${item.titulo || '(sem título)'}${_badgeAreaAdmin(item.area)}${_badgeInicioAdmin(item.inicioAte)}</strong>
                 <span class="bol-item-legenda" style="white-space:pre-line;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${item.texto}</span>
               </div>
               <div class="bol-item-acoes">
@@ -281,7 +284,8 @@ function renderSubDicasCom(dicas) {
         <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
         <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
       </div>
-      <button class="boletim-btn-add" onclick="dicaAdicionar()">+ Adicionar dica</button>
+      ${_seletorArea('dic-area')}
+      <button class="boletim-btn-add" style="margin-top:12px" onclick="dicaAdicionar()">+ Adicionar dica</button>
     </div>
     <div id="dic-erro" class="erro" style="margin-top:8px"></div>
     ${itens.length === 0
@@ -291,7 +295,7 @@ function renderSubDicasCom(dicas) {
             <div class="bol-item-admin">
               <div style="font-size:24px;flex-shrink:0">${item.icone || '💡'}</div>
               <div class="bol-item-info" style="flex:1">
-                <span class="bol-item-titulo">${item.texto}</span>
+                <span class="bol-item-titulo">${item.texto}${_badgeAreaAdmin(item.area)}</span>
               </div>
               <div class="bol-item-acoes">
                 ${i > 0              ? `<button class="bol-btn-ord" onclick="dicaMover(${i},-1)">↑</button>` : ''}
@@ -303,6 +307,55 @@ function renderSubDicasCom(dicas) {
 }
 
 function comTrocarSubAba(sub) { comSubAba = sub; renderPainelCom(); }
+
+// ── Helpers de formulário ─────────────────────────────────────────
+function _seletorArea(id, label) {
+  return `
+    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">${label || 'ÁREA'}</label>
+    <select id="${id}" class="boletim-input" style="margin-top:0">
+      <option value="">— Sem área específica —</option>
+      <option value="robotica">🤖 Robótica</option>
+      <option value="ingles">🌎 Inglês</option>
+      <option value="artes">🎨 Artes</option>
+      <option value="educacao-fisica">⚽ Ed. Física</option>
+    </select>`;
+}
+
+function _seletorInicio(id) {
+  return `
+    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">EXIBIR NA PÁGINA INÍCIO</label>
+    <select id="${id}" class="boletim-input" style="margin-top:0">
+      <option value="0">✅ Sempre visível na Início</option>
+      <option value="1">⏱ Por 1 dia, depois só em Recados</option>
+      <option value="3">⏱ Por 3 dias, depois só em Recados</option>
+      <option value="7">⏱ Por 7 dias, depois só em Recados</option>
+      <option value="14">⏱ Por 14 dias, depois só em Recados</option>
+      <option value="-1">🚫 Não exibir na Início</option>
+    </select>`;
+}
+
+function _calcInicioAte(dias) {
+  const d = parseInt(dias, 10);
+  if (d === -1) return -1;           // nunca mostrar na Início
+  if (d === 0)  return null;         // sempre mostrar
+  return Date.now() + d * 86_400_000;
+}
+
+function _badgeAreaAdmin(area) {
+  const cores = { robotica:'#7C3AED', ingles:'#2E9E4F', artes:'#E53E3E', 'educacao-fisica':'#F5821F' };
+  const nomes = { robotica:'🤖 Robótica', ingles:'🌎 Inglês', artes:'🎨 Artes', 'educacao-fisica':'⚽ Ed. Física' };
+  if (!area || !nomes[area]) return '';
+  return `<span style="font-size:10px;font-weight:800;color:#fff;background:${cores[area]};padding:2px 8px;border-radius:100px;margin-left:6px">${nomes[area]}</span>`;
+}
+
+function _badgeInicioAdmin(inicioAte) {
+  if (inicioAte === -1) return `<span style="font-size:10px;color:var(--muted);margin-left:6px">🚫 Não na Início</span>`;
+  if (!inicioAte)       return `<span style="font-size:10px;color:#2E9E4F;margin-left:6px">✅ Sempre na Início</span>`;
+  const restante = inicioAte - Date.now();
+  if (restante <= 0)    return `<span style="font-size:10px;color:var(--muted);margin-left:6px">⏱ Expirou da Início</span>`;
+  const dias = Math.ceil(restante / 86_400_000);
+  return `<span style="font-size:10px;color:#F5821F;margin-left:6px">⏱ Na Início por mais ${dias}d</span>`;
+}
 
 // ── Geradores de IA ───────────────────────────────────────────────
 function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -706,8 +759,9 @@ async function boletimConfirmarPendente() {
       url = '';
     }
 
+    const area  = document.getElementById('bol-area')?.value || '';
     const dados = lerBoletim();
-    dados.itens.unshift({ id, tipo: _pendingMedia.tipo, url, videoId, titulo, legenda, ts: Date.now() });
+    dados.itens.unshift({ id, tipo: _pendingMedia.tipo, url, videoId, titulo, legenda, area: area || undefined, ts: Date.now() });
     if (btn) btn.textContent = '⏳ Salvando boletim…';
     await salvarBoletim(dados);
 
@@ -745,11 +799,12 @@ async function boletimAdicionar() {
   const url     = (document.getElementById('bol-url')?.value || '').trim();
   const titulo  = (document.getElementById('bol-titulo')?.value || '').trim();
   const legenda = (document.getElementById('bol-legenda')?.value || '').trim();
+  const area    = document.getElementById('bol-area')?.value || '';
   const erro    = document.getElementById('bol-erro');
   if (!url) { if(erro) erro.textContent = 'Informe um link.'; return; }
   try { new URL(url); } catch { if(erro) erro.textContent = 'Link inválido.'; return; }
   const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, ts: Date.now() });
+  dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, area: area || undefined, ts: Date.now() });
   await salvarBoletim(dados);
   renderPainelCom();
 }
@@ -883,14 +938,17 @@ async function boletimPublicarNoticia() {
 
 // ── Recados ───────────────────────────────────────────────────────
 async function recadoAdicionar() {
-  const titulo   = (document.getElementById('rec-titulo')?.value || '').trim();
-  const texto    = (document.getElementById('rec-texto')?.value  || '').trim();
-  const destaque = document.getElementById('rec-destaque')?.checked || false;
-  const erro     = document.getElementById('rec-erro');
+  const titulo    = (document.getElementById('rec-titulo')?.value || '').trim();
+  const texto     = (document.getElementById('rec-texto')?.value  || '').trim();
+  const destaque  = document.getElementById('rec-destaque')?.checked || false;
+  const area      = document.getElementById('rec-area')?.value || '';
+  const inicioDias = document.getElementById('rec-inicio')?.value ?? '0';
+  const inicioAte = _calcInicioAte(inicioDias);
+  const erro      = document.getElementById('rec-erro');
   if (!texto) { if(erro) erro.textContent = 'Escreva o texto do recado.'; return; }
   if(erro) erro.textContent = '';
   const dados = lerRecados();
-  dados.itens.unshift({ id: Date.now().toString(36), titulo, texto, destaque, ts: Date.now() });
+  dados.itens.unshift({ id: Date.now().toString(36), titulo, texto, destaque, area: area || undefined, inicioAte, ts: Date.now() });
   await salvarRecados(dados);
   renderPainelCom();
 }
@@ -916,11 +974,12 @@ async function recadoMover(idx, delta) {
 async function dicaAdicionar() {
   const icone = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
   const texto = (document.getElementById('dic-texto')?.value  || '').trim();
+  const area  = document.getElementById('dic-area')?.value || '';
   const erro  = document.getElementById('dic-erro');
   if (!texto) { if(erro) erro.textContent = 'Escreva o texto da dica.'; return; }
   if(erro) erro.textContent = '';
   const dados = lerDicas();
-  dados.itens.push({ id: Date.now().toString(36), icone, texto });
+  dados.itens.push({ id: Date.now().toString(36), icone, texto, area: area || undefined });
   await salvarDicas(dados);
   renderPainelCom();
 }

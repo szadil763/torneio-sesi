@@ -207,9 +207,13 @@ function renderInicio(dados) {
     </div>`;
   getMountEl().appendChild(divCards);
 
-  // Preview do último recado
-  if (recados.length > 0) {
-    const ultimo = recados[0];
+  // Preview do último recado visível na Início
+  const agora = Date.now();
+  const recadoInicio = recados.find(r =>
+    r.inicioAte !== -1 && (r.inicioAte === null || r.inicioAte === undefined || agora <= r.inicioAte)
+  );
+  if (recadoInicio) {
+    const ultimo = recadoInicio;
     const texto  = ultimo.texto || '';
     const preview = texto.length > 120 ? texto.substring(0, 120) + '…' : texto;
     const div = document.createElement('div');
