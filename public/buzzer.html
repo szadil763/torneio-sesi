@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buzzer · SESI Torneio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --c-vm: #E5484D; --c-az: #2F8FE0; --c-vd: #3C9A5F; --c-am: #E0B23C;
+      --bg: #0a0c12;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: #fff; font-family: 'Baloo 2', sans-serif; overflow: hidden; }
+
+    /* ── Tela de configuração ── */
+    #tela-config {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; padding: 24px; gap: 20px; text-align: center;
+    }
+    #tela-config h1 { font-size: clamp(20px, 4vw, 32px); font-weight: 900; margin-bottom: 4px; }
+    #tela-config p  { font-size: 14px; color: #aaa; max-width: 38ch; line-height: 1.5; }
+    .config-grade {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 14px; width: 100%; max-width: 560px; margin: 8px 0;
+    }
+    .config-card {
+      border-radius: 18px; padding: 18px 14px; cursor: pointer;
+      border: 3px solid transparent; transition: border-color .15s, transform .1s;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      user-select: none;
+    }
+    .config-card:active { transform: scale(.96); }
+    .config-card.aguardando { border-color: rgba(255,255,255,.5); animation: pulsar .8s infinite alternate; }
+    .config-card.mapeada   { border-color: rgba(255,255,255,.9); }
+    @keyframes pulsar { from { box-shadow: 0 0 0 0 rgba(255,255,255,.2); } to { box-shadow: 0 0 0 12px rgba(255,255,255,0); } }
+    .config-nome  { font-size: 16px; font-weight: 800; letter-spacing: .03em; }
+    .config-tecla { font-size: 13px; background: rgba(0,0,0,.35); border-radius: 8px; padding: 4px 12px; font-weight: 700; letter-spacing: .06em; min-height: 28px; display:flex;align-items:center; }
+    .config-instrucao { font-size: 12px; opacity: .7; }
+
+    .btn-iniciar {
+      background: #fff; color: #0a0c12; border: none; border-radius: 14px;
+      padding: 14px 36px; font-size: 18px; font-weight: 900; font-family: inherit;
+      cursor: pointer; transition: opacity .15s, transform .1s;
+      letter-spacing: .02em;
+    }
+    .btn-iniciar:hover  { opacity: .92; }
+    .btn-iniciar:active { transform: scale(.97); }
+    .btn-iniciar:disabled { opacity: .3; cursor: not-allowed; }
+    .btn-reconfigurar {
+      font-size: 13px; color: #aaa; background: none; border: 1px solid #333;
+      border-radius: 8px; padding: 6px 14px; cursor: pointer; font-family: inherit; margin-top: 4px;
+    }
+    .btn-reconfigurar:hover { color: #fff; border-color: #666; }
+
+    /* ── Tela ativa (jogo) ── */
+    #tela-jogo {
+      display: none; height: 100vh;
+      display: none; flex-direction: column;
+    }
+    #tela-jogo.visivel { display: flex; }
+
+    .jogo-grade {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr; gap: 6px; padding: 6px;
+    }
+
+    .equipe-zona {
+      border-radius: 20px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      transition: opacity .25s, transform .25s, filter .25s;
+      position: relative; overflow: hidden;
+    }
+    .equipe-zona-nome {
+      font-size: clamp(18px, 3.5vw, 32px); font-weight: 900;
+      letter-spacing: .03em; text-shadow: 0 2px 8px rgba(0,0,0,.5);
+      text-align: center; line-height: 1.2;
+    }
+    .equipe-zona-tecla {
+      font-size: 13px; background: rgba(0,0,0,.3); border-radius: 8px;
+      padding: 3px 12px; font-weight: 700; letter-spacing: .1em;
+      opacity: .7;
+    }
+    .equipe-zona-ping { font-size: clamp(32px, 6vw, 60px); line-height: 1; }
+
+    /* Estado: pronto */
+    .estado-pronto .equipe-zona { opacity: 1; }
+
+    /* Estado: vencedor — ganhador pisca, perdedores escurecem */
+    .estado-vencedor .equipe-zona        { opacity: .18; filter: saturate(.2); transform: scale(.94); }
+    .estado-vencedor .equipe-zona.winner {
+      opacity: 1; filter: none; transform: scale(1.03);
+      animation: winner-pulse 0.55s ease-out;
+    }
+    @keyframes winner-pulse {
+      0%   { transform: scale(1.0); box-shadow: 0 0 0 0 rgba(255,255,255,.6); }
+      40%  { transform: scale(1.07); box-shadow: 0 0 0 30px rgba(255,255,255,0); }
+      100% { transform: scale(1.03); }
+    }
+
+    /* Flash de tela inteira */
+    #flash-overlay {
+      position: fixed; inset: 0; pointer-events: none; z-index: 50;
+      opacity: 0; transition: opacity .1s;
+    }
+    #flash-overlay.ativo { animation: flash-anim .45s ease-out forwards; }
+    @keyframes flash-anim {
+      0%   { opacity: .7; }
+      100% { opacity: 0; }
+    }
+
+    /* Barra de status inferior */
+    #status-bar {
+      padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(10px); gap: 12px; flex-shrink: 0;
+    }
+    #status-msg { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: .03em; }
+    .btn-reset {
+      background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.25);
+      border-radius: 10px; color: #fff; font-size: 14px; font-weight: 700;
+      padding: 8px 20px; cursor: pointer; font-family: inherit; transition: background .15s;
+      flex-shrink: 0;
+    }
+    .btn-reset:hover { background: rgba(255,255,255,.2); }
+    .btn-sair {
+      background: none; border: none; color: #666; font-size: 13px;
+      cursor: pointer; font-family: inherit; padding: 6px 10px;
+    }
+    .btn-sair:hover { color: #aaa; }
+
+    /* Ícone de microfone/vencedor */
+    .winner-badge {
+      position: absolute; top: 14px; right: 16px;
+      font-size: 28px; opacity: 0;
+      transition: opacity .3s;
+    }
+    .winner .winner-badge { opacity: 1; }
+
+    /* Responsivo mobile */
+    @media (max-width: 500px) {
+      .config-grade { grid-template-columns: 1fr; }
+      .jogo-grade   { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── TELA DE CONFIGURAÇÃO ── -->
+<div id="tela-config">
+  <h1>🎯 Configurar Botoeiras</h1>
+  <p>Clique em cada time e pressione a botoeira correspondente para mapeá-la.</p>
+
+  <div class="config-grade" id="config-grade"></div>
+
+  <button class="btn-iniciar" id="btn-iniciar" disabled onclick="iniciarJogo()">▶ Iniciar buzzer</button>
+  <button class="btn-reconfigurar" onclick="resetarConfig()">↺ Refazer configuração</button>
+</div>
+
+<!-- ── TELA DO JOGO ── -->
+<div id="tela-jogo">
+  <div class="jogo-grade" id="jogo-grade"></div>
+
+  <div id="status-bar">
+    <span id="status-msg">🟢 Aguardando...</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-reset" onclick="resetarRodada()" id="btn-reset-rodada">↺ Resetar (Espaço)</button>
+      <button class="btn-sair" onclick="voltarConfig()">⚙ Config</button>
+    </div>
+  </div>
+</div>
+
+<!-- Flash de feedback visual -->
+<div id="flash-overlay"></div>
+
+<script>
+// ── Times ─────────────────────────────────────────────────────────
+const TIMES = [
+  { id: 'vermelha', nome: 'Turma A · Vermelha', cor: '#E5484D', corEscura: '#7A1F22', emoji: '🔴' },
+  { id: 'azul',     nome: 'Turma B · Azul',     cor: '#2F8FE0', corEscura: '#164A72', emoji: '🔵' },
+  { id: 'verde',    nome: 'Turma C · Verde',     cor: '#3C9A5F', corEscura: '#1E4E30', emoji: '🟢' },
+  { id: 'amarela',  nome: 'Turma D · Amarela',   cor: '#E0B23C', corEscura: '#7A5D14', emoji: '🟡' },
+];
+
+const STORAGE_KEY = 'torneio-buzzer:v1';
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+// ── Sons distintos por time ───────────────────────────────────────
+function tocarSom(timeId) {
+  if (ctx.state === 'suspended') ctx.resume();
+  const t = ctx.currentTime;
+
+  const sons = {
+    vermelha: () => {
+      // Buzzer grave descendente — "ERRR"
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, t);
+      osc.frequency.exponentialRampToValueAtTime(80, t + 0.5);
+      g.gain.setValueAtTime(0.5, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.start(t); osc.stop(t + 0.6);
+    },
+    azul: () => {
+      // Sino cristalino — "DING"
+      [880, 1320, 1760].forEach((freq, i) => {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.value = freq;
+        const t0 = t + i * 0.04;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(0.3 - i * 0.08, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.6);
+        osc.start(t0); osc.stop(t0 + 0.65);
+      });
+    },
+    verde: () => {
+      // Bloop ascendente — "BL-OOP"
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, t);
+      osc.frequency.exponentialRampToValueAtTime(700, t + 0.25);
+      g.gain.setValueAtTime(0.4, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.start(t); osc.stop(t + 0.45);
+    },
+    amarela: () => {
+      // Dois bipes — "BEEP BEEP"
+      [0, 0.18].forEach(offset => {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'square'; osc.frequency.value = 660;
+        const t0 = t + offset;
+        g.gain.setValueAtTime(0.3, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+        osc.start(t0); osc.stop(t0 + 0.15);
+      });
+    },
+  };
+
+  (sons[timeId] || sons.vermelha)();
+}
+
+// ── Configuração ──────────────────────────────────────────────────
+let cfg = {}; // { vermelha: 'KeyQ', azul: 'KeyP', ... }
+let configAtivo = null; // qual time está sendo configurado agora
+
+function carregarConfig() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) cfg = JSON.parse(s);
+  } catch (_) {}
+}
+
+function salvarConfig() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch (_) {}
+}
+
+function resetarConfig() {
+  cfg = {}; configAtivo = null;
+  salvarConfig();
+  renderConfig();
+}
+
+function nomeTecla(code) {
+  if (!code) return '—';
+  return code
+    .replace('Key', '')
+    .replace('Digit', '')
+    .replace('Arrow', '↑ '.replace('Up','↑').replace('Down','↓').replace('Left','←').replace('Right','→'))
+    .replace('Space', 'ESPAÇO')
+    .replace('Enter', 'ENTER')
+    .replace('Numpad', 'NUM');
+}
+
+function renderConfig() {
+  const grade = document.getElementById('config-grade');
+  grade.innerHTML = '';
+
+  TIMES.forEach(tm => {
+    const mapeado = cfg[tm.id];
+    const aguardando = configAtivo === tm.id;
+
+    const card = document.createElement('div');
+    card.className = 'config-card' + (aguardando ? ' aguardando' : '') + (mapeado ? ' mapeada' : '');
+    card.style.background = `linear-gradient(135deg, ${tm.corEscura} 0%, ${tm.cor} 100%)`;
+    card.innerHTML = `
+      <div class="config-nome">${tm.emoji} ${tm.nome}</div>
+      <div class="config-tecla">${mapeado ? nomeTecla(cfg[tm.id]) : (aguardando ? '⌨ pressione a botoeira…' : '— não mapeada —')}</div>
+      <div class="config-instrucao">${aguardando ? 'Aguardando pressionamento' : (mapeado ? '✓ mapeada · clique para trocar' : 'Clique para configurar')}</div>`;
+    card.onclick = () => iniciarMapeamento(tm.id);
+    grade.appendChild(card);
+  });
+
+  const todos = TIMES.every(tm => cfg[tm.id]);
+  document.getElementById('btn-iniciar').disabled = !todos;
+}
+
+function iniciarMapeamento(timeId) {
+  configAtivo = timeId;
+  renderConfig();
+}
+
+document.addEventListener('keydown', e => {
+  if (configAtivo) {
+    e.preventDefault();
+    // Não permite mapear Espaço (reservado para reset)
+    if (e.code === 'Space') { alert('Espaço é reservado para resetar. Escolha outra tecla.'); return; }
+    // Evita mapear a mesma tecla para dois times
+    const jaUsada = TIMES.find(tm => tm.id !== configAtivo && cfg[tm.id] === e.code);
+    if (jaUsada) { alert(`Tecla ${nomeTecla(e.code)} já mapeada para ${jaUsada.nome}. Escolha outra.`); return; }
+    cfg[configAtivo] = e.code;
+    salvarConfig();
+    // Vai para o próximo não mapeado automaticamente
+    const proximo = TIMES.find(tm => !cfg[tm.id]);
+    configAtivo = proximo ? proximo.id : null;
+    renderConfig();
+    return;
+  }
+
+  // ── Lógica de jogo ────────────────────────────────────────────
+  if (estadoJogo === 'pronto') {
+    if (e.code === 'Space') { e.preventDefault(); return; }
+    const vencedor = TIMES.find(tm => cfg[tm.id] === e.code);
+    if (vencedor) {
+      e.preventDefault();
+      ativarVencedor(vencedor.id);
+    }
+  } else if (estadoJogo === 'vencedor') {
+    if (e.code === 'Space') { e.preventDefault(); resetarRodada(); }
+  }
+});
+
+// ── Jogo ──────────────────────────────────────────────────────────
+let estadoJogo = 'pronto'; // 'pronto' | 'vencedor'
+
+function renderJogo() {
+  const grade = document.getElementById('jogo-grade');
+  grade.innerHTML = '';
+  TIMES.forEach(tm => {
+    const zona = document.createElement('div');
+    zona.className = 'equipe-zona';
+    zona.id = 'zona-' + tm.id;
+    zona.style.background = `linear-gradient(160deg, ${tm.corEscura} 0%, ${tm.cor} 100%)`;
+    zona.innerHTML = `
+      <div class="winner-badge">🎤</div>
+      <div class="equipe-zona-nome">${tm.nome}</div>
+      <div class="equipe-zona-tecla">${nomeTecla(cfg[tm.id])}</div>`;
+    grade.appendChild(zona);
+  });
+}
+
+function ativarVencedor(timeId) {
+  if (estadoJogo !== 'pronto') return;
+  estadoJogo = 'vencedor';
+  const tm = TIMES.find(t => t.id === timeId);
+
+  tocarSom(timeId);
+
+  // Flash de tela
+  const flash = document.getElementById('flash-overlay');
+  flash.style.background = tm.cor;
+  flash.classList.remove('ativo');
+  void flash.offsetWidth;
+  flash.classList.add('ativo');
+
+  // Atualiza zonas
+  document.getElementById('jogo-grade').className = 'jogo-grade estado-vencedor';
+  document.querySelectorAll('.equipe-zona').forEach(z => z.classList.remove('winner'));
+  document.getElementById('zona-' + timeId).classList.add('winner');
+
+  document.getElementById('status-msg').textContent = `🏆 ${tm.nome} foi primeiro!`;
+}
+
+function resetarRodada() {
+  estadoJogo = 'pronto';
+  document.getElementById('jogo-grade').className = 'jogo-grade estado-pronto';
+  document.querySelectorAll('.equipe-zona').forEach(z => z.classList.remove('winner'));
+  document.getElementById('status-msg').textContent = '🟢 Aguardando…';
+}
+
+function iniciarJogo() {
+  document.getElementById('tela-config').style.display = 'none';
+  document.getElementById('tela-jogo').classList.add('visivel');
+  renderJogo();
+  resetarRodada();
+  // Ativa o AudioContext com interação do usuário
+  if (ctx.state === 'suspended') ctx.resume();
+}
+
+function voltarConfig() {
+  document.getElementById('tela-jogo').classList.remove('visivel');
+  document.getElementById('tela-config').style.display = '';
+  estadoJogo = 'pronto';
+  renderConfig();
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+carregarConfig();
+renderConfig();
+
+// Se já tem config salva, mostra botão de iniciar habilitado
+if (TIMES.every(tm => cfg[tm.id])) {
+  // Nenhum time aguardando mapeamento — config completa
+}
+</script>
+</body>
+</html>
