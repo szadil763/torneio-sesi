@@ -6,370 +6,412 @@
   <title>Buzzer · SESI Torneio</title>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --c-vm: #E5484D; --c-az: #2F8FE0; --c-vd: #3C9A5F; --c-am: #E0B23C;
-      --bg: #0a0c12;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: var(--bg); color: #fff; font-family: 'Baloo 2', sans-serif; overflow: hidden; }
+    :root { --bg:#0a0c12; }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body { height:100%; background:var(--bg); color:#fff; font-family:'Baloo 2',sans-serif; overflow:hidden; }
 
-    /* ── Tela de configuração ── */
-    #tela-config {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; padding: 24px; gap: 20px; text-align: center;
-    }
-    #tela-config h1 { font-size: clamp(20px, 4vw, 32px); font-weight: 900; margin-bottom: 4px; }
-    #tela-config p  { font-size: 14px; color: #aaa; max-width: 38ch; line-height: 1.5; }
-    .config-grade {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 14px; width: 100%; max-width: 560px; margin: 8px 0;
-    }
-    .config-card {
-      border-radius: 18px; padding: 18px 14px; cursor: pointer;
-      border: 3px solid transparent; transition: border-color .15s, transform .1s;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      user-select: none;
-    }
-    .config-card:active { transform: scale(.96); }
-    .config-card.aguardando { border-color: rgba(255,255,255,.5); animation: pulsar .8s infinite alternate; }
-    .config-card.mapeada   { border-color: rgba(255,255,255,.9); }
-    @keyframes pulsar { from { box-shadow: 0 0 0 0 rgba(255,255,255,.2); } to { box-shadow: 0 0 0 12px rgba(255,255,255,0); } }
-    .config-nome  { font-size: 16px; font-weight: 800; letter-spacing: .03em; }
-    .config-tecla { font-size: 13px; background: rgba(0,0,0,.35); border-radius: 8px; padding: 4px 12px; font-weight: 700; letter-spacing: .06em; min-height: 28px; display:flex;align-items:center; }
-    .config-instrucao { font-size: 12px; opacity: .7; }
+    /* ── telas ── */
+    .tela { display:none; height:100vh; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:16px; text-align:center; }
+    .tela.visivel { display:flex; }
 
-    .btn-iniciar {
-      background: #fff; color: #0a0c12; border: none; border-radius: 14px;
-      padding: 14px 36px; font-size: 18px; font-weight: 900; font-family: inherit;
-      cursor: pointer; transition: opacity .15s, transform .1s;
-      letter-spacing: .02em;
-    }
-    .btn-iniciar:hover  { opacity: .92; }
-    .btn-iniciar:active { transform: scale(.97); }
-    .btn-iniciar:disabled { opacity: .3; cursor: not-allowed; }
-    .btn-reconfigurar {
-      font-size: 13px; color: #aaa; background: none; border: 1px solid #333;
-      border-radius: 8px; padding: 6px 14px; cursor: pointer; font-family: inherit; margin-top: 4px;
-    }
-    .btn-reconfigurar:hover { color: #fff; border-color: #666; }
+    h1  { font-size:clamp(20px,4vw,30px); font-weight:900; }
+    p   { font-size:14px; color:#aaa; max-width:40ch; line-height:1.6; }
+    small { font-size:12px; color:#666; }
 
-    /* ── Tela ativa (jogo) ── */
-    #tela-jogo {
-      display: none; height: 100vh;
-      display: none; flex-direction: column;
+    /* botões */
+    .btn-prim {
+      background:#fff; color:#0a0c12; border:none; border-radius:14px;
+      padding:13px 34px; font-size:17px; font-weight:900; font-family:inherit;
+      cursor:pointer; transition:opacity .15s, transform .1s; letter-spacing:.02em;
     }
-    #tela-jogo.visivel { display: flex; }
+    .btn-prim:hover  { opacity:.88; }
+    .btn-prim:active { transform:scale(.97); }
+    .btn-prim:disabled { opacity:.25; cursor:not-allowed; }
+    .btn-sec {
+      font-size:13px; color:#aaa; background:none; border:1px solid #333;
+      border-radius:8px; padding:7px 16px; cursor:pointer; font-family:inherit;
+    }
+    .btn-sec:hover { color:#fff; border-color:#666; }
 
+    /* ── tela permissão ── */
+    .mic-icone { font-size:56px; }
+
+    /* ── tela calibração ── */
+    .cal-grade {
+      display:grid; grid-template-columns:1fr 1fr; gap:12px;
+      width:100%; max-width:560px;
+    }
+    .cal-card {
+      border-radius:18px; padding:16px 12px; border:3px solid transparent;
+      display:flex; flex-direction:column; align-items:center; gap:8px;
+      position:relative; overflow:hidden; min-height:110px; justify-content:center;
+    }
+    .cal-card-nome   { font-size:15px; font-weight:800; }
+    .cal-card-estado { font-size:12px; background:rgba(0,0,0,.35); border-radius:8px; padding:4px 12px; min-height:26px; display:flex; align-items:center; font-weight:700; letter-spacing:.05em; }
+    .cal-card.aguardando { border-color:rgba(255,255,255,.6); animation:pulsar .9s infinite alternate; }
+    .cal-card.ok         { border-color:rgba(255,255,255,.85); }
+    @keyframes pulsar { from { box-shadow:0 0 0 0 rgba(255,255,255,.2); } to { box-shadow:0 0 0 14px rgba(255,255,255,0); } }
+
+    /* barra de progresso de calibração */
+    .cal-prog-wrap { width:100%; max-width:420px; background:#1a1d27; border-radius:100px; height:10px; overflow:hidden; }
+    .cal-prog-fill { height:100%; background:#fff; border-radius:100px; transition:width .1s linear; width:0%; }
+
+    /* medidor de sinal */
+    .sinal-wrap { width:100%; max-width:420px; background:#1a1d27; border-radius:100px; height:8px; overflow:hidden; }
+    .sinal-fill { height:100%; border-radius:100px; width:0%; transition:width .04s; background: linear-gradient(90deg,#3C9A5F,#E0B23C,#E5484D); }
+
+    /* ── tela jogo ── */
+    #tela-jogo { padding:0; }
     .jogo-grade {
-      flex: 1; display: grid; grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr; gap: 6px; padding: 6px;
+      flex:1; display:grid; grid-template-columns:1fr 1fr;
+      grid-template-rows:1fr 1fr; gap:5px; padding:5px; width:100%;
     }
-
     .equipe-zona {
-      border-radius: 20px; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 12px;
-      transition: opacity .25s, transform .25s, filter .25s;
-      position: relative; overflow: hidden;
+      border-radius:20px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:10px;
+      transition:opacity .25s, transform .25s, filter .25s; position:relative; overflow:hidden;
     }
-    .equipe-zona-nome {
-      font-size: clamp(18px, 3.5vw, 32px); font-weight: 900;
-      letter-spacing: .03em; text-shadow: 0 2px 8px rgba(0,0,0,.5);
-      text-align: center; line-height: 1.2;
-    }
-    .equipe-zona-tecla {
-      font-size: 13px; background: rgba(0,0,0,.3); border-radius: 8px;
-      padding: 3px 12px; font-weight: 700; letter-spacing: .1em;
-      opacity: .7;
-    }
-    .equipe-zona-ping { font-size: clamp(32px, 6vw, 60px); line-height: 1; }
+    .equipe-zona-nome { font-size:clamp(16px,3.2vw,30px); font-weight:900; text-align:center; text-shadow:0 2px 8px rgba(0,0,0,.5); line-height:1.25; }
+    .winner-badge { position:absolute; top:12px; right:14px; font-size:26px; opacity:0; transition:opacity .3s; }
+    .equipe-zona.winner .winner-badge { opacity:1; }
 
-    /* Estado: pronto */
-    .estado-pronto .equipe-zona { opacity: 1; }
+    /* estado */
+    .estado-pronto   .equipe-zona { opacity:1; }
+    .estado-vencedor .equipe-zona        { opacity:.15; filter:saturate(.15); transform:scale(.93); }
+    .estado-vencedor .equipe-zona.winner { opacity:1; filter:none; transform:scale(1.04); animation:winner-pop .5s ease-out; }
+    @keyframes winner-pop { 0%{transform:scale(1);} 45%{transform:scale(1.08);} 100%{transform:scale(1.04);} }
 
-    /* Estado: vencedor — ganhador pisca, perdedores escurecem */
-    .estado-vencedor .equipe-zona        { opacity: .18; filter: saturate(.2); transform: scale(.94); }
-    .estado-vencedor .equipe-zona.winner {
-      opacity: 1; filter: none; transform: scale(1.03);
-      animation: winner-pulse 0.55s ease-out;
-    }
-    @keyframes winner-pulse {
-      0%   { transform: scale(1.0); box-shadow: 0 0 0 0 rgba(255,255,255,.6); }
-      40%  { transform: scale(1.07); box-shadow: 0 0 0 30px rgba(255,255,255,0); }
-      100% { transform: scale(1.03); }
-    }
+    /* flash */
+    #flash { position:fixed; inset:0; pointer-events:none; z-index:50; opacity:0; }
+    #flash.ativo { animation:flash-anim .45s ease-out forwards; }
+    @keyframes flash-anim { 0%{opacity:.7;} 100%{opacity:0;} }
 
-    /* Flash de tela inteira */
-    #flash-overlay {
-      position: fixed; inset: 0; pointer-events: none; z-index: 50;
-      opacity: 0; transition: opacity .1s;
-    }
-    #flash-overlay.ativo { animation: flash-anim .45s ease-out forwards; }
-    @keyframes flash-anim {
-      0%   { opacity: .7; }
-      100% { opacity: 0; }
-    }
+    /* barra inferior */
+    #status-bar { padding:10px 16px; display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.6); backdrop-filter:blur(10px); flex-shrink:0; width:100%; }
+    #status-msg { font-size:14px; font-weight:700; flex:1; }
+    #nivel-jogo { width:80px; flex-shrink:0; }
+    .btn-reset { background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.25); border-radius:10px; color:#fff; font-size:13px; font-weight:700; padding:7px 16px; cursor:pointer; font-family:inherit; }
+    .btn-reset:hover { background:rgba(255,255,255,.2); }
+    .btn-sair { background:none; border:none; color:#555; font-size:12px; cursor:pointer; font-family:inherit; padding:6px 8px; }
+    .btn-sair:hover { color:#999; }
 
-    /* Barra de status inferior */
-    #status-bar {
-      padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;
-      background: rgba(0,0,0,.6); backdrop-filter: blur(10px); gap: 12px; flex-shrink: 0;
-    }
-    #status-msg { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: .03em; }
-    .btn-reset {
-      background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.25);
-      border-radius: 10px; color: #fff; font-size: 14px; font-weight: 700;
-      padding: 8px 20px; cursor: pointer; font-family: inherit; transition: background .15s;
-      flex-shrink: 0;
-    }
-    .btn-reset:hover { background: rgba(255,255,255,.2); }
-    .btn-sair {
-      background: none; border: none; color: #666; font-size: 13px;
-      cursor: pointer; font-family: inherit; padding: 6px 10px;
-    }
-    .btn-sair:hover { color: #aaa; }
+    /* indicador de ruído adaptativo */
+    #noise-indicator { font-size:10px; color:#444; font-weight:700; letter-spacing:.05em; white-space:nowrap; }
 
-    /* Ícone de microfone/vencedor */
-    .winner-badge {
-      position: absolute; top: 14px; right: 16px;
-      font-size: 28px; opacity: 0;
-      transition: opacity .3s;
-    }
-    .winner .winner-badge { opacity: 1; }
-
-    /* Responsivo mobile */
-    @media (max-width: 500px) {
-      .config-grade { grid-template-columns: 1fr; }
-      .jogo-grade   { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
-    }
+    @media(max-width:480px) { .cal-grade,.jogo-grade { grid-template-columns:1fr; } .jogo-grade { grid-template-rows:repeat(4,1fr); } }
   </style>
 </head>
 <body>
 
-<!-- ── TELA DE CONFIGURAÇÃO ── -->
-<div id="tela-config">
-  <h1>🎯 Configurar Botoeiras</h1>
-  <p>Clique em cada time e pressione a botoeira correspondente para mapeá-la.</p>
-
-  <div class="config-grade" id="config-grade"></div>
-
-  <button class="btn-iniciar" id="btn-iniciar" disabled onclick="iniciarJogo()">▶ Iniciar buzzer</button>
-  <button class="btn-reconfigurar" onclick="resetarConfig()">↺ Refazer configuração</button>
+<!-- TELA 1: Permissão de microfone -->
+<div id="tela-perm" class="tela visivel">
+  <div class="mic-icone">🎙️</div>
+  <h1>Buzzer por Áudio</h1>
+  <p>O sistema usa o microfone para detectar qual botoeira foi pressionada primeiro, comparando os sons em tempo real.</p>
+  <p>💡 <strong>Dica:</strong> Faça a calibração no próprio local do evento, com o barulho de fundo já presente. O sistema se adapta ao ruído automaticamente.</p>
+  <button class="btn-prim" onclick="pedirMicrofone()">🎙 Permitir microfone</button>
+  <small>Compatível com Chrome, Edge e Firefox · Microfone necessário</small>
 </div>
 
-<!-- ── TELA DO JOGO ── -->
-<div id="tela-jogo">
-  <div class="jogo-grade" id="jogo-grade"></div>
+<!-- TELA 2: Calibração -->
+<div id="tela-cal" class="tela">
+  <h1>🎯 Calibrar botoeiras</h1>
+  <p id="cal-instrucao">Clique em um time e pressione sua botoeira por ~2 segundos.<br>
+  <small style="color:#666">Calibre com o barulho do local já presente para melhor precisão.</small></p>
 
+  <div class="cal-grade" id="cal-grade"></div>
+
+  <div style="width:100%;max-width:420px">
+    <div style="font-size:11px;color:#666;margin-bottom:4px;text-align:left">Sinal do microfone</div>
+    <div class="sinal-wrap"><div class="sinal-fill" id="sinal-cal"></div></div>
+  </div>
+
+  <div style="width:100%;max-width:420px;display:none" id="prog-wrap">
+    <div style="font-size:11px;color:#aaa;margin-bottom:4px;text-align:left" id="prog-label">Gravando…</div>
+    <div class="cal-prog-wrap"><div class="cal-prog-fill" id="cal-prog"></div></div>
+  </div>
+
+  <button class="btn-prim" id="btn-iniciar" disabled onclick="iniciarJogo()">▶ Iniciar</button>
+  <button class="btn-sec" onclick="resetarCal()">↺ Recalibrar tudo</button>
+</div>
+
+<!-- TELA 3: Jogo -->
+<div id="tela-jogo" class="tela" style="padding:0">
+  <div class="jogo-grade estado-pronto" id="jogo-grade"></div>
   <div id="status-bar">
-    <span id="status-msg">🟢 Aguardando...</span>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn-reset" onclick="resetarRodada()" id="btn-reset-rodada">↺ Resetar (Espaço)</button>
-      <button class="btn-sair" onclick="voltarConfig()">⚙ Config</button>
-    </div>
+    <span id="status-msg">🟢 Aguardando…</span>
+    <div class="sinal-wrap" id="nivel-jogo"><div class="sinal-fill" id="sinal-jogo"></div></div>
+    <span id="noise-indicator">RUÍDO —</span>
+    <button class="btn-reset" onclick="resetarRodada()">↺ Resetar</button>
+    <button class="btn-sair"  onclick="voltarCal()">⚙</button>
   </div>
 </div>
 
-<!-- Flash de feedback visual -->
-<div id="flash-overlay"></div>
+<div id="flash"></div>
 
 <script>
-// ── Times ─────────────────────────────────────────────────────────
+// ── Times ────────────────────────────────────────────────────────
 const TIMES = [
-  { id: 'vermelha', nome: 'Turma A · Vermelha', cor: '#E5484D', corEscura: '#7A1F22', emoji: '🔴' },
-  { id: 'azul',     nome: 'Turma B · Azul',     cor: '#2F8FE0', corEscura: '#164A72', emoji: '🔵' },
-  { id: 'verde',    nome: 'Turma C · Verde',     cor: '#3C9A5F', corEscura: '#1E4E30', emoji: '🟢' },
-  { id: 'amarela',  nome: 'Turma D · Amarela',   cor: '#E0B23C', corEscura: '#7A5D14', emoji: '🟡' },
+  { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
+  { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
+  { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢' },
+  { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡' },
 ];
 
-const STORAGE_KEY = 'torneio-buzzer:v1';
-const ctx = new (window.AudioContext || window.webkitAudioContext)();
+const STORAGE_KEY = 'torneio-buzzer-audio:v2';
+const FFT_SIZE    = 4096;
+const N_PEAKS     = 14;      // picos por perfil — mais picos = maior robustez
 
-// ── Sons distintos por time ───────────────────────────────────────
+// Calibração
+const CAL_FRAMES  = 60;      // frames (~2s a 30ms/frame)
+const CAL_BG_FRAMES = 20;    // frames de fundo antes de calibrar
+
+// Detecção adaptativa
+// Em vez de pontuação absoluta, verificamos quais picos do perfil estão
+// ACIMA do chão de ruído atual por no mínimo DET_DELTA_MIN unidades.
+// Se fração ≥ DET_HIT_FRAC dos picos bater, a equipe dispara.
+const DET_DELTA_MIN = 22;    // mínimo de excesso acima do ruído por pico (0-255)
+const DET_ABS_MIN   = 35;    // magnitude absoluta mínima (ignora bins quase silenciosos)
+const DET_HIT_FRAC  = 0.50;  // 50% dos picos devem bater para disparar
+const LOCK_MS       = 700;   // ms de bloqueio após detecção
+
+// Adaptação do chão de ruído durante o jogo
+// Alpha baixo = adaptação lenta (crowd noise sobe devagar → ok)
+// Buzz cria pico rápido que não fica no chão antes de ser detectado
+const NOISE_ALPHA = 0.015;   // ~2s para adaptar 50% a mudança gradual
+
+// ── Áudio ────────────────────────────────────────────────────────
+let audioCtx, analyser, dataArray;
+let perfis = {};             // { vermelha: { bins:[], bgLevels:[], baseHits:N }, ... }
+let noiseFloor = null;       // Float32Array — chão de ruído por bin, atualizado em tempo real
+
+// Sons de feedback (Web Audio)
+const feedbackCtx = new (window.AudioContext || window.webkitAudioContext)();
 function tocarSom(timeId) {
-  if (ctx.state === 'suspended') ctx.resume();
-  const t = ctx.currentTime;
-
+  if (feedbackCtx.state === 'suspended') feedbackCtx.resume();
+  const t = feedbackCtx.currentTime;
   const sons = {
-    vermelha: () => {
-      // Buzzer grave descendente — "ERRR"
-      const osc = ctx.createOscillator(), g = ctx.createGain();
-      osc.connect(g); g.connect(ctx.destination);
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(180, t);
-      osc.frequency.exponentialRampToValueAtTime(80, t + 0.5);
-      g.gain.setValueAtTime(0.5, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-      osc.start(t); osc.stop(t + 0.6);
-    },
-    azul: () => {
-      // Sino cristalino — "DING"
-      [880, 1320, 1760].forEach((freq, i) => {
-        const osc = ctx.createOscillator(), g = ctx.createGain();
-        osc.connect(g); g.connect(ctx.destination);
-        osc.type = 'sine'; osc.frequency.value = freq;
-        const t0 = t + i * 0.04;
-        g.gain.setValueAtTime(0, t0);
-        g.gain.linearRampToValueAtTime(0.3 - i * 0.08, t0 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.6);
-        osc.start(t0); osc.stop(t0 + 0.65);
-      });
-    },
-    verde: () => {
-      // Bloop ascendente — "BL-OOP"
-      const osc = ctx.createOscillator(), g = ctx.createGain();
-      osc.connect(g); g.connect(ctx.destination);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, t);
-      osc.frequency.exponentialRampToValueAtTime(700, t + 0.25);
-      g.gain.setValueAtTime(0.4, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-      osc.start(t); osc.stop(t + 0.45);
-    },
-    amarela: () => {
-      // Dois bipes — "BEEP BEEP"
-      [0, 0.18].forEach(offset => {
-        const osc = ctx.createOscillator(), g = ctx.createGain();
-        osc.connect(g); g.connect(ctx.destination);
-        osc.type = 'square'; osc.frequency.value = 660;
-        const t0 = t + offset;
-        g.gain.setValueAtTime(0.3, t0);
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
-        osc.start(t0); osc.stop(t0 + 0.15);
-      });
-    },
+    vermelha: () => { const o=feedbackCtx.createOscillator(),g=feedbackCtx.createGain(); o.connect(g);g.connect(feedbackCtx.destination); o.type='sawtooth'; o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(80,t+.5); g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.55); o.start(t);o.stop(t+.6); },
+    azul:     () => { [880,1320,1760].forEach((f,i)=>{ const o=feedbackCtx.createOscillator(),g=feedbackCtx.createGain(); o.connect(g);g.connect(feedbackCtx.destination); o.type='sine';o.frequency.value=f; const t0=t+i*.04; g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.3-i*.08,t0+.02);g.gain.exponentialRampToValueAtTime(.001,t0+.6); o.start(t0);o.stop(t0+.65); }); },
+    verde:    () => { const o=feedbackCtx.createOscillator(),g=feedbackCtx.createGain(); o.connect(g);g.connect(feedbackCtx.destination); o.type='triangle'; o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(700,t+.25); g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.4); o.start(t);o.stop(t+.45); },
+    amarela:  () => { [0,.18].forEach(d=>{ const o=feedbackCtx.createOscillator(),g=feedbackCtx.createGain(); o.connect(g);g.connect(feedbackCtx.destination); o.type='square';o.frequency.value=660; const t0=t+d; g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.14); o.start(t0);o.stop(t0+.15); }); },
   };
-
-  (sons[timeId] || sons.vermelha)();
+  (sons[timeId]||sons.vermelha)();
 }
 
-// ── Configuração ──────────────────────────────────────────────────
-let cfg = {}; // { vermelha: 'KeyQ', azul: 'KeyP', ... }
-let configAtivo = null; // qual time está sendo configurado agora
-
-function carregarConfig() {
+// ── Setup microfone ──────────────────────────────────────────────
+async function pedirMicrofone() {
   try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (s) cfg = JSON.parse(s);
-  } catch (_) {}
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false },
+      video: false
+    });
+    audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    analyser  = audioCtx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = 0.4; // resposta mais rápida para onset detection
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const src = audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+
+    await capturarNoiseFloor(30); // captura chão de ruído por bin
+    carregarPerfis();
+    mostrarTela('tela-cal');
+    renderCal();
+    loopSinalCal();
+  } catch (e) {
+    alert('Não foi possível acessar o microfone.\n' + e.message);
+  }
 }
 
-function salvarConfig() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch (_) {}
+// Captura chão de ruído por bin (média de N frames de silêncio/ambiente)
+async function capturarNoiseFloor(frames) {
+  return new Promise(resolve => {
+    const acc = new Float32Array(analyser.frequencyBinCount);
+    let n = 0;
+    const id = setInterval(() => {
+      analyser.getByteFrequencyData(dataArray);
+      for (let i = 0; i < dataArray.length; i++) acc[i] += dataArray[i];
+      n++;
+      if (n >= frames) {
+        clearInterval(id);
+        noiseFloor = acc.map(v => v / frames);
+        resolve();
+      }
+    }, 40);
+  });
 }
 
-function resetarConfig() {
-  cfg = {}; configAtivo = null;
-  salvarConfig();
-  renderConfig();
+// ── Perfis de frequência ─────────────────────────────────────────
+function carregarPerfis() {
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) perfis = JSON.parse(s); } catch (_) {}
+}
+function salvarPerfis() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(perfis)); } catch (_) {}
+}
+function resetarCal() { perfis = {}; salvarPerfis(); calAtivo = null; renderCal(); }
+
+function encontrarPicos(data) {
+  const picos = [];
+  for (let i = 3; i < data.length - 3; i++) {
+    if (data[i] > data[i-1] && data[i] > data[i-2] && data[i] > data[i-3] &&
+        data[i] > data[i+1] && data[i] > data[i+2] && data[i] > data[i+3] &&
+        data[i] > 40) {
+      picos.push({ bin: i, mag: data[i] });
+    }
+  }
+  picos.sort((a, b) => b.mag - a.mag);
+  return picos.slice(0, N_PEAKS);
 }
 
-function nomeTecla(code) {
-  if (!code) return '—';
-  return code
-    .replace('Key', '')
-    .replace('Digit', '')
-    .replace('Arrow', '↑ '.replace('Up','↑').replace('Down','↓').replace('Left','←').replace('Right','→'))
-    .replace('Space', 'ESPAÇO')
-    .replace('Enter', 'ENTER')
-    .replace('Numpad', 'NUM');
+// Pontuação adaptativa: conta quantos picos excedem o chão de ruído
+function pontuarFrame(data, perfil) {
+  if (!noiseFloor) return 0;
+  let hits = 0;
+  perfil.bins.forEach(b => {
+    const val   = data[b] || 0;
+    const floor = noiseFloor[b] || 0;
+    if (val >= DET_ABS_MIN && (val - floor) >= DET_DELTA_MIN) hits++;
+  });
+  return hits / perfil.bins.length; // fração de picos que dispararam
 }
 
-function renderConfig() {
-  const grade = document.getElementById('config-grade');
+// ── Calibração ───────────────────────────────────────────────────
+let calAtivo  = null;
+let calFrames = [];
+let calBgFrames = [];
+let calTimer  = null;
+let calState  = 'idle'; // 'bg' | 'signal' | 'idle'
+
+function renderCal() {
+  const grade = document.getElementById('cal-grade');
   grade.innerHTML = '';
-
   TIMES.forEach(tm => {
-    const mapeado = cfg[tm.id];
-    const aguardando = configAtivo === tm.id;
-
+    const ok  = !!perfis[tm.id];
+    const ag  = calAtivo === tm.id;
     const card = document.createElement('div');
-    card.className = 'config-card' + (aguardando ? ' aguardando' : '') + (mapeado ? ' mapeada' : '');
-    card.style.background = `linear-gradient(135deg, ${tm.corEscura} 0%, ${tm.cor} 100%)`;
+    card.className = 'cal-card' + (ag ? ' aguardando' : '') + (ok ? ' ok' : '');
+    card.style.background = `linear-gradient(135deg,${tm.corEscura} 0%,${tm.cor} 100%)`;
     card.innerHTML = `
-      <div class="config-nome">${tm.emoji} ${tm.nome}</div>
-      <div class="config-tecla">${mapeado ? nomeTecla(cfg[tm.id]) : (aguardando ? '⌨ pressione a botoeira…' : '— não mapeada —')}</div>
-      <div class="config-instrucao">${aguardando ? 'Aguardando pressionamento' : (mapeado ? '✓ mapeada · clique para trocar' : 'Clique para configurar')}</div>`;
-    card.onclick = () => iniciarMapeamento(tm.id);
+      <div class="cal-card-nome">${tm.emoji} ${tm.nome}</div>
+      <div class="cal-card-estado">${ag ? '⏺ gravando…' : ok ? '✓ calibrada' : '— toque para calibrar —'}</div>`;
+    if (!ag) card.onclick = () => iniciarCalibrar(tm.id);
     grade.appendChild(card);
   });
-
-  const todos = TIMES.every(tm => cfg[tm.id]);
-  document.getElementById('btn-iniciar').disabled = !todos;
+  document.getElementById('btn-iniciar').disabled = !TIMES.every(t => perfis[t.id]);
+  document.getElementById('prog-wrap').style.display = calAtivo ? '' : 'none';
 }
 
-function iniciarMapeamento(timeId) {
-  configAtivo = timeId;
-  renderConfig();
-}
+function iniciarCalibrar(timeId) {
+  if (calAtivo) return;
+  calAtivo    = timeId;
+  calFrames   = [];
+  calBgFrames = [];
+  calState    = 'bg';
+  renderCal();
 
-document.addEventListener('keydown', e => {
-  if (configAtivo) {
-    e.preventDefault();
-    // Não permite mapear Espaço (reservado para reset)
-    if (e.code === 'Space') { alert('Espaço é reservado para resetar. Escolha outra tecla.'); return; }
-    // Evita mapear a mesma tecla para dois times
-    const jaUsada = TIMES.find(tm => tm.id !== configAtivo && cfg[tm.id] === e.code);
-    if (jaUsada) { alert(`Tecla ${nomeTecla(e.code)} já mapeada para ${jaUsada.nome}. Escolha outra.`); return; }
-    cfg[configAtivo] = e.code;
-    salvarConfig();
-    // Vai para o próximo não mapeado automaticamente
-    const proximo = TIMES.find(tm => !cfg[tm.id]);
-    configAtivo = proximo ? proximo.id : null;
-    renderConfig();
-    return;
-  }
+  const progLabel = document.getElementById('prog-label');
+  const progFill  = document.getElementById('cal-prog');
+  progFill.style.width = '0%';
+  progLabel.textContent = 'Medindo ruído do ambiente…';
 
-  // ── Lógica de jogo ────────────────────────────────────────────
-  if (estadoJogo === 'pronto') {
-    if (e.code === 'Space') { e.preventDefault(); return; }
-    const vencedor = TIMES.find(tm => cfg[tm.id] === e.code);
-    if (vencedor) {
-      e.preventDefault();
-      ativarVencedor(vencedor.id);
+  // Fase 1: captura ~0.6s de fundo
+  let bgCount = 0;
+  const bgTimer = setInterval(() => {
+    analyser.getByteFrequencyData(dataArray);
+    calBgFrames.push([...dataArray]);
+    bgCount++;
+    if (bgCount >= CAL_BG_FRAMES) {
+      clearInterval(bgTimer);
+      calState = 'signal';
+      progLabel.textContent = 'Pressione e segure a botoeira…';
+      let frame = 0;
+      calTimer = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        calFrames.push([...dataArray]);
+        frame++;
+        progFill.style.width = (frame / CAL_FRAMES * 100) + '%';
+        if (frame >= CAL_FRAMES) {
+          clearInterval(calTimer);
+          finalizarCalibrar(timeId);
+        }
+      }, 30);
     }
-  } else if (estadoJogo === 'vencedor') {
-    if (e.code === 'Space') { e.preventDefault(); resetarRodada(); }
-  }
-});
+  }, 30);
+}
 
-// ── Jogo ──────────────────────────────────────────────────────────
-let estadoJogo = 'pronto'; // 'pronto' | 'vencedor'
+function finalizarCalibrar(timeId) {
+  // Fundo local desta calibração
+  const bgAvg = new Float32Array(dataArray.length);
+  calBgFrames.forEach(f => f.forEach((v, i) => bgAvg[i] += v / calBgFrames.length));
+
+  // Média do sinal do buzzer
+  const sigAvg = new Float32Array(dataArray.length);
+  calFrames.forEach(f => f.forEach((v, i) => sigAvg[i] += v / calFrames.length));
+
+  // Subtrai fundo para isolar as frequências do buzzer
+  const delta = sigAvg.map((v, i) => Math.max(0, v - bgAvg[i]));
+
+  const picos = encontrarPicos(delta);
+  const bins  = picos.map(p => p.bin);
+
+  // Atualiza também o noiseFloor global com os dados de fundo capturados
+  if (noiseFloor) {
+    for (let i = 0; i < noiseFloor.length; i++) {
+      noiseFloor[i] = noiseFloor[i] * 0.5 + bgAvg[i] * 0.5;
+    }
+  }
+
+  perfis[timeId] = { bins };
+  salvarPerfis();
+  calAtivo  = null;
+  calState  = 'idle';
+
+  const proximo = TIMES.find(t => !perfis[t.id]);
+  if (proximo) setTimeout(() => iniciarCalibrar(proximo.id), 400);
+
+  renderCal();
+}
+
+// VU meter durante calibração
+function loopSinalCal() {
+  if (!analyser) return;
+  analyser.getByteFrequencyData(dataArray);
+  const mean = dataArray.reduce((s, v) => s + v, 0) / dataArray.length;
+  const floor = noiseFloor ? (noiseFloor.reduce((s,v)=>s+v,0)/noiseFloor.length) : 1;
+  const nivel = Math.min(1, Math.max(0, (mean - floor) / (floor * 2 + 1)));
+  document.getElementById('sinal-cal').style.width = (nivel * 100) + '%';
+  requestAnimationFrame(loopSinalCal);
+}
+
+// ── Jogo ─────────────────────────────────────────────────────────
+let estadoJogo = 'pronto';
+let lockUntil  = 0;
 
 function renderJogo() {
   const grade = document.getElementById('jogo-grade');
   grade.innerHTML = '';
   TIMES.forEach(tm => {
-    const zona = document.createElement('div');
-    zona.className = 'equipe-zona';
-    zona.id = 'zona-' + tm.id;
-    zona.style.background = `linear-gradient(160deg, ${tm.corEscura} 0%, ${tm.cor} 100%)`;
-    zona.innerHTML = `
-      <div class="winner-badge">🎤</div>
-      <div class="equipe-zona-nome">${tm.nome}</div>
-      <div class="equipe-zona-tecla">${nomeTecla(cfg[tm.id])}</div>`;
-    grade.appendChild(zona);
+    const z = document.createElement('div');
+    z.className = 'equipe-zona'; z.id = 'zona-' + tm.id;
+    z.style.background = `linear-gradient(160deg,${tm.corEscura} 0%,${tm.cor} 100%)`;
+    z.innerHTML = `<div class="winner-badge">🎤</div><div class="equipe-zona-nome">${tm.nome}</div>`;
+    grade.appendChild(z);
   });
 }
 
 function ativarVencedor(timeId) {
   if (estadoJogo !== 'pronto') return;
   estadoJogo = 'vencedor';
-  const tm = TIMES.find(t => t.id === timeId);
-
+  lockUntil  = Date.now() + LOCK_MS;
+  const tm   = TIMES.find(t => t.id === timeId);
   tocarSom(timeId);
-
-  // Flash de tela
-  const flash = document.getElementById('flash-overlay');
-  flash.style.background = tm.cor;
-  flash.classList.remove('ativo');
-  void flash.offsetWidth;
-  flash.classList.add('ativo');
-
-  // Atualiza zonas
+  const fl = document.getElementById('flash');
+  fl.style.background = tm.cor;
+  fl.classList.remove('ativo'); void fl.offsetWidth; fl.classList.add('ativo');
   document.getElementById('jogo-grade').className = 'jogo-grade estado-vencedor';
   document.querySelectorAll('.equipe-zona').forEach(z => z.classList.remove('winner'));
   document.getElementById('zona-' + timeId).classList.add('winner');
-
   document.getElementById('status-msg').textContent = `🏆 ${tm.nome} foi primeiro!`;
 }
 
@@ -380,29 +422,72 @@ function resetarRodada() {
   document.getElementById('status-msg').textContent = '🟢 Aguardando…';
 }
 
+// ── Loop de detecção adaptativo ───────────────────────────────────
+let noiseIndicatorTimer = 0;
+
+function loopDeteccao() {
+  if (!analyser) { requestAnimationFrame(loopDeteccao); return; }
+
+  analyser.getByteFrequencyData(dataArray);
+
+  // Atualiza chão de ruído quando ninguém ganhou ainda (ruído de fundo se adapta)
+  if (estadoJogo === 'pronto' && Date.now() > lockUntil && noiseFloor) {
+    for (let i = 0; i < noiseFloor.length; i++) {
+      noiseFloor[i] = noiseFloor[i] * (1 - NOISE_ALPHA) + dataArray[i] * NOISE_ALPHA;
+    }
+  }
+
+  // VU meter: nível relativo ao chão de ruído
+  const mean  = dataArray.reduce((s, v) => s + v, 0) / dataArray.length;
+  const floor = noiseFloor ? (noiseFloor.reduce((s,v)=>s+v,0)/noiseFloor.length) : 1;
+  const nivel = Math.min(1, Math.max(0, (mean - floor) / Math.max(floor * 1.5, 10)));
+  document.getElementById('sinal-jogo').style.width = (nivel * 100) + '%';
+
+  // Indicador de ruído ambiente (atualiza a cada 0.5s)
+  if (Date.now() - noiseIndicatorTimer > 500) {
+    noiseIndicatorTimer = Date.now();
+    const floorDb = Math.round(floor);
+    document.getElementById('noise-indicator').textContent = `RUÍDO ${floorDb}`;
+  }
+
+  // Detecção por delta adaptativo
+  if (estadoJogo === 'pronto' && Date.now() >= lockUntil) {
+    TIMES.forEach(tm => {
+      const p = perfis[tm.id];
+      if (!p) return;
+      const frac = pontuarFrame(dataArray, p);
+      if (frac >= DET_HIT_FRAC) {
+        ativarVencedor(tm.id);
+      }
+    });
+  }
+
+  requestAnimationFrame(loopDeteccao);
+}
+
+// Reset via espaço
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && estadoJogo === 'vencedor') { e.preventDefault(); resetarRodada(); }
+});
+
+// ── Navegação entre telas ────────────────────────────────────────
+function mostrarTela(id) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('visivel'));
+  document.getElementById(id).classList.add('visivel');
+}
+
 function iniciarJogo() {
-  document.getElementById('tela-config').style.display = 'none';
-  document.getElementById('tela-jogo').classList.add('visivel');
+  mostrarTela('tela-jogo');
   renderJogo();
   resetarRodada();
-  // Ativa o AudioContext com interação do usuário
-  if (ctx.state === 'suspended') ctx.resume();
+  if (feedbackCtx.state === 'suspended') feedbackCtx.resume();
+  loopDeteccao();
 }
 
-function voltarConfig() {
-  document.getElementById('tela-jogo').classList.remove('visivel');
-  document.getElementById('tela-config').style.display = '';
+function voltarCal() {
   estadoJogo = 'pronto';
-  renderConfig();
-}
-
-// ── Init ──────────────────────────────────────────────────────────
-carregarConfig();
-renderConfig();
-
-// Se já tem config salva, mostra botão de iniciar habilitado
-if (TIMES.every(tm => cfg[tm.id])) {
-  // Nenhum time aguardando mapeamento — config completa
+  mostrarTela('tela-cal');
+  renderCal();
 }
 </script>
 </body>
