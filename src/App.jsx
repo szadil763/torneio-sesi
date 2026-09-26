@@ -1722,11 +1722,11 @@ export default function App() {
                   Monitor
                 </button>
                 {page === "kahoot" && (
-                  <button onClick={() => setMode("buzzer")}
-                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
-                    style={{ backgroundColor: mode === "buzzer" ? LARANJA : "transparent" }}>
-                    Botoeira
-                  </button>
+                  <a href="/buzzer.html" target="_blank" rel="noopener"
+                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white no-underline"
+                    style={{ backgroundColor: "rgba(255,255,255,0.12)", textDecoration: "none" }}>
+                    🎯 Buzzer ↗
+                  </a>
                 )}
                 <button onClick={() => setMode("telao")}
                   className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
@@ -1762,9 +1762,7 @@ export default function App() {
       {page === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
       {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
       {page === "kahoot"    && (
-        mode === "monitor" ? <KahootMonitorView /> :
-        mode === "buzzer"  ? <KahootBuzzerView /> :
-        <KahootTelaoView />
+        mode === "monitor" ? <KahootMonitorView /> : <KahootTelaoView />
       )}
     </div>
   );
