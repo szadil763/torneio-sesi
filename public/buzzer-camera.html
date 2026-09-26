@@ -165,9 +165,9 @@
     <div id="sens-bloco">
       <div id="sens-header">
         <span id="sens-titulo">⚡ Sensibilidade de detecção</span>
-        <span id="sens-valor">35</span>
+        <span id="sens-valor">20</span>
       </div>
-      <input type="range" id="sens-slider" min="5" max="80" value="35" id="sens-slider"
+      <input type="range" id="sens-slider" min="5" max="80" value="20"
              oninput="ajustarSensibilidade(+this.value)">
       <div id="sens-labels"><span>Mais sensível</span><span>Menos sensível</span></div>
     </div>
@@ -204,13 +204,13 @@ const TIMES = [
 ];
 
 const RTDB        = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
-const STORAGE_KEY = 'torneio-buzzer-cam:v3';
+const STORAGE_KEY = 'torneio-buzzer-cam:v4';
 
 // Parâmetros LED
 const ANAL_W    = 160;
 const ANAL_H    = 120;
 const ZONA_R_AN = 14;
-let DET_DELTA = 35;
+let DET_DELTA = 20;
 const LOCK_MS   = 700;
 
 // Estado calibração
@@ -218,6 +218,7 @@ let videoStream  = null;
 let posicoes     = {};         // { teamId: {fx, fy} } — fração 0-1
 let selecionado  = null;       // teamId atualmente selecionado para posicionar
 let calAnimFrame = null;
+let calContainerAR = null;     // aspect ratio do container na calibração (para alinhar detecção)
 
 // Estado jogo
 let zonas       = [];
@@ -264,7 +265,10 @@ function iniciarCal() {
   // Carrega posições salvas
   try {
     const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (salvo && typeof salvo === 'object') posicoes = salvo;
+    if (salvo && typeof salvo === 'object') {
+      posicoes = salvo.posicoes || salvo;
+      calContainerAR = salvo.calContainerAR || null;
+    }
   } catch(_) {}
 
   construirStrip();
@@ -452,10 +456,17 @@ function desenharOverlayCal() {
 // ── Confirmar e iniciar jogo ───────────────────────────────────────
 function confirmarZonas() {
   if (!TIMES.every(t => posicoes[t.id])) return;
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(posicoes)); } catch(_) {}
+
+  // Salva o aspect ratio do container de calibração para alinhar coordenadas na detecção
+  const wrap = document.getElementById('video-wrap');
+  calContainerAR = wrap.offsetWidth / (wrap.offsetHeight || 1);
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ posicoes, calContainerAR }));
+  } catch(_) {}
+
   if (calAnimFrame) { cancelAnimationFrame(calAnimFrame); calAnimFrame = null; }
 
-  // Converte para array de zonas
   zonas = TIMES.map(tm => ({ fx: posicoes[tm.id].fx, fy: posicoes[tm.id].fy, timeId: tm.id }));
 
   mostrarTela('tela-jogo');
@@ -500,6 +511,33 @@ function lerLuminanciaZona(ctx, zona) {
   return sum / (d.length / 4);
 }
 
+// Desenha o frame com o mesmo corte que object-fit:cover usa no container de calibração.
+// Sem isso, as coordenadas do toque (display space) não batem com o frame completo.
+function desenharFrameAlinhado(ctx, videoEl) {
+  const vw = videoEl.videoWidth;
+  const vh = videoEl.videoHeight;
+  if (!vw || !vh) { ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H); return; }
+
+  const ar  = calContainerAR || (ANAL_W / ANAL_H);
+  const var_ = vw / vh;  // aspect ratio do vídeo
+
+  let sx, sy, sw, sh;
+  if (var_ > ar) {
+    // Vídeo mais largo que o container → corta laterais
+    sh = vh;
+    sw = Math.round(vh * ar);
+    sx = Math.round((vw - sw) / 2);
+    sy = 0;
+  } else {
+    // Vídeo mais alto → corta topo/base
+    sw = vw;
+    sh = Math.round(vw / ar);
+    sx = 0;
+    sy = Math.round((vh - sh) / 2);
+  }
+  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, ANAL_W, ANAL_H);
+}
+
 let fc2 = 0;
 function loopDeteccao() {
   if (!detectando) return;
@@ -511,7 +549,7 @@ function loopDeteccao() {
 
   const canal = document.getElementById('canal');
   const ctx   = canal.getContext('2d');
-  ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H);
+  desenharFrameAlinhado(ctx, videoEl);  // corte alinhado com calibração
 
   const agora    = Date.now();
   const bloqueado = agora < lockUntil;
