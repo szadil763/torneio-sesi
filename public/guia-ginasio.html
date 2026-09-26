@@ -1,12 +1,5 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Guia de Setup — Ginásio · Kahoot English SESI</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap">
-</head>
-<body>
+<title>Guia de Setup — Torneio Offline</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap">
 <style>
   :root {
     --bg: #0a1628;
@@ -36,7 +29,6 @@
 
   .wrap { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
 
-  /* Header */
   .header { text-align: center; }
   .logo-badge {
     display: inline-flex; align-items: center; gap: 8px;
@@ -58,12 +50,36 @@
     border-radius: 99px; letter-spacing: .06em;
   }
 
-  /* Section title */
+  /* Provas badge row */
+  .provas-row {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin-top: 14px;
+  }
+  .prova-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; padding: 4px 12px;
+    border-radius: 99px; color: var(--text);
+  }
+  .prova-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
   .sec-title {
     font-family: 'Baloo 2', sans-serif; font-size: 13px; font-weight: 800;
     text-transform: uppercase; letter-spacing: .12em;
     color: var(--muted); margin-bottom: -10px;
   }
+
+  /* URLs de acesso rápido */
+  .url-cards { display: flex; flex-direction: column; gap: 8px; }
+  .url-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .url-icon { font-size: 22px; flex-shrink: 0; }
+  .url-label { font-weight: 700; font-size: 13px; color: var(--text); }
+  .url-addr  { font-family: 'Courier New', monospace; font-size: 11px; color: #7dd3fc; margin-top: 2px; }
+  .url-desc  { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
   /* Organogram */
   .organogram {
@@ -73,7 +89,6 @@
   }
   .org-svg { display: block; width: 100%; max-width: 640px; margin: 0 auto; }
 
-  /* Equipment checklist */
   .equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 440px) { .equip-grid { grid-template-columns: 1fr; } }
   .equip-card {
@@ -85,7 +100,6 @@
   .equip-name { font-weight: 700; font-size: 13px; color: var(--text); margin-bottom: 2px; }
   .equip-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
 
-  /* Phase header */
   .phase-header {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 16px; border-radius: 12px;
@@ -103,7 +117,6 @@
   .phase-header.prep .phase-title  { color: #93c5fd; }
   .phase-header.day  .phase-title  { color: #fdba74; }
 
-  /* Steps */
   .steps { display: flex; flex-direction: column; gap: 10px; }
   .step {
     background: var(--surface); border-radius: 16px;
@@ -123,11 +136,11 @@
   .step-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
   .step-desc  { font-size: 13px; color: var(--muted); line-height: 1.6; }
   .step-code {
-    display: inline-block; margin-top: 8px;
+    display: block; margin-top: 8px;
     background: #0f172a; color: #7dd3fc;
     font-family: 'Courier New', monospace; font-size: 12px; font-weight: 600;
-    padding: 6px 12px; border-radius: 8px; border: 1px solid #1e3a5f;
-    word-break: break-all;
+    padding: 8px 12px; border-radius: 8px; border: 1px solid #1e3a5f;
+    word-break: break-all; white-space: pre-wrap;
   }
   .step-tag {
     display: inline-block; margin-top: 8px;
@@ -135,11 +148,8 @@
     font-size: 11px; font-weight: 700; padding: 2px 10px;
     border-radius: 99px; letter-spacing: .04em;
   }
-  .step-tag.warn {
-    background: rgba(245,130,31,.15); color: #fdba74;
-  }
+  .step-tag.warn { background: rgba(245,130,31,.15); color: #fdba74; }
 
-  /* Tips */
   .tips-grid { display: flex; flex-direction: column; gap: 10px; }
   .tip {
     display: flex; align-items: flex-start; gap: 12px;
@@ -150,7 +160,6 @@
   .tip-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
   .tip-text strong { color: var(--text); }
 
-  /* Footer */
   .footer {
     text-align: center; font-size: 11px; color: #475569;
     padding-top: 8px; border-top: 1px solid var(--border);
@@ -161,22 +170,57 @@
 
   <!-- Header -->
   <div class="header">
-    <div class="logo-badge">🏆 SESI — Kahoot English</div>
-    <h1>Setup no <span>Ginásio</span><br>sem internet</h1>
-    <p>Guia completo para montar o servidor local no notebook,<br>conectar as botoeiras pelo Wi-Fi e iniciar a prova.</p>
-    <span class="offline-pill">● MODO 100% OFFLINE</span>
+    <div class="logo-badge">🏆 SESI — Torneio Infantil</div>
+    <h1>Todas as Provas<br><span>sem internet</span></h1>
+    <p>Guia completo para montar o servidor local no notebook e gerenciar todas as provas do torneio sem conexão.</p>
+    <span class="offline-pill">● MODO 100% OFFLINE — todas as provas</span>
+    <div class="provas-row">
+      <span class="prova-pill"><span class="dot" style="background:#2F8FE0"></span>🌀 Lançador de Spinner</span>
+      <span class="prova-pill"><span class="dot" style="background:#3C9A5F"></span>🌉 Ponte de Da Vinci</span>
+      <span class="prova-pill"><span class="dot" style="background:#E5484D"></span>🎓 Kahoot English</span>
+    </div>
+  </div>
+
+  <!-- URLs de acesso rápido -->
+  <div>
+    <div class="sec-title">Endereços do servidor local</div>
+    <div class="url-cards">
+      <div class="url-card" style="border-color:rgba(0,75,141,.5)">
+        <div class="url-icon">📊</div>
+        <div>
+          <div class="url-label">Gerenciador de Provas</div>
+          <div class="url-addr">http://localhost:3000/gerenciador/</div>
+          <div class="url-desc">Spinner, Ponte Da Vinci e Kahoot — cronômetros, placar e ranking completo</div>
+        </div>
+      </div>
+      <div class="url-card" style="border-color:rgba(245,130,31,.5)">
+        <div class="url-icon">🖥️</div>
+        <div>
+          <div class="url-label">Monitor Kahoot English</div>
+          <div class="url-addr">http://localhost:3000/monitor</div>
+          <div class="url-desc">Botoeiras virtuais, placar e som — para projetor ou TV</div>
+        </div>
+      </div>
+      <div class="url-card" style="border-color:rgba(22,163,74,.4)">
+        <div class="url-icon">📱</div>
+        <div>
+          <div class="url-label">Botoeiras dos celulares</div>
+          <div class="url-addr">http://192.168.137.1:3000/buzzer-phone.html?team=vermelha</div>
+          <div class="url-desc">QR codes disponíveis em http://localhost:3000/ (página de setup)</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Organogram -->
   <div>
     <div class="sec-title">Topologia da rede</div>
     <div class="organogram">
-      <svg class="org-svg" viewBox="0 0 620 360" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de rede do ginásio">
+      <svg class="org-svg" viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" aria-label="Diagrama de rede do torneio offline">
         <defs>
           <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
             <polygon points="0 0,7 3.5,0 7" fill="#475569"/>
           </marker>
-          <!-- Glow filters -->
           <filter id="glow-blue">
             <feGaussianBlur stdDeviation="3" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -187,152 +231,105 @@
           </filter>
         </defs>
 
-        <!-- WiFi zone background -->
-        <rect x="10" y="10" width="600" height="340" rx="18"
-              fill="rgba(47,143,224,0.04)" stroke="#2F8FE0" stroke-width="1.5"
-              stroke-dasharray="8 5"/>
-        <text x="304" y="34" text-anchor="middle" fill="#2F8FE0"
-              font-family="Inter,sans-serif" font-size="11" font-weight="700"
-              letter-spacing="1">REDE WI-FI HOTSPOT — 192.168.137.x</text>
+        <!-- WiFi zone -->
+        <rect x="10" y="10" width="620" height="360" rx="18"
+              fill="rgba(47,143,224,0.04)" stroke="#2F8FE0" stroke-width="1.5" stroke-dasharray="8 5"/>
+        <text x="324" y="34" text-anchor="middle" fill="#2F8FE0"
+              font-family="Inter,sans-serif" font-size="11" font-weight="700" letter-spacing="1">
+          REDE WI-FI HOTSPOT — 192.168.137.x
+        </text>
 
-        <!-- ───────── NOTEBOOK (centro) ───────── -->
-        <g transform="translate(238,148)">
-          <!-- corpo do note -->
-          <rect x="0" y="0" width="144" height="92" rx="10"
-                fill="#004B8D" filter="url(#glow-blue)"/>
-          <!-- tela -->
-          <rect x="8" y="8" width="128" height="66" rx="5" fill="#0a1628"/>
-          <!-- texto na tela -->
-          <text x="72" y="32" text-anchor="middle" fill="#4ade80"
-                font-family="Courier New,monospace" font-size="9" font-weight="700">
-            SERVIDOR ONLINE ✓
-          </text>
-          <text x="72" y="46" text-anchor="middle" fill="#7dd3fc"
-                font-family="Courier New,monospace" font-size="8">
-            http://192.168.137.1:3000
-          </text>
-          <text x="72" y="58" text-anchor="middle" fill="#7dd3fc"
-                font-family="Courier New,monospace" font-size="8">
-            /monitor  /buzzer-phone.html
-          </text>
-          <text x="72" y="70" text-anchor="middle" fill="#94a3b8"
-                font-family="Courier New,monospace" font-size="7">
-            node servidor.js
-          </text>
-          <!-- base do note -->
-          <rect x="-12" y="92" width="168" height="8" rx="3" fill="#003d73"/>
+        <!-- NOTEBOOK (centro) -->
+        <g transform="translate(246,130)">
+          <rect x="0" y="0" width="148" height="96" rx="10" fill="#004B8D" filter="url(#glow-blue)"/>
+          <rect x="8" y="8" width="132" height="70" rx="5" fill="#0a1628"/>
+          <text x="74" y="26" text-anchor="middle" fill="#4ade80"
+                font-family="Courier New,monospace" font-size="8" font-weight="700">SERVIDOR OFFLINE ✓</text>
+          <text x="74" y="39" text-anchor="middle" fill="#7dd3fc"
+                font-family="Courier New,monospace" font-size="7">node servidor.cjs · porta 3000</text>
+          <text x="74" y="50" text-anchor="middle" fill="#94a3b8"
+                font-family="Courier New,monospace" font-size="7">/gerenciador/ · /monitor · /</text>
+          <text x="74" y="61" text-anchor="middle" fill="#94a3b8"
+                font-family="Courier New,monospace" font-size="7">/db/{chave}.json · dados salvos</text>
+          <text x="74" y="72" text-anchor="middle" fill="#64748b"
+                font-family="Courier New,monospace" font-size="6.5">torneio-data.json</text>
+          <rect x="-14" y="96" width="176" height="8" rx="3" fill="#003d73"/>
         </g>
-        <!-- rótulo notebook -->
-        <text x="310" y="262" text-anchor="middle" fill="#f1f5f9"
-              font-family="Inter,sans-serif" font-size="12" font-weight="700">
-          Notebook do mediador
-        </text>
-        <text x="310" y="278" text-anchor="middle" fill="#94a3b8"
-              font-family="Inter,sans-serif" font-size="10">
-          IP: 192.168.137.1 · porta 3000
-        </text>
+        <text x="320" y="248" text-anchor="middle" fill="#f1f5f9"
+              font-family="Inter,sans-serif" font-size="12" font-weight="700">Notebook do mediador</text>
+        <text x="320" y="264" text-anchor="middle" fill="#94a3b8"
+              font-family="Inter,sans-serif" font-size="10">IP: 192.168.137.1 · porta 3000</text>
 
-        <!-- ───────── PHONES (esquerda) ───────── -->
-        <!-- Linha conectora: A Vermelha -->
-        <line x1="121" y1="80" x2="238" y2="175" stroke="#E5484D" stroke-width="1.5"
-              stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
-        <!-- Phone A -->
-        <g transform="translate(44,44)">
+        <!-- Phones -->
+        <line x1="122" y1="74" x2="246" y2="164" stroke="#E5484D" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
+        <g transform="translate(44,38)">
           <rect x="0" y="0" width="54" height="88" rx="9" fill="#E5484D"/>
           <rect x="5" y="10" width="44" height="58" rx="4" fill="#0a1628"/>
-          <text x="27" y="30" text-anchor="middle" fill="#E5484D"
-                font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
-          <text x="27" y="50" text-anchor="middle" fill="#f1f5f9"
-                font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
-          <text x="27" y="63" text-anchor="middle" fill="#94a3b8"
-                font-family="Inter,sans-serif" font-size="6">Equipe A</text>
+          <text x="27" y="30" text-anchor="middle" fill="#E5484D" font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
+          <text x="27" y="50" text-anchor="middle" fill="#f1f5f9" font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
+          <text x="27" y="62" text-anchor="middle" fill="#94a3b8" font-family="Inter,sans-serif" font-size="6">Equipe A</text>
           <rect x="18" y="78" width="18" height="4" rx="2" fill="#0a1628" opacity="0.5"/>
         </g>
-        <text x="71" y="144" text-anchor="middle" fill="#E5484D"
-              font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe A</text>
+        <text x="71" y="138" text-anchor="middle" fill="#E5484D" font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe A</text>
 
-        <!-- Linha conectora: B Azul -->
-        <line x1="121" y1="185" x2="238" y2="195" stroke="#2F8FE0" stroke-width="1.5"
-              stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
-        <!-- Phone B -->
-        <g transform="translate(44,152)">
+        <line x1="122" y1="188" x2="246" y2="185" stroke="#2F8FE0" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
+        <g transform="translate(44,150)">
           <rect x="0" y="0" width="54" height="88" rx="9" fill="#2F8FE0"/>
           <rect x="5" y="10" width="44" height="58" rx="4" fill="#0a1628"/>
-          <text x="27" y="30" text-anchor="middle" fill="#2F8FE0"
-                font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
-          <text x="27" y="50" text-anchor="middle" fill="#f1f5f9"
-                font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
-          <text x="27" y="63" text-anchor="middle" fill="#94a3b8"
-                font-family="Inter,sans-serif" font-size="6">Equipe B</text>
+          <text x="27" y="30" text-anchor="middle" fill="#2F8FE0" font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
+          <text x="27" y="50" text-anchor="middle" fill="#f1f5f9" font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
+          <text x="27" y="62" text-anchor="middle" fill="#94a3b8" font-family="Inter,sans-serif" font-size="6">Equipe B</text>
           <rect x="18" y="78" width="18" height="4" rx="2" fill="#0a1628" opacity="0.5"/>
         </g>
-        <text x="71" y="252" text-anchor="middle" fill="#2F8FE0"
-              font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe B</text>
+        <text x="71" y="250" text-anchor="middle" fill="#2F8FE0" font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe B</text>
 
-        <!-- Linha conectora: C Verde -->
-        <line x1="499" y1="185" x2="382" y2="195" stroke="#3C9A5F" stroke-width="1.5"
-              stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
-        <!-- Phone C -->
-        <g transform="translate(522,152)">
+        <line x1="518" y1="188" x2="394" y2="185" stroke="#3C9A5F" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
+        <g transform="translate(540,150)">
           <rect x="0" y="0" width="54" height="88" rx="9" fill="#3C9A5F"/>
           <rect x="5" y="10" width="44" height="58" rx="4" fill="#0a1628"/>
-          <text x="27" y="30" text-anchor="middle" fill="#3C9A5F"
-                font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
-          <text x="27" y="50" text-anchor="middle" fill="#f1f5f9"
-                font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
-          <text x="27" y="63" text-anchor="middle" fill="#94a3b8"
-                font-family="Inter,sans-serif" font-size="6">Equipe C</text>
+          <text x="27" y="30" text-anchor="middle" fill="#3C9A5F" font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
+          <text x="27" y="50" text-anchor="middle" fill="#f1f5f9" font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
+          <text x="27" y="62" text-anchor="middle" fill="#94a3b8" font-family="Inter,sans-serif" font-size="6">Equipe C</text>
           <rect x="18" y="78" width="18" height="4" rx="2" fill="#0a1628" opacity="0.5"/>
         </g>
-        <text x="549" y="252" text-anchor="middle" fill="#3C9A5F"
-              font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe C</text>
+        <text x="567" y="250" text-anchor="middle" fill="#3C9A5F" font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe C</text>
 
-        <!-- Linha conectora: D Amarela -->
-        <line x1="499" y1="80" x2="382" y2="175" stroke="#E0B23C" stroke-width="1.5"
-              stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
-        <!-- Phone D -->
-        <g transform="translate(522,44)">
+        <line x1="518" y1="74" x2="394" y2="164" stroke="#E0B23C" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.7" marker-end="url(#arr)"/>
+        <g transform="translate(540,38)">
           <rect x="0" y="0" width="54" height="88" rx="9" fill="#E0B23C"/>
           <rect x="5" y="10" width="44" height="58" rx="4" fill="#0a1628"/>
-          <text x="27" y="30" text-anchor="middle" fill="#E0B23C"
-                font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
-          <text x="27" y="50" text-anchor="middle" fill="#1a1a1a"
-                font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
-          <text x="27" y="63" text-anchor="middle" fill="#5a4a1a"
-                font-family="Inter,sans-serif" font-size="6">Equipe D</text>
+          <text x="27" y="30" text-anchor="middle" fill="#E0B23C" font-family="Inter,sans-serif" font-size="10" font-weight="900">🔔</text>
+          <text x="27" y="50" text-anchor="middle" fill="#1a1a1a" font-family="Inter,sans-serif" font-size="7" font-weight="700">BOTOEIRA</text>
+          <text x="27" y="62" text-anchor="middle" fill="#5a4a1a" font-family="Inter,sans-serif" font-size="6">Equipe D</text>
           <rect x="18" y="78" width="18" height="4" rx="2" fill="#0a1628" opacity="0.5"/>
         </g>
-        <text x="549" y="144" text-anchor="middle" fill="#E0B23C"
-              font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe D</text>
+        <text x="567" y="138" text-anchor="middle" fill="#E0B23C" font-family="Inter,sans-serif" font-size="10" font-weight="700">Equipe D</text>
 
-        <!-- ───────── Monitor / TV (abaixo) ───────── -->
-        <line x1="310" y1="258" x2="310" y2="296" stroke="#F5821F" stroke-width="1.5"
-              stroke-dasharray="5 4" marker-end="url(#arr)"/>
-        <g transform="translate(246,296)">
-          <rect x="0" y="0" width="128" height="52" rx="8" fill="#1e293b" stroke="#F5821F"
-                stroke-width="1.5" filter="url(#glow-orange)"/>
-          <text x="64" y="18" text-anchor="middle" fill="#F5821F"
-                font-family="Inter,sans-serif" font-size="9" font-weight="700">
-            📺  Projetor / TV
-          </text>
-          <text x="64" y="32" text-anchor="middle" fill="#94a3b8"
-                font-family="Inter,sans-serif" font-size="8">
-            localhost:3000/monitor
-          </text>
-          <text x="64" y="44" text-anchor="middle" fill="#475569"
-                font-family="Inter,sans-serif" font-size="7">
-            via cabo HDMI ou Wi-Fi
-          </text>
+        <!-- Gerenciador (acima do notebook — browser do notebook) -->
+        <line x1="320" y1="130" x2="320" y2="104" stroke="#2F8FE0" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+        <g transform="translate(232,68)">
+          <rect x="0" y="0" width="176" height="36" rx="8" fill="#1e293b" stroke="#2F8FE0" stroke-width="1.5" filter="url(#glow-blue)"/>
+          <text x="88" y="14" text-anchor="middle" fill="#2F8FE0" font-family="Inter,sans-serif" font-size="8.5" font-weight="700">📊 Gerenciador de Provas</text>
+          <text x="88" y="27" text-anchor="middle" fill="#94a3b8" font-family="Inter,sans-serif" font-size="7">Spinner · Ponte · Kahoot  |  /gerenciador/</text>
         </g>
 
-        <!-- Legend: WiFi symbol -->
-        <g transform="translate(270,109)" opacity="0.5">
-          <text font-family="Inter,sans-serif" font-size="16" fill="#2F8FE0">📶</text>
-          <text x="20" y="13" font-family="Inter,sans-serif" font-size="8" fill="#2F8FE0">Wi-Fi</text>
+        <!-- TV / Projetor -->
+        <line x1="320" y1="274" x2="320" y2="308" stroke="#F5821F" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+        <g transform="translate(248,308)">
+          <rect x="0" y="0" width="144" height="48" rx="8" fill="#1e293b" stroke="#F5821F" stroke-width="1.5" filter="url(#glow-orange)"/>
+          <text x="72" y="17" text-anchor="middle" fill="#F5821F" font-family="Inter,sans-serif" font-size="9" font-weight="700">📺 Projetor / TV</text>
+          <text x="72" y="29" text-anchor="middle" fill="#94a3b8" font-family="Inter,sans-serif" font-size="7.5">localhost:3000/monitor</text>
+          <text x="72" y="40" text-anchor="middle" fill="#475569" font-family="Inter,sans-serif" font-size="7">cabo HDMI ou Wi-Fi</text>
         </g>
-        <g transform="translate(340,109)" opacity="0.5">
-          <text font-family="Inter,sans-serif" font-size="16" fill="#2F8FE0">📶</text>
-          <text x="20" y="13" font-family="Inter,sans-serif" font-size="8" fill="#2F8FE0">Wi-Fi</text>
+
+        <!-- Wi-Fi icons -->
+        <g transform="translate(278,106)" opacity="0.45">
+          <text font-family="Inter,sans-serif" font-size="14" fill="#2F8FE0">📶</text>
+          <text x="18" y="12" font-family="Inter,sans-serif" font-size="7.5" fill="#2F8FE0">Wi-Fi</text>
+        </g>
+        <g transform="translate(344,106)" opacity="0.45">
+          <text font-family="Inter,sans-serif" font-size="14" fill="#2F8FE0">📶</text>
+          <text x="18" y="12" font-family="Inter,sans-serif" font-size="7.5" fill="#2F8FE0">Wi-Fi</text>
         </g>
       </svg>
     </div>
@@ -346,28 +343,28 @@
         <div class="equip-icon">💻</div>
         <div>
           <div class="equip-name">Notebook Windows</div>
-          <div class="equip-desc">Com Node.js instalado. Será o servidor central da rede.</div>
+          <div class="equip-desc">Com Node.js instalado. Será o servidor central — gerencia todas as provas.</div>
         </div>
       </div>
       <div class="equip-card">
         <div class="equip-icon">📱</div>
         <div>
           <div class="equip-name">4 Smartphones</div>
-          <div class="equip-desc">Um por equipe — serão as botoeiras físicas da prova.</div>
+          <div class="equip-desc">Um por equipe — botoeiras físicas para o Kahoot English.</div>
         </div>
       </div>
       <div class="equip-card">
         <div class="equip-icon">📺</div>
         <div>
           <div class="equip-name">Projetor ou TV</div>
-          <div class="equip-desc">Para exibir o monitor do mediador para os estudantes.</div>
+          <div class="equip-desc">Para o monitor do mediador e o telão de cada prova.</div>
         </div>
       </div>
       <div class="equip-card">
         <div class="equip-icon">📁</div>
         <div>
           <div class="equip-name">Pasta do projeto</div>
-          <div class="equip-desc">Com <code style="font-size:10px;color:#7dd3fc">servidor.js</code> e <code style="font-size:10px;color:#7dd3fc">iniciar-servidor.bat</code>.</div>
+          <div class="equip-desc">Com <code style="font-size:10px;color:#7dd3fc">servidor.cjs</code>, <code style="font-size:10px;color:#7dd3fc">iniciar-servidor.bat</code> e a pasta <code style="font-size:10px;color:#7dd3fc">dist/</code> (compilado).</div>
         </div>
       </div>
     </div>
@@ -377,16 +374,16 @@
   <div>
     <div class="phase-header prep">
       <span class="phase-label">Fase 1</span>
-      <span class="phase-title">Preparação — antes do torneio</span>
+      <span class="phase-title">Preparação — antes do torneio (com internet)</span>
     </div>
     <div class="steps" style="margin-top:12px">
+
       <div class="step prep">
         <div class="step-num">1</div>
         <div class="step-title">Instalar o Node.js no notebook</div>
         <div class="step-desc">
           Acesse <strong>nodejs.org</strong>, baixe a versão <strong>LTS</strong> e instale normalmente.
-          Marque a opção "Add to PATH" durante a instalação.
-          Depois, confirme no Prompt de Comando:
+          Marque "Add to PATH". Confirme no Prompt de Comando:
         </div>
         <div class="step-code">node --version</div>
         <div class="step-tag">✓ Deve exibir v20.x.x ou superior</div>
@@ -396,13 +393,25 @@
         <div class="step-num">2</div>
         <div class="step-title">Copiar a pasta do projeto para o notebook</div>
         <div class="step-desc">
-          Coloque a pasta <strong>torneio-sesi</strong> na Área de Trabalho ou em qualquer local fácil.
-          Ela deve conter <code style="font-size:11px;color:#7dd3fc">servidor.js</code>,
-          <code style="font-size:11px;color:#7dd3fc">iniciar-servidor.bat</code>
-          e a pasta <code style="font-size:11px;color:#7dd3fc">public/</code> com os arquivos do buzzer.
+          Coloque a pasta <strong>torneio-sesi</strong> na Área de Trabalho.
+          Ela deve conter <code style="font-size:11px;color:#7dd3fc">servidor.cjs</code>,
+          <code style="font-size:11px;color:#7dd3fc">iniciar-servidor.bat</code>,
+          a pasta <code style="font-size:11px;color:#7dd3fc">public/</code> e a pasta
+          <code style="font-size:11px;color:#7dd3fc">dist/</code> (app compilado).
         </div>
-        <div class="step-tag">✓ Nenhuma conexão à internet é necessária a partir daqui</div>
       </div>
+
+      <div class="step prep">
+        <div class="step-num">3</div>
+        <div class="step-title">Executar o bat uma vez com internet para compilar</div>
+        <div class="step-desc">
+          Dê duplo clique em <strong>iniciar-servidor.bat</strong>. Na primeira vez (com internet),
+          ele instala as dependências e compila automaticamente o gerenciador de provas na pasta <code style="font-size:11px;color:#7dd3fc">dist/</code>.
+          Aguarde a mensagem <strong>"SERVIDOR OFFLINE"</strong> no terminal.
+        </div>
+        <div class="step-tag">✓ A partir daqui, nenhuma internet é mais necessária</div>
+      </div>
+
     </div>
   </div>
 
@@ -410,100 +419,90 @@
   <div>
     <div class="phase-header day">
       <span class="phase-label">Fase 2</span>
-      <span class="phase-title">No dia — dentro do ginásio</span>
+      <span class="phase-title">No dia — dentro do ginásio (sem internet)</span>
     </div>
     <div class="steps" style="margin-top:12px">
 
       <div class="step day">
-        <div class="step-num">3</div>
+        <div class="step-num">4</div>
         <div class="step-title">Ativar o Hotspot Móvel do Windows</div>
         <div class="step-desc">
           Vá em <strong>Configurações → Rede e Internet → Hotspot Móvel</strong>.
-          Ative e anote o nome da rede (SSID) e a senha exibidos na tela.
+          Ative e anote o nome da rede (SSID) e a senha.
           O notebook assume automaticamente o IP <strong>192.168.137.1</strong>.
         </div>
         <div class="step-tag warn">⚡ Deixe o hotspot ligado durante toda a prova</div>
       </div>
 
       <div class="step day">
-        <div class="step-num">4</div>
+        <div class="step-num">5</div>
         <div class="step-title">Iniciar o servidor — duplo clique em iniciar-servidor.bat</div>
         <div class="step-desc">
-          Abra a pasta do projeto, dê duplo clique no arquivo
-          <strong>iniciar-servidor.bat</strong>.
-          Uma janela preta abrirá e exibirá os endereços de cada botoeira.
+          Dê duplo clique no arquivo <strong>iniciar-servidor.bat</strong>.
+          A janela preta exibirá os endereços de todas as provas.
+          Como o <code style="font-size:11px;color:#7dd3fc">dist/</code> já existe, o servidor inicia imediatamente.
         </div>
-        <div class="step-code">SERVIDOR KAHOOT LOCAL — SESI<br>Monitor: http://localhost:3000/monitor</div>
-        <div class="step-tag">✓ Deixe esta janela aberta até o fim da prova</div>
-      </div>
-
-      <div class="step day">
-        <div class="step-num">5</div>
-        <div class="step-title">Abrir a página de setup com QR codes</div>
-        <div class="step-desc">
-          No navegador do notebook, acesse a URL abaixo.
-          A página exibirá um QR code para cada equipe.
-        </div>
-        <div class="step-code">http://localhost:3000/</div>
-        <div class="step-tag">✓ Se QR codes não aparecerem: rode <span style="font-family:monospace">npm install qrcode</span> e reinicie</div>
+        <div class="step-code">TORNEIO SESI — SERVIDOR LOCAL (MODO OFFLINE)
+Gerenciador:  http://localhost:3000/gerenciador/
+Monitor:      http://localhost:3000/monitor</div>
+        <div class="step-tag">✓ Deixe esta janela aberta até o fim do torneio</div>
       </div>
 
       <div class="step day">
         <div class="step-num">6</div>
-        <div class="step-title">Conectar os 4 celulares ao Wi-Fi do hotspot</div>
+        <div class="step-title">Abrir o Gerenciador de Provas no notebook</div>
         <div class="step-desc">
-          Em cada smartphone, vá em <strong>Configurações → Wi-Fi</strong>, selecione
-          a rede criada pelo hotspot do notebook e insira a senha.
-          Confirme que todos os 4 celulares estão conectados.
+          No navegador do notebook, acesse o gerenciador completo de todas as provas.
+          Um banner verde "<strong>● MODO OFFLINE</strong>" confirma que está no servidor local.
         </div>
-        <div class="step-tag">✓ Sinal forte até ~15 m de distância</div>
+        <div class="step-code">http://localhost:3000/gerenciador/</div>
+        <div class="step-desc" style="margin-top:8px">
+          A partir daí: cronômetros do <strong>Spinner</strong>, da <strong>Ponte Da Vinci</strong>
+          e do <strong>Kahoot English</strong> — tudo num só lugar, salvo automaticamente no notebook.
+        </div>
       </div>
 
       <div class="step day">
         <div class="step-num">7</div>
-        <div class="step-title">Escanear o QR code de cada equipe</div>
+        <div class="step-title">Conectar os 4 celulares ao Wi-Fi do hotspot</div>
         <div class="step-desc">
-          Cada equipe aponta a câmera do celular para o QR code correspondente à sua cor.
-          O navegador abrirá automaticamente a botoeira já configurada para aquela equipe.
+          Em cada smartphone, vá em <strong>Configurações → Wi-Fi</strong>, selecione a rede
+          do hotspot e insira a senha. "Rede sem acesso à internet" é normal — o hotspot funciona assim mesmo.
         </div>
-        <div class="step-tag">✓ URL alternativa: <span style="font-family:monospace">http://192.168.137.1:3000/buzzer-phone.html?team=vermelha</span></div>
+        <div class="step-tag">✓ Alcance de ~15 m</div>
       </div>
 
       <div class="step day">
         <div class="step-num">8</div>
-        <div class="step-title">Abrir o Monitor no notebook (ou TV/projetor)</div>
+        <div class="step-title">Escanear QR codes das botoeiras (Kahoot English)</div>
         <div class="step-desc">
-          No notebook do mediador, abra o navegador e acesse:
+          Abra <code style="font-size:11px;color:#7dd3fc">http://localhost:3000/</code> no notebook
+          para ver os QR codes de cada equipe. Cada celular escaneia o QR da sua cor e abre a botoeira.
         </div>
-        <div class="step-code">http://localhost:3000/monitor</div>
-        <div class="step-desc" style="margin-top:8px">
-          Se houver TV ou projetor conectado por HDMI, coloque o monitor em tela cheia
-          (<strong>F11</strong>) para os estudantes acompanharem o placar.
-        </div>
+        <div class="step-tag">✓ URL manual: /buzzer-phone.html?team=vermelha (ou azul, verde, amarela)</div>
       </div>
 
       <div class="step day">
         <div class="step-num">9</div>
-        <div class="step-title">Calibrar as botoeiras físicas</div>
+        <div class="step-title">Abrir Monitor e Telão no projetor / TV</div>
         <div class="step-desc">
-          Em cada celular-botoeira, pressione <strong>"Usar Movimento do Celular"</strong>
-          e aguarde 2,2 segundos de silêncio para a calibração automática.
-          A tela ficará verde quando estiver pronta.
+          Conecte o notebook ao projetor por HDMI. Abra o monitor do Kahoot e pressione <strong>F11</strong>
+          para tela cheia. Para as provas de Spinner e Ponte, use o botão <strong>"Telão"</strong>
+          no gerenciador.
         </div>
-        <div class="step-tag">✓ A tela não apagará (Wake Lock ativo)</div>
+        <div class="step-code">Monitor Kahoot:  http://localhost:3000/monitor
+Gerenciador:    http://localhost:3000/gerenciador/</div>
       </div>
 
       <div class="step day">
         <div class="step-num">10</div>
-        <div class="step-title">🚀 Iniciar a prova!</div>
+        <div class="step-title">🚀 Iniciar as provas!</div>
         <div class="step-desc">
-          No Monitor, pressione <strong>"▶ Nova Pergunta — Ativar Botoeiras"</strong>.
-          As botoeiras ficam ativas, a primeira equipe a apertar vence a rodada.
-          O monitor emite som, destaca a cor vencedora e exibe os botões
-          <strong>✓ Correto</strong> / <strong>✗ Errado</strong>.
-          A pontuação é salva automaticamente no arquivo <code style="font-size:11px;color:#7dd3fc">kahoot-scores.json</code>.
+          Todos os dados — tempos do Spinner, carga e tempo da Ponte, pontuação do Kahoot —
+          são salvos automaticamente no arquivo <code style="font-size:11px;color:#7dd3fc">torneio-data.json</code>
+          no notebook. Se o servidor reiniciar, todos os dados são recuperados.
         </div>
-        <div class="step-tag">✓ Pronto para competir sem internet!</div>
+        <div class="step-tag">✓ Pronto para competir — 100% sem internet!</div>
       </div>
 
     </div>
@@ -514,36 +513,34 @@
     <div class="sec-title">Dicas e resolução de problemas</div>
     <div class="tips-grid">
       <div class="tip">
-        <div class="tip-icon">🔋</div>
-        <div class="tip-text"><strong>Bateria dos celulares:</strong> Conecte os celulares na tomada antes da prova. A câmera do acelerômetro e o Wi-Fi consomem energia.</div>
+        <div class="tip-icon">🟢</div>
+        <div class="tip-text"><strong>Banner verde no gerenciador:</strong> O banner "● MODO OFFLINE" no topo confirma que o app está usando o servidor local. Se não aparecer, verifique se acessou /gerenciador/ na porta 3000.</div>
       </div>
       <div class="tip">
-        <div class="tip-icon">📡</div>
-        <div class="tip-text"><strong>Celular não conecta ao Wi-Fi?</strong> Verifique se o hotspot do Windows está ativo. Se aparecer apenas "Rede sem acesso à internet", isso é normal — o hotspot funciona mesmo assim.</div>
+        <div class="tip-icon">💾</div>
+        <div class="tip-text"><strong>Dados persistentes:</strong> Todos os dados (tempos, pontos, carga) são salvos em <code>torneio-data.json</code>. Reiniciar o servidor não apaga nada — os dados voltam automaticamente.</div>
       </div>
       <div class="tip">
         <div class="tip-icon">🔁</div>
-        <div class="tip-text"><strong>Servidor travou?</strong> Feche a janela preta e dê duplo clique em <code>iniciar-servidor.bat</code> novamente. A pontuação será recuperada automaticamente do arquivo salvo.</div>
+        <div class="tip-text"><strong>Servidor travou?</strong> Feche a janela preta e dê duplo clique em <code>iniciar-servidor.bat</code> novamente. O dist/ já existe, então sobe em menos de 2 segundos.</div>
       </div>
       <div class="tip">
-        <div class="tip-icon">📲</div>
-        <div class="tip-text"><strong>Botoeira sumiu da tela?</strong> O celular pode ter fechado o navegador. Reabra o navegador — o URL fica salvo no histórico. A calibração precisará ser refeita.</div>
+        <div class="tip-icon">📡</div>
+        <div class="tip-text"><strong>Celular não conecta ao Wi-Fi?</strong> Verifique se o hotspot do Windows está ativo. "Rede sem acesso à internet" é normal — o hotspot local funciona assim mesmo.</div>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">🔋</div>
+        <div class="tip-text"><strong>Bateria dos celulares:</strong> Conecte os celulares na tomada. O acelerômetro e o Wi-Fi consomem energia durante a prova do Kahoot English.</div>
       </div>
       <div class="tip">
         <div class="tip-icon">🏆</div>
-        <div class="tip-text"><strong>Pontuação segura:</strong> A cada ponto marcado, o placar é gravado em <code>kahoot-scores.json</code>. Se houver queda de energia, reinicie o servidor e os pontos voltam.</div>
-      </div>
-      <div class="tip">
-        <div class="tip-icon">🖥️</div>
-        <div class="tip-text"><strong>Monitor em tela cheia:</strong> Pressione <strong>F11</strong> no navegador para tela cheia. O layout é responsivo e funciona tanto no notebook quanto em TV grande.</div>
+        <div class="tip-text"><strong>Após o torneio:</strong> O arquivo <code>torneio-data.json</code> contém todos os resultados. Pode ser copiado e usado como backup para conferência posterior.</div>
       </div>
     </div>
   </div>
 
   <div class="footer">
-    SESI — Kahoot English · Servidor local · Modo offline · 2025
+    SESI — Torneio Infantil · Servidor local · Modo offline completo · 2025
   </div>
 
 </div>
-</body>
-</html>
