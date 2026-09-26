@@ -15,105 +15,87 @@
     p   { font-size:14px; color:#aaa; max-width:38ch; line-height:1.6; }
     small { font-size:12px; color:#555; }
 
-    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:13px 32px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s; }
+    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:13px 32px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s; white-space:nowrap; }
     .btn-prim:hover { opacity:.88; }
     .btn-prim:disabled { opacity:.3; cursor:not-allowed; }
-    .btn-sec  { font-size:13px; color:#aaa; background:none; border:1px solid #333; border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; }
+    .btn-sec { font-size:13px; color:#aaa; background:none; border:1px solid #333; border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; }
     .btn-sec:hover { color:#fff; border-color:#666; }
 
-    /* ── Tela zona ── */
-    #tela-zona { padding:0; justify-content:flex-start; }
-    #zona-header {
-      width:100%; padding:12px 16px 10px;
-      background:rgba(0,0,0,.8); backdrop-filter:blur(8px);
+    /* ── Tela calibração ── */
+    #tela-cal { padding:0; justify-content:flex-start; }
+
+    #cal-header {
+      width:100%; padding:12px 16px 8px;
+      background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
       display:flex; flex-direction:column; align-items:center; gap:4px;
       z-index:10; flex-shrink:0;
     }
-    #zona-instrucao { font-size:15px; font-weight:800; }
-    #zona-passo { font-size:12px; color:#aaa; }
+    #cal-titulo { font-size:15px; font-weight:800; }
+    #cal-sub    { font-size:12px; color:#aaa; }
 
-    #video-wrap {
-      position:relative; flex:1; width:100%; overflow:hidden; background:#000;
-      cursor:crosshair;
-    }
-    #video {
-      position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
-    }
-    #overlay-zona {
-      position:absolute; inset:0; width:100%; height:100%;
-      pointer-events:none;
-    }
-    /* touch/click area sobre o video */
-    #video-touch {
-      position:absolute; inset:0; z-index:5;
-    }
+    #video-wrap { position:relative; flex:1; width:100%; overflow:hidden; background:#000; }
+    #video      { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    #overlay-cal { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
-    #zona-footer {
-      width:100%; padding:10px 16px;
-      background:rgba(0,0,0,.8); backdrop-filter:blur(8px);
-      display:flex; justify-content:space-between; align-items:center;
+    /* chips de status por cor */
+    #status-chips {
+      position:absolute; bottom:8px; left:0; right:0;
+      display:flex; justify-content:center; gap:6px; flex-wrap:wrap; padding:0 8px;
+    }
+    .chip {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:4px 10px; border-radius:100px; font-size:11px; font-weight:800;
+      letter-spacing:.04em; border:2px solid transparent;
+    }
+    .chip.ok      { background:rgba(0,0,0,.6); border-color:var(--c); color:#fff; }
+    .chip.missing { background:rgba(0,0,0,.4); border-color:#333; color:#555; }
+    .chip-dot { width:8px; height:8px; border-radius:50%; background:var(--c); }
+
+    #cal-footer {
+      width:100%; padding:10px 14px;
+      background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
       flex-shrink:0;
     }
+    #cal-btn-confirmar { font-size:15px; padding:10px 24px; }
+
+    /* slider de sensibilidade */
+    .slider-row { display:flex; align-items:center; gap:8px; font-size:12px; color:#aaa; }
+    .slider-row input[type=range] { width:80px; accent-color:#fff; }
 
     /* ── Tela jogo ── */
     #tela-jogo { padding:0; justify-content:flex-start; }
 
-    #cam-preview {
-      position:relative; width:100%; flex-shrink:0;
-      background:#000; overflow:hidden;
-      height:calc(100vw * 9/16);  /* 16:9 */
-      max-height:38vh;
-    }
-    #video-jogo {
-      position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
-    }
-    #overlay-jogo {
-      position:absolute; inset:0; width:100%; height:100%;
-      pointer-events:none;
-    }
+    #cam-preview { position:relative; width:100%; flex-shrink:0; background:#000; overflow:hidden; max-height:40vh; }
+    #video-jogo  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    #overlay-jogo { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+    /* mantém proporção 16:9 */
+    #cam-preview::before { content:''; display:block; padding-top:56.25%; }
 
-    #jogo-corpo {
-      flex:1; display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      gap:12px; padding:16px;
-    }
+    #jogo-corpo { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:12px 16px; }
     #status-jogo { font-size:15px; font-weight:700; color:#aaa; }
 
-    #winner-card {
-      display:none; flex-direction:column; align-items:center; gap:10px;
-      padding:24px 32px; border-radius:24px; width:100%; max-width:360px;
-      animation:pop-in .4s ease-out;
-    }
-    @keyframes pop-in { from { transform:scale(.8); opacity:0; } to { transform:scale(1); opacity:1; } }
-    #winner-emoji { font-size:56px; line-height:1; }
-    #winner-nome  { font-size:22px; font-weight:900; }
-    #winner-sub   { font-size:14px; color:rgba(255,255,255,.7); }
+    #winner-card { display:none; flex-direction:column; align-items:center; gap:10px; padding:22px 28px; border-radius:22px; width:100%; max-width:340px; animation:pop-in .4s ease-out; }
+    @keyframes pop-in { from{transform:scale(.8);opacity:0;} to{transform:scale(1);opacity:1;} }
+    #winner-emoji { font-size:54px; line-height:1; }
+    #winner-nome  { font-size:20px; font-weight:900; }
 
-    #jogo-footer {
-      width:100%; padding:10px 16px;
-      background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
-      display:flex; justify-content:space-between; align-items:center;
-      flex-shrink:0;
-    }
+    /* barras de luminância / detecção */
+    #det-bars { display:flex; gap:6px; width:100%; max-width:340px; }
+    .det-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .det-label { font-size:9px; font-weight:800; }
+    .det-track { width:100%; height:7px; background:#1a1d27; border-radius:100px; overflow:hidden; }
+    .det-fill  { height:100%; border-radius:100px; width:0%; transition:width .06s; }
 
-    /* barra de luminosidade por zona */
-    #lum-bars {
-      display:flex; gap:6px; width:100%; max-width:360px;
-      padding:0 4px;
-    }
-    .lum-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
-    .lum-label { font-size:9px; font-weight:800; letter-spacing:.05em; }
-    .lum-track { width:100%; height:8px; background:#1a1d27; border-radius:100px; overflow:hidden; }
-    .lum-fill  { height:100%; border-radius:100px; width:0%; transition:width .06s; }
+    #jogo-footer { width:100%; padding:10px 16px; background:rgba(0,0,0,.7); backdrop-filter:blur(8px); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
 
-    /* conexao */
-    #bar-conexao { position:fixed; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:6px; font-size:10px; color:rgba(255,255,255,.25); padding:4px; z-index:100; }
-    .dot { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.2); }
+    /* conexão */
+    #bar-con { position:fixed; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:5px; font-size:10px; color:rgba(255,255,255,.2); padding:3px; z-index:100; }
+    .dot { width:5px; height:5px; border-radius:50%; }
     .dot.on  { background:#4ade80; }
-    .dot.off { background:#ef4444; animation:piscar .8s infinite; }
-    @keyframes piscar { 50% { opacity:.3; } }
+    .dot.off { background:#ef4444; animation:blink .8s infinite; }
+    @keyframes blink { 50%{opacity:.3;} }
 
-    /* Flash */
     #flash { position:fixed; inset:0; pointer-events:none; z-index:90; opacity:0; }
     #flash.ativo { animation:flash-anim .5s ease-out forwards; }
     @keyframes flash-anim { 0%{opacity:.6;} 100%{opacity:0;} }
@@ -121,36 +103,39 @@
 </head>
 <body>
 
-<!-- ── TELA 1: Permissão ── -->
+<!-- TELA 1: Permissão -->
 <div id="tela-perm" class="tela visivel">
   <div style="font-size:56px">🎥</div>
   <h1>Buzzer por Câmera</h1>
-  <p>Aponte a câmera para as 4 botoeiras. O sistema detecta qual LED acendeu primeiro e envia o resultado para o telão.</p>
-  <p style="font-size:13px;color:#666">Posicione o celular em um suporte firme com visão clara de todas as botoeiras.</p>
-  <button class="btn-prim" onclick="pedirCamera()">📷 Permitir câmera</button>
-  <small>Use o mesmo celular que filmar ou separe um celular só para isso</small>
+  <p>O sistema detecta automaticamente cada botoeira pela cor. Nenhum toque manual necessário.</p>
+  <p style="font-size:13px;color:#666">Posicione o celular com visão clara das 4 botoeiras antes de confirmar.</p>
+  <button class="btn-prim" onclick="pedirCamera()">📷 Iniciar câmera</button>
 </div>
 
-<!-- ── TELA 2: Marcar zonas ── -->
-<div id="tela-zona" class="tela">
-  <div id="zona-header">
-    <div id="zona-instrucao">Toque na botoeira <span id="zona-time-cor" style="font-weight:900">—</span></div>
-    <div id="zona-passo">Passo 1 de 4</div>
+<!-- TELA 2: Calibração automática por cor -->
+<div id="tela-cal" class="tela">
+  <div id="cal-header">
+    <div id="cal-titulo">🎯 Posicione a câmera</div>
+    <div id="cal-sub">O sistema detecta as botoeiras pelas cores automaticamente</div>
   </div>
 
   <div id="video-wrap">
     <video id="video" autoplay playsinline muted></video>
-    <canvas id="overlay-zona"></canvas>
-    <div id="video-touch"></div>
+    <canvas id="overlay-cal"></canvas>
+    <div id="status-chips"></div>
   </div>
 
-  <div id="zona-footer">
-    <button class="btn-sec" onclick="resetarZonas()">↺ Refazer</button>
-    <span id="zona-dica" style="font-size:12px;color:#555">Toque exatamente sobre cada botoeira</span>
+  <div id="cal-footer">
+    <div class="slider-row">
+      <span>Tolerância</span>
+      <input type="range" id="slider-tol" min="10" max="50" value="28" oninput="tolerancia=+this.value">
+      <span id="tol-val">28</span>
+    </div>
+    <button class="btn-prim" id="cal-btn-confirmar" disabled onclick="confirmarZonas()">✓ Confirmar</button>
   </div>
 </div>
 
-<!-- ── TELA 3: Jogo ── -->
+<!-- TELA 3: Jogo -->
 <div id="tela-jogo" class="tela">
   <div id="cam-preview">
     <video id="video-jogo" autoplay playsinline muted></video>
@@ -158,75 +143,130 @@
   </div>
 
   <div id="jogo-corpo">
-    <div id="lum-bars"></div>
+    <div id="det-bars"></div>
     <div id="status-jogo">🟢 Aguardando…</div>
     <div id="winner-card">
       <div id="winner-emoji">🏆</div>
       <div id="winner-nome">—</div>
-      <div id="winner-sub">Foi o primeiro!</div>
     </div>
   </div>
 
   <div id="jogo-footer">
     <button class="btn-sec" onclick="resetarRodada()">↺ Nova rodada</button>
-    <span id="det-status" style="font-size:11px;color:#444">Detectando…</span>
-    <button class="btn-sec" onclick="voltarZonas()">⚙ Zonas</button>
+    <span id="det-status" style="font-size:11px;color:#444">—</span>
+    <button class="btn-sec" onclick="voltarCal()">⚙ Reposicionar</button>
   </div>
 </div>
 
 <div id="flash"></div>
-
-<!-- Canvas oculto para análise de pixels -->
 <canvas id="canal" style="display:none"></canvas>
 
-<div id="bar-conexao">
+<div id="bar-con">
   <div class="dot off" id="dot-con"></div>
   <span id="txt-con">Conectando…</span>
 </div>
 
 <script>
-// ── Times ─────────────────────────────────────────────────────────
+// ── Times e cores ─────────────────────────────────────────────────
 const TIMES = [
-  { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
-  { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
-  { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢' },
-  { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡' },
+  { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴',
+    // faixa HSL para detecção: vermelho envolve 0° (usa hMin>hMax como wraparound)
+    hMin:345, hMax:15, sMin:0.45, lMin:0.25, lMax:0.72 },
+  { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵',
+    hMin:200, hMax:240, sMin:0.40, lMin:0.25, lMax:0.72 },
+  { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢',
+    hMin:100, hMax:155, sMin:0.38, lMin:0.20, lMax:0.72 },
+  { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡',
+    hMin:40,  hMax:70,  sMin:0.50, lMin:0.38, lMax:0.82 },
 ];
 
 const RTDB        = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
-const STORAGE_CAM = 'torneio-buzzer-cam:v1';
+const STORAGE_KEY = 'torneio-buzzer-cam:v2';
 
-// ── Parâmetros de detecção ────────────────────────────────────────
-const ANAL_W     = 320;   // largura do canvas de análise (px)
-const ANAL_H     = 240;   // altura
-const ZONA_R     = 22;    // raio da zona de amostragem (px no canvas de análise)
-const DET_DELTA  = 38;    // aumento de luminosidade para detectar (0-255)
-const NOISE_ALPHA= 0.04;  // velocidade de adaptação do baseline (luz ambiente)
-const LOCK_MS    = 800;   // ms de bloqueio após detecção
+// Parâmetros
+let tolerancia  = 28;   // tolerância extra na detecção de cor (slider)
+const ANAL_W    = 160;  // largura do canvas de análise
+const ANAL_H    = 120;
+const ZONA_R_AN = 14;   // raio da zona de amostragem no canvas de análise
+const DET_DELTA = 35;   // variação de luminância para detectar LED aceso
+const LOCK_MS   = 700;
 
-// ── Estado ────────────────────────────────────────────────────────
-let videoStream  = null;
-let zonas        = [];    // [{fx, fy, timeId}]  fx/fy = fração 0-1 da imagem
-let baseline     = [];    // luminosidade de fundo por zona
-let lumAtual     = [];    // leitura atual por zona
-let detectando   = false;
-let lockUntil    = 0;
-let declarando   = false;
-let rodadaAtual  = -1;
-let sseConn      = null;
+// Estado
+let videoStream = null;
+let zonas       = [];     // [{fx, fy, timeId}] — posições detectadas
+let calLoop     = false;
+let detectando  = false;
+let baseline    = [];
+let lumAtual    = [];
+let lockUntil   = 0;
+let declarando  = false;
+let rodadaAtual = -1;
+let sseConn     = null;
+let frameCount  = 0;
 
-// Áudio de feedback
+// ── Áudio ─────────────────────────────────────────────────────────
 const aC = new (window.AudioContext || window.webkitAudioContext)();
 function tocarSom(tid) {
-  if (aC.state === 'suspended') aC.resume();
-  const t = aC.currentTime;
-  const sons = {
-    vermelha: () => { const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='sawtooth'; o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(80,t+.5); g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.55); o.start(t);o.stop(t+.6); },
-    azul:     () => { [880,1320,1760].forEach((f,i)=>{ const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='sine';o.frequency.value=f; const t0=t+i*.04; g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.3-i*.08,t0+.02);g.gain.exponentialRampToValueAtTime(.001,t0+.6); o.start(t0);o.stop(t0+.65); }); },
-    verde:    () => { const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='triangle'; o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(700,t+.25); g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.4); o.start(t);o.stop(t+.45); },
-    amarela:  () => { [0,.18].forEach(d=>{ const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='square';o.frequency.value=660; const t0=t+d; g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.14); o.start(t0);o.stop(t0+.15); }); },
+  if (aC.state==='suspended') aC.resume();
+  const t=aC.currentTime;
+  const sons={
+    vermelha:()=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='sawtooth';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(80,t+.5);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.55);o.start(t);o.stop(t+.6);},
+    azul:()=>{[880,1320,1760].forEach((f,i)=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='sine';o.frequency.value=f;const t0=t+i*.04;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.3-i*.08,t0+.02);g.gain.exponentialRampToValueAtTime(.001,t0+.6);o.start(t0);o.stop(t0+.65);});},
+    verde:()=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='triangle';o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(700,t+.25);g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.start(t);o.stop(t+.45);},
+    amarela:()=>{[0,.18].forEach(d=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='square';o.frequency.value=660;const t0=t+d;g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.14);o.start(t0);o.stop(t0+.15);});},
   };
   (sons[tid]||sons.vermelha)();
+}
+
+// ── Conversão RGB → HSL ───────────────────────────────────────────
+function rgbParaHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else                h = ((r - g) / d + 4) / 6;
+  return [h * 360, s, l];
+}
+
+// Verifica se H está dentro da faixa (com suporte a wraparound para vermelho)
+function hueNaFaixa(h, hMin, hMax) {
+  if (hMin > hMax) return h >= hMin || h <= hMax; // wraparound (vermelho)
+  return h >= hMin && h <= hMax;
+}
+
+function pixelMatchCor(r, g, b, tm, tol) {
+  const [h, s, l] = rgbParaHsl(r, g, b);
+  const tolH = tol * 0.6; // tolerância em graus de matiz
+  return (
+    hueNaFaixa(h, tm.hMin - tolH, tm.hMax + tolH) &&
+    s >= tm.sMin - tol * 0.008 &&
+    l >= tm.lMin && l <= tm.lMax
+  );
+}
+
+// ── Detecção de posição por cor ────────────────────────────────────
+function detectarPosicaoPorCor(imageData, tm) {
+  const { data, width, height } = imageData;
+  let sumX = 0, sumY = 0, count = 0;
+
+  // Amostra 1 em cada 3 pixels para performance
+  for (let y = 0; y < height; y += 3) {
+    for (let x = 0; x < width; x += 3) {
+      const i = (y * width + x) * 4;
+      if (pixelMatchCor(data[i], data[i+1], data[i+2], tm, tolerancia)) {
+        sumX += x; sumY += y; count++;
+      }
+    }
+  }
+
+  const minPixels = 8; // mínimo de pixels no canvas de análise (160x120)
+  if (count < minPixels) return null;
+  return { fx: (sumX / count) / width, fy: (sumY / count) / height, pixels: count };
 }
 
 // ── Camera ────────────────────────────────────────────────────────
@@ -236,205 +276,189 @@ async function pedirCamera() {
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
-    // Conecta stream a ambos os elementos de vídeo
-    document.getElementById('video').srcObject = videoStream;
+    document.getElementById('video').srcObject      = videoStream;
     document.getElementById('video-jogo').srcObject = videoStream;
-
-    carregarZonasSalvas();
-    mostrarTela('tela-zona');
-    iniciarZonaUI();
+    mostrarTela('tela-cal');
+    iniciarCalLoop();
     conectarSSE();
   } catch(e) {
-    alert('Não foi possível acessar a câmera.\n' + e.message);
+    alert('Câmera não disponível.\n' + e.message);
   }
 }
 
-// ── Marcação de zonas ──────────────────────────────────────────────
-let passoZona = 0;
-
-function carregarZonasSalvas() {
-  try {
-    const s = localStorage.getItem(STORAGE_CAM);
-    if (s) zonas = JSON.parse(s);
-  } catch(_) {}
+// ── Loop de calibração (auto-detecção contínua por cor) ───────────
+function iniciarCalLoop() {
+  calLoop = true;
+  renderStatusChips([]);
+  document.getElementById('slider-tol').addEventListener('input', e => {
+    tolerancia = +e.target.value;
+    document.getElementById('tol-val').textContent = tolerancia;
+  });
+  loopCal();
 }
 
-function salvarZonas() {
-  try { localStorage.setItem(STORAGE_CAM, JSON.stringify(zonas)); } catch(_) {}
-}
+function loopCal() {
+  if (!calLoop) return;
+  requestAnimationFrame(loopCal);
 
-function iniciarZonaUI() {
-  passoZona = zonas.length; // retoma de onde parou
-  atualizarZonaUI();
-  renderOverlayZona();
+  frameCount++;
+  if (frameCount % 3 !== 0) return; // ~20fps de análise
 
-  document.getElementById('video-touch').addEventListener('click', aoTocarVideo);
-  document.getElementById('video-touch').addEventListener('touchend', e => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    const wrap = document.getElementById('video-wrap');
-    const rect = wrap.getBoundingClientRect();
-    aoTocarVideoCoord((t.clientX - rect.left) / rect.width, (t.clientY - rect.top) / rect.height);
-  }, { passive: false });
+  const videoEl = document.getElementById('video');
+  if (videoEl.readyState < 2) return;
 
-  if (zonas.length === 4) {
-    // Zonas já salvas — pode iniciar direto
-    mostrarTela('tela-jogo');
-    iniciarDeteccao();
-  }
-}
+  const canal = document.getElementById('canal');
+  canal.width  = ANAL_W;
+  canal.height = ANAL_H;
+  const ctx = canal.getContext('2d');
+  ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H);
+  const imageData = ctx.getImageData(0, 0, ANAL_W, ANAL_H);
 
-function aoTocarVideo(e) {
-  const wrap = document.getElementById('video-wrap');
-  const rect = wrap.getBoundingClientRect();
-  aoTocarVideoCoord((e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height);
-}
+  const detectadas = TIMES.map(tm => {
+    const pos = detectarPosicaoPorCor(imageData, tm);
+    return pos ? { ...pos, timeId: tm.id } : null;
+  });
 
-function aoTocarVideoCoord(fx, fy) {
-  if (passoZona >= 4) return;
-  const tm = TIMES[passoZona];
-  zonas.push({ fx, fy, timeId: tm.id });
-  passoZona++;
-  salvarZonas();
-  renderOverlayZona();
-  atualizarZonaUI();
+  renderOverlayCal(detectadas);
+  renderStatusChips(detectadas);
 
-  if (passoZona === 4) {
-    // Pequeno delay para mostrar o último círculo antes de avançar
-    setTimeout(() => {
-      mostrarTela('tela-jogo');
-      iniciarDeteccao();
-    }, 700);
-  }
-}
-
-function atualizarZonaUI() {
-  if (passoZona < 4) {
-    const tm = TIMES[passoZona];
-    document.getElementById('zona-time-cor').textContent = tm.nome.split('·')[1].trim();
-    document.getElementById('zona-time-cor').style.color = tm.cor;
-    document.getElementById('zona-passo').textContent = `Passo ${passoZona + 1} de 4`;
+  const todasOk = detectadas.every(d => d !== null);
+  document.getElementById('cal-btn-confirmar').disabled = !todasOk;
+  if (todasOk) {
+    document.getElementById('cal-titulo').textContent = '✅ Todas as botoeiras detectadas!';
+    document.getElementById('cal-sub').textContent    = 'Confirme para iniciar a detecção';
   } else {
-    document.getElementById('zona-instrucao').textContent = '✓ Todas as botoeiras marcadas!';
-    document.getElementById('zona-passo').textContent = 'Iniciando…';
+    const faltando = TIMES.filter((_, i) => !detectadas[i]).map(t => t.nome.split('·')[1].trim()).join(', ');
+    document.getElementById('cal-titulo').textContent = '🔍 Procurando botoeiras…';
+    document.getElementById('cal-sub').textContent    = 'Não encontradas: ' + faltando;
   }
+
+  // Salva as últimas posições detectadas para uso posterior
+  window._ultimasDetectadas = detectadas;
 }
 
-function renderOverlayZona() {
-  const wrap  = document.getElementById('video-wrap');
-  const cvs   = document.getElementById('overlay-zona');
-  const W = wrap.offsetWidth || 360;
+function renderOverlayCal(detectadas) {
+  const wrap = document.getElementById('video-wrap');
+  const cvs  = document.getElementById('overlay-cal');
+  const W = wrap.offsetWidth  || 360;
   const H = wrap.offsetHeight || 480;
-  cvs.width  = W;
-  cvs.height = H;
+  if (cvs.width !== W) cvs.width = W;
+  if (cvs.height !== H) cvs.height = H;
   const ctx = cvs.getContext('2d');
   ctx.clearRect(0, 0, W, H);
 
-  zonas.forEach((z, i) => {
-    const tm = TIMES.find(t => t.id === z.timeId);
-    const px = z.fx * W;
-    const py = z.fy * H;
-    const r  = 28;
-    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2);
-    ctx.strokeStyle = tm.cor; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = tm.cor + '44'; ctx.fill();
+  detectadas.forEach((d, i) => {
+    if (!d) return;
+    const tm = TIMES[i];
+    const px = d.fx * W;
+    const py = d.fy * H;
+    const r  = 32;
+
+    // Halo externo pulsante simulado (3 círculos)
+    [r + 14, r + 7, r].forEach((rr, j) => {
+      ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2);
+      ctx.strokeStyle = tm.cor + ['22','55','cc'][j];
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = tm.cor + '33';
+    ctx.fill();
+
+    // Rótulo
+    ctx.font = 'bold 12px Baloo 2, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px Baloo 2, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(tm.nome.split('·')[1].trim(), px, py);
+    ctx.fillText(tm.emoji + ' ' + tm.nome.split('·')[1].trim(), px, py);
   });
 }
 
-function resetarZonas() {
-  zonas = [];
-  passoZona = 0;
-  salvarZonas();
-  detectando = false;
-  renderOverlayZona();
-  atualizarZonaUI();
-  mostrarTela('tela-zona');
+function renderStatusChips(detectadas) {
+  const container = document.getElementById('status-chips');
+  container.innerHTML = '';
+  TIMES.forEach((tm, i) => {
+    const ok = detectadas[i] !== null;
+    const chip = document.createElement('div');
+    chip.className = ok ? 'chip ok' : 'chip missing';
+    chip.style.setProperty('--c', tm.cor);
+    chip.innerHTML = `<div class="chip-dot"></div>${tm.nome.split('·')[1].trim()}`;
+    container.appendChild(chip);
+  });
 }
 
-// ── Detecção por câmera ───────────────────────────────────────────
+function confirmarZonas() {
+  const detectadas = window._ultimasDetectadas;
+  if (!detectadas || detectadas.some(d => !d)) return;
+  zonas = detectadas.map((d, i) => ({ fx: d.fx, fy: d.fy, timeId: TIMES[i].id }));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(zonas)); } catch(_) {}
+
+  calLoop = false;
+  mostrarTela('tela-jogo');
+  iniciarDeteccao();
+}
+
+// ── Detecção de LED por luminância ────────────────────────────────
 function iniciarDeteccao() {
   if (aC.state === 'suspended') aC.resume();
+  const canal = document.getElementById('canal');
+  canal.width  = ANAL_W;
+  canal.height = ANAL_H;
 
-  const cvs = document.getElementById('canal');
-  cvs.width  = ANAL_W;
-  cvs.height = ANAL_H;
-
-  // Inicializa baseline com frames iniciais
   baseline  = Array(4).fill(-1);
   lumAtual  = Array(4).fill(0);
   detectando = true;
-
+  renderDetBars();
   renderOverlayJogo();
-  renderLumBars();
   loopDeteccao();
 }
 
 function lerLuminanciaZona(ctx, zona) {
   const px = Math.round(zona.fx * ANAL_W);
   const py = Math.round(zona.fy * ANAL_H);
-  const x0 = Math.max(0, px - ZONA_R);
-  const y0 = Math.max(0, py - ZONA_R);
-  const x1 = Math.min(ANAL_W, px + ZONA_R);
-  const y1 = Math.min(ANAL_H, py + ZONA_R);
-  const w  = x1 - x0;
-  const h  = y1 - y0;
+  const x0 = Math.max(0, px - ZONA_R_AN);
+  const y0 = Math.max(0, py - ZONA_R_AN);
+  const w  = Math.min(ANAL_W, px + ZONA_R_AN) - x0;
+  const h  = Math.min(ANAL_H, py + ZONA_R_AN) - y0;
   if (w <= 0 || h <= 0) return 0;
-
-  const data = ctx.getImageData(x0, y0, w, h).data;
+  const d = ctx.getImageData(x0, y0, w, h).data;
   let sum = 0;
-  const n = data.length / 4;
-  for (let i = 0; i < data.length; i += 4) {
-    // Luminância perceptual
-    sum += data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
-  }
-  return sum / n;
+  for (let i = 0; i < d.length; i += 4)
+    sum += d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+  return sum / (d.length / 4);
 }
 
-let frameCount = 0;
-
+let fc2 = 0;
 function loopDeteccao() {
   if (!detectando) return;
   requestAnimationFrame(loopDeteccao);
-
-  // Processa 1 em cada 2 frames (~30fps úteis)
-  frameCount++;
-  if (frameCount % 2 !== 0) return;
+  fc2++;
+  if (fc2 % 2 !== 0) return;
 
   const videoEl = document.getElementById('video-jogo');
   if (videoEl.readyState < 2) return;
 
-  const cvs = document.getElementById('canal');
-  const ctx = cvs.getContext('2d');
+  const canal = document.getElementById('canal');
+  const ctx   = canal.getContext('2d');
   ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H);
 
-  const agora = Date.now();
+  const agora   = Date.now();
   const bloqueado = agora < lockUntil;
 
   zonas.forEach((z, i) => {
     const lum = lerLuminanciaZona(ctx, z);
     lumAtual[i] = lum;
-
-    if (baseline[i] < 0) {
-      // Primeira leitura — usa como baseline inicial
-      baseline[i] = lum;
-    } else if (!bloqueado) {
-      // Atualiza baseline lentamente (acompanha mudanças de luz ambiente)
-      baseline[i] = baseline[i] * (1 - NOISE_ALPHA) + lum * NOISE_ALPHA;
-    }
+    if (baseline[i] < 0) baseline[i] = lum;
+    else if (!bloqueado) baseline[i] = baseline[i] * 0.96 + lum * 0.04;
   });
 
-  atualizarLumBars();
-  renderOverlayJogoLum();
+  atualizarDetBars();
+  renderOverlayJogoLive();
 
-  // Detecção de LED aceso
   if (!bloqueado && !declarando) {
     for (let i = 0; i < zonas.length; i++) {
-      const delta = lumAtual[i] - baseline[i];
-      if (delta >= DET_DELTA) {
+      if ((lumAtual[i] - baseline[i]) >= DET_DELTA) {
         declararVencedor(zonas[i].timeId);
         lockUntil = agora + LOCK_MS;
         break;
@@ -447,13 +471,9 @@ async function declararVencedor(teamId) {
   if (declarando) return;
   declarando = true;
   detectando = false;
-
-  // Mostra resultado local imediatamente
   mostrarVencedorUI(teamId);
-
   try {
-    // Escrita atômica com ETag
-    const res = await fetch(`${RTDB}/winner.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+    const res  = await fetch(`${RTDB}/winner.json`, { headers: { 'X-Firebase-ETag': 'true' } });
     const etag = res.headers.get('ETag');
     const atual = await res.json();
     if (atual === null) {
@@ -464,23 +484,19 @@ async function declararVencedor(teamId) {
       });
     }
   } catch(_) {}
-
   declarando = false;
 }
 
 function mostrarVencedorUI(teamId) {
   const tm = TIMES.find(t => t.id === teamId);
   if (!tm) return;
-
   tocarSom(teamId);
-
   const fl = document.getElementById('flash');
   fl.style.background = tm.cor;
   fl.classList.remove('ativo'); void fl.offsetWidth; fl.classList.add('ativo');
-
   document.getElementById('status-jogo').style.display = 'none';
   const card = document.getElementById('winner-card');
-  card.style.display    = 'flex';
+  card.style.display = 'flex';
   card.style.background = `linear-gradient(135deg,${tm.corEscura},${tm.cor})`;
   document.getElementById('winner-emoji').textContent = tm.emoji;
   document.getElementById('winner-nome').textContent  = tm.nome;
@@ -488,115 +504,83 @@ function mostrarVencedorUI(teamId) {
 
 async function resetarRodada() {
   if (aC.state === 'suspended') aC.resume();
-  declarando = false;
-  detectando = false;
-
-  const novaRodada = (rodadaAtual || 0) + 1;
+  declarando = false; detectando = false;
+  const nova = (rodadaAtual || 0) + 1;
   await fetch(`${RTDB}.json`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rodada: novaRodada, winner: null, presses: null })
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rodada: nova, winner: null, presses: null })
   });
-
-  // Reinicia baseline e detecção
   baseline  = Array(4).fill(-1);
   lockUntil = 0;
   document.getElementById('status-jogo').style.display = '';
-  document.getElementById('status-jogo').textContent = '🟢 Aguardando…';
+  document.getElementById('status-jogo').textContent   = '🟢 Aguardando…';
   document.getElementById('winner-card').style.display = 'none';
   detectando = true;
 }
 
-// ── Overlay no jogo (círculos das zonas) ──────────────────────────
+// ── Overlays ──────────────────────────────────────────────────────
 function renderOverlayJogo() {
   const cvs = document.getElementById('overlay-jogo');
-  const W   = cvs.offsetWidth  || 360;
-  const H   = cvs.offsetHeight || 200;
-  cvs.width  = W;
-  cvs.height = H;
+  cvs.width  = cvs.offsetWidth  || 360;
+  cvs.height = cvs.offsetHeight || 200;
 }
 
-function renderOverlayJogoLum() {
+function renderOverlayJogoLive() {
   const cvs = document.getElementById('overlay-jogo');
   if (!cvs.width) return;
   const ctx = cvs.getContext('2d');
   ctx.clearRect(0, 0, cvs.width, cvs.height);
-
   zonas.forEach((z, i) => {
-    const tm = TIMES.find(t => t.id === z.timeId);
-    const px = z.fx * cvs.width;
-    const py = z.fy * cvs.height;
+    const tm  = TIMES.find(t => t.id === z.timeId);
+    const px  = z.fx * cvs.width;
+    const py  = z.fy * cvs.height;
     const delta = Math.max(0, lumAtual[i] - (baseline[i] || 0));
-    const atv = delta >= DET_DELTA;
-    const r = 18;
-
-    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2);
-    ctx.strokeStyle = atv ? '#fff' : tm.cor;
-    ctx.lineWidth   = atv ? 3 : 2;
+    const ativo = delta >= DET_DELTA;
+    ctx.beginPath(); ctx.arc(px, py, 18, 0, Math.PI * 2);
+    ctx.strokeStyle = ativo ? '#fff' : tm.cor;
+    ctx.lineWidth   = ativo ? 3 : 2;
     ctx.stroke();
-    ctx.fillStyle = atv ? tm.cor : tm.cor + '33';
+    ctx.fillStyle = ativo ? tm.cor : tm.cor + '33';
     ctx.fill();
   });
 }
 
-// ── Barras de luminosidade ────────────────────────────────────────
-function renderLumBars() {
-  const container = document.getElementById('lum-bars');
-  container.innerHTML = '';
+function renderDetBars() {
+  const c = document.getElementById('det-bars');
+  c.innerHTML = '';
   TIMES.forEach(tm => {
-    const col = document.createElement('div');
-    col.className = 'lum-col';
-    col.innerHTML = `
-      <div class="lum-label" style="color:${tm.cor}">${tm.emoji}</div>
-      <div class="lum-track"><div class="lum-fill" id="lum-${tm.id}" style="background:${tm.cor}"></div></div>`;
-    container.appendChild(col);
+    c.innerHTML += `
+      <div class="det-col">
+        <div class="det-label" style="color:${tm.cor}">${tm.emoji}</div>
+        <div class="det-track"><div class="det-fill" id="df-${tm.id}" style="background:${tm.cor}"></div></div>
+      </div>`;
   });
 }
 
-function atualizarLumBars() {
+function atualizarDetBars() {
   zonas.forEach((z, i) => {
-    const el = document.getElementById('lum-' + z.timeId);
+    const el  = document.getElementById('df-' + z.timeId);
     if (!el) return;
-    const delta = Math.max(0, lumAtual[i] - (baseline[i] || 0));
-    const pct   = Math.min(100, (delta / (DET_DELTA * 1.5)) * 100);
+    const pct = Math.min(100, Math.max(0, (lumAtual[i] - (baseline[i]||0)) / (DET_DELTA * 1.5) * 100));
     el.style.width = pct + '%';
   });
 }
 
-// ── Firebase SSE (escuta resets do telão) ─────────────────────────
+// ── SSE Firebase ──────────────────────────────────────────────────
 function conectarSSE() {
   sseConn = new EventSource(`${RTDB}.json`);
-
-  sseConn.addEventListener('put', e => {
-    const { path, data } = JSON.parse(e.data);
-    tratarEventoFirebase(path, data);
-  });
-  sseConn.addEventListener('patch', e => {
-    const { path, data } = JSON.parse(e.data);
-    if (path === '/' && data) tratarEventoFirebase('/', data);
-  });
-
-  sseConn.onopen = () => {
-    document.getElementById('dot-con').className = 'dot on';
-    document.getElementById('txt-con').textContent = 'Conectado ao telão';
-  };
-  sseConn.onerror = () => {
-    document.getElementById('dot-con').className = 'dot off';
-    document.getElementById('txt-con').textContent = 'Reconectando…';
-    sseConn.close();
-    setTimeout(conectarSSE, 4000);
-  };
+  sseConn.addEventListener('put',   e => tratarSSE(JSON.parse(e.data)));
+  sseConn.addEventListener('patch', e => tratarSSE(JSON.parse(e.data)));
+  sseConn.onopen  = () => { document.getElementById('dot-con').className='dot on';  document.getElementById('txt-con').textContent='Conectado ao telão'; };
+  sseConn.onerror = () => { document.getElementById('dot-con').className='dot off'; document.getElementById('txt-con').textContent='Reconectando…'; sseConn.close(); setTimeout(conectarSSE, 4000); };
 }
 
-function tratarEventoFirebase(path, data) {
-  const rodada = path === '/' ? data?.rodada : (path === '/rodada' ? data : null);
-  if (rodada !== null && rodada !== undefined && rodada !== rodadaAtual) {
+function tratarSSE({ path, data }) {
+  const rodada = path==='/' ? data?.rodada : (path==='/rodada' ? data : undefined);
+  if (rodada !== undefined && rodada !== rodadaAtual) {
     rodadaAtual = rodada;
-    // Reset disparado do telão
-    if (detectando === false) {
-      baseline   = Array(4).fill(-1);
-      lockUntil  = 0;
-      declarando = false;
+    if (!detectando) {
+      declarando = false; baseline = Array(4).fill(-1); lockUntil = 0;
       document.getElementById('status-jogo').style.display = '';
       document.getElementById('status-jogo').textContent   = '🟢 Aguardando…';
       document.getElementById('winner-card').style.display = 'none';
@@ -609,24 +593,16 @@ function tratarEventoFirebase(path, data) {
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('visivel'));
   document.getElementById(id).classList.add('visivel');
-
-  if (id === 'tela-jogo') {
-    // Garante tamanho correto do overlay após layout
-    setTimeout(() => { renderOverlayJogo(); renderLumBars(); }, 100);
-  }
+  if (id === 'tela-jogo') setTimeout(() => { renderOverlayJogo(); renderDetBars(); }, 120);
 }
 
-function voltarZonas() {
-  detectando = false;
-  zonas = [];
-  passoZona = 0;
-  salvarZonas();
-  mostrarTela('tela-zona');
-  renderOverlayZona();
-  atualizarZonaUI();
+function voltarCal() {
+  detectando = false; calLoop = true;
+  zonas = []; frameCount = 0;
+  mostrarTela('tela-cal');
+  loopCal();
 }
 
-// Space = nova rodada
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') { e.preventDefault(); resetarRodada(); }
 });
