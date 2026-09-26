@@ -1472,24 +1472,56 @@ function KahootBuzzerView() {
 }
 
 // ── Kahoot English — Monitor (admin) ─────────────────────────────
+function playBuzzerSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // dois beeps curtos em sequência
+    [0, 0.2].forEach((delay) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(300, ctx.currentTime + delay);
+      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + delay + 0.18);
+      gain.gain.setValueAtTime(0.55, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.19);
+    });
+  } catch (_) {}
+}
+
 function KahootMonitorView() {
   const [active, setActive] = useState(false);
-  const [buzz, setBuzz] = useState(null);
-  const [pts, setPts] = useState({});
-  const pollRef = useRef(null);
+  const [buzz, setBuzz]   = useState(null);
+  const [pts, setPts]     = useState({});
+  const [flash, setFlash] = useState(false);
+  const pollRef    = useRef(null);
+  const prevBuzzId = useRef(null);
 
   const fetchState = useCallback(async () => {
     const a = await safeGet("kahoot_active");
     const b = await safeGet("kahoot_buzz");
     const p = await safeGet("kahoot_pts");
+    const newBuzz = b ?? null;
+    // dispara som + flash somente quando buzz aparece pela primeira vez
+    const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
+    if (newId && newId !== prevBuzzId.current) {
+      prevBuzzId.current = newId;
+      playBuzzerSound();
+      setFlash(true);
+      setTimeout(() => setFlash(false), 700);
+    }
+    if (!newBuzz) prevBuzzId.current = null;
     setActive(!!a);
-    setBuzz(b ?? null);
+    setBuzz(newBuzz);
     setPts(p ?? {});
   }, []);
 
   useEffect(() => {
     fetchState();
-    pollRef.current = setInterval(fetchState, 800);
+    pollRef.current = setInterval(fetchState, 700);
     return () => clearInterval(pollRef.current);
   }, [fetchState]);
 
@@ -1498,6 +1530,17 @@ function KahootMonitorView() {
     await safeSet("kahoot_active", true);
     setBuzz(null);
     setActive(true);
+    prevBuzzId.current = null;
+  };
+
+  const pressVirtual = async (teamId) => {
+    if (!active || buzz) return;
+    const existing = await safeGet("kahoot_buzz");
+    if (!existing) {
+      await safeSet("kahoot_buzz", { teamId, ts: Date.now() });
+      playBuzzerSound();
+    }
+    await fetchState();
   };
 
   const awarPoint = async (teamId) => {
@@ -1508,6 +1551,7 @@ function KahootMonitorView() {
     setPts(newPts);
     setActive(false);
     setBuzz(null);
+    prevBuzzId.current = null;
   };
 
   const errado = async () => {
@@ -1515,6 +1559,7 @@ function KahootMonitorView() {
     await safeDelete("kahoot_buzz");
     setActive(false);
     setBuzz(null);
+    prevBuzzId.current = null;
   };
 
   const resetAll = async () => {
@@ -1525,60 +1570,141 @@ function KahootMonitorView() {
     setPts({});
     setBuzz(null);
     setActive(false);
+    prevBuzzId.current = null;
   };
 
-  const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const winner  = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
   const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
 
+  /* ── cores de fundo do cabeçalho ── */
+  const headerBg = winner
+    ? winner.color
+    : active
+    ? LARANJA
+    : "#1e293b";
+
   return (
-    <div className="flex flex-col gap-5 p-4 max-w-xl mx-auto">
-      {/* Status */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 text-center">
-        {!active && !buzz && (
-          <div className="text-gray-400 font-semibold">Botoeira inativa — pronta para nova pergunta</div>
-        )}
-        {active && !buzz && (
-          <div className="font-bold text-lg animate-pulse" style={{ color: LARANJA }}>
-            ⚡ Aguardando... botoeira ativa!
-          </div>
-        )}
-        {buzz && winner && (
-          <div>
-            <div className="font-extrabold text-2xl mb-2" style={{ color: winner.color }}>
-              🏆 {winner.label} foi primeiro!
+    <div className="flex flex-col gap-4 p-4 max-w-lg mx-auto">
+
+      {/* ── Cabeçalho de status ── */}
+      <div
+        className="rounded-2xl overflow-hidden shadow-lg text-center"
+        style={{
+          background: headerBg,
+          outline: flash ? "5px solid #fff" : "5px solid transparent",
+          transition: "background 0.3s, outline 0.1s",
+        }}
+      >
+        <div className="px-5 py-5">
+          {!active && !winner && (
+            <div className="text-white/60 font-semibold text-sm tracking-wide">
+              Pronto — pressione "Nova Pergunta"
             </div>
-            <div className="flex gap-3 justify-center mt-3">
-              <button
-                onClick={() => awarPoint(winner.id)}
-                className="px-5 py-2 rounded-xl font-bold text-white text-sm"
-                style={{ backgroundColor: "#2E9E4F" }}
-              >
-                ✓ Correto (+1 pt)
-              </button>
-              <button
-                onClick={errado}
-                className="px-5 py-2 rounded-xl font-bold text-white text-sm"
-                style={{ backgroundColor: "#D92B2B" }}
-              >
-                ✗ Errado
-              </button>
+          )}
+          {active && !winner && (
+            <div className="font-extrabold text-xl text-white animate-pulse tracking-wide"
+              style={{ textShadow: "0 2px 10px rgba(0,0,0,0.4)" }}>
+              ⚡ Botoeiras ativas — aguardando...
             </div>
-          </div>
-        )}
+          )}
+          {winner && (
+            <div>
+              <div
+                className="font-black text-white tracking-tight"
+                style={{ fontSize: 32, textShadow: "0 3px 16px rgba(0,0,0,0.5)" }}
+              >
+                🏆 {winner.label}
+              </div>
+              <div className="text-white/80 text-sm font-semibold mt-0.5 mb-4">
+                foi a primeira!
+              </div>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => awarPoint(winner.id)}
+                  className="px-5 py-2.5 rounded-xl font-bold text-sm"
+                  style={{
+                    background: "rgba(255,255,255,0.22)",
+                    color: "#fff",
+                    border: "2px solid rgba(255,255,255,0.55)",
+                  }}
+                >
+                  ✓ Correto +1 pt
+                </button>
+                <button
+                  onClick={errado}
+                  className="px-5 py-2.5 rounded-xl font-bold text-sm"
+                  style={{
+                    background: "rgba(0,0,0,0.22)",
+                    color: "#fff",
+                    border: "2px solid rgba(255,255,255,0.3)",
+                  }}
+                >
+                  ✗ Errado
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Nova pergunta */}
+      {/* ── Botoeiras virtuais 2×2 ── */}
+      <div className="grid grid-cols-2 gap-3">
+        {TEAMS_KAHOOT.map((t) => {
+          const isWinner = winner?.id === t.id;
+          const isLoser  = !!winner && !isWinner;
+          const canPress = active && !buzz;
+          return (
+            <button
+              key={t.id}
+              onClick={() => pressVirtual(t.id)}
+              disabled={!canPress}
+              className="relative flex flex-col items-center justify-center gap-1.5 rounded-2xl font-extrabold transition-all select-none"
+              style={{
+                backgroundColor: t.color,
+                color: t.dark ? "#1a1a1a" : "#fff",
+                height: 104,
+                fontSize: 15,
+                opacity: isLoser ? 0.2 : 1,
+                transform: isWinner ? "scale(1.06)" : canPress ? "scale(1)" : "scale(0.97)",
+                boxShadow: isWinner
+                  ? `0 0 0 4px #fff, 0 0 40px 10px ${t.color}bb`
+                  : canPress
+                  ? `0 6px 20px ${t.color}88`
+                  : "0 2px 6px rgba(0,0,0,0.12)",
+                transition: "all 0.25s",
+                cursor: canPress ? "pointer" : "default",
+              }}
+            >
+              <span style={{ fontSize: 30 }}>🔔</span>
+              <span style={{ letterSpacing: ".02em" }}>{t.label}</span>
+              <span style={{ fontSize: 11, opacity: 0.65 }}>{pts[t.id] || 0} pts</span>
+              {isWinner && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 6, right: 10,
+                    fontSize: 20,
+                    animation: "spin 1s linear infinite",
+                  }}
+                >⭐</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Nova Pergunta ── */}
       {!active && (
         <button
           onClick={novaPergunta}
           className="w-full py-3 rounded-2xl font-bold text-lg text-white"
           style={{ backgroundColor: AZUL }}
         >
-          ▶ Nova Pergunta — Ativar Botoeira
+          ▶ Nova Pergunta — Ativar Botoeiras
         </button>
       )}
 
-      {/* Placar */}
+      {/* ── Placar ── */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">Placar</div>
         <div className="flex flex-col gap-2">
@@ -1601,6 +1727,10 @@ function KahootMonitorView() {
           ⚠️ Zerar pontuação do Kahoot
         </button>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
