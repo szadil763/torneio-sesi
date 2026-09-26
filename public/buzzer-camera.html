@@ -7,15 +7,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    html, body { height:100%; background:#0a0c12; color:#fff; font-family:'Baloo 2',sans-serif; overflow:hidden; }
+    html, body { height:100%; background:#0a0c12; color:#fff; font-family:'Baloo 2',sans-serif; overflow:hidden; user-select:none; -webkit-user-select:none; }
 
     .tela { display:none; height:100vh; flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:14px; text-align:center; }
     .tela.visivel { display:flex; }
+
     h1  { font-size:clamp(20px,4vw,28px); font-weight:900; }
     p   { font-size:14px; color:#aaa; max-width:38ch; line-height:1.6; }
-    small { font-size:12px; color:#555; }
 
-    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:13px 32px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s; white-space:nowrap; }
+    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:13px 32px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s; }
     .btn-prim:hover { opacity:.88; }
     .btn-prim:disabled { opacity:.3; cursor:not-allowed; }
     .btn-sec { font-size:13px; color:#aaa; background:none; border:1px solid #333; border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; }
@@ -24,44 +24,50 @@
     /* ── Tela calibração ── */
     #tela-cal { padding:0; justify-content:flex-start; }
 
-    #cal-header {
-      width:100%; padding:12px 16px 8px;
-      background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
-      display:flex; flex-direction:column; align-items:center; gap:4px;
-      z-index:10; flex-shrink:0;
+    #video-wrap {
+      position:relative; flex:1; width:100%; overflow:hidden;
+      background:#000; cursor:crosshair; touch-action:none;
     }
-    #cal-titulo { font-size:15px; font-weight:800; }
-    #cal-sub    { font-size:12px; color:#aaa; }
-
-    #video-wrap { position:relative; flex:1; width:100%; overflow:hidden; background:#000; }
-    #video      { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    #video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     #overlay-cal { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
-    /* chips de status por cor */
-    #status-chips {
-      position:absolute; bottom:8px; left:0; right:0;
-      display:flex; justify-content:center; gap:6px; flex-wrap:wrap; padding:0 8px;
+    #cal-instrucao {
+      width:100%; padding:9px 16px; text-align:center;
+      font-size:14px; font-weight:800; color:#fff;
+      background:rgba(0,0,0,.82); backdrop-filter:blur(6px);
+      flex-shrink:0; min-height:42px; display:flex; align-items:center; justify-content:center;
+      transition: color .2s;
     }
-    .chip {
-      display:inline-flex; align-items:center; gap:5px;
-      padding:4px 10px; border-radius:100px; font-size:11px; font-weight:800;
-      letter-spacing:.04em; border:2px solid transparent;
+
+    #cal-strip {
+      width:100%; display:flex; justify-content:center; gap:10px; padding:10px 12px;
+      background:rgba(0,0,0,.88); backdrop-filter:blur(8px); flex-shrink:0;
     }
-    .chip.ok      { background:rgba(0,0,0,.6); border-color:var(--c); color:#fff; }
-    .chip.missing { background:rgba(0,0,0,.4); border-color:#333; color:#555; }
-    .chip-dot { width:8px; height:8px; border-radius:50%; background:var(--c); }
+    .strip-btn {
+      display:flex; flex-direction:column; align-items:center; gap:3px;
+      width:64px; padding:8px 4px; border-radius:14px; border:2px solid #333;
+      background:rgba(255,255,255,.04); cursor:pointer; transition:all .15s;
+      font-family:inherit; color:#fff; font-size:10px; font-weight:800;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .strip-btn .sb-emoji { font-size:26px; line-height:1; }
+    .strip-btn.colocado  { border-color:#4ade80; background:rgba(74,222,128,.12); }
+    .strip-btn.selecionado {
+      border-width:3px; background:rgba(255,255,255,.15);
+      transform:scale(1.08);
+      animation:sel-pulse .8s ease-in-out infinite alternate;
+    }
+    @keyframes sel-pulse {
+      from { box-shadow:0 0 0 0 rgba(255,255,255,.0); }
+      to   { box-shadow:0 0 0 8px rgba(255,255,255,.0); }
+    }
 
     #cal-footer {
       width:100%; padding:10px 14px;
-      background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
-      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      background:rgba(0,0,0,.9); backdrop-filter:blur(8px);
+      display:flex; justify-content:space-between; align-items:center; gap:8px;
       flex-shrink:0;
     }
-    #cal-btn-confirmar { font-size:15px; padding:10px 24px; }
-
-    /* slider de sensibilidade */
-    .slider-row { display:flex; align-items:center; gap:8px; font-size:12px; color:#aaa; }
-    .slider-row input[type=range] { width:80px; accent-color:#fff; }
 
     /* ── Tela jogo ── */
     #tela-jogo { padding:0; justify-content:flex-start; }
@@ -69,7 +75,6 @@
     #cam-preview { position:relative; width:100%; flex-shrink:0; background:#000; overflow:hidden; max-height:40vh; }
     #video-jogo  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     #overlay-jogo { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-    /* mantém proporção 16:9 */
     #cam-preview::before { content:''; display:block; padding-top:56.25%; }
 
     #jogo-corpo { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:12px 16px; }
@@ -80,7 +85,6 @@
     #winner-emoji { font-size:54px; line-height:1; }
     #winner-nome  { font-size:20px; font-weight:900; }
 
-    /* barras de luminância / detecção */
     #det-bars { display:flex; gap:6px; width:100%; max-width:340px; }
     .det-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
     .det-label { font-size:9px; font-weight:800; }
@@ -90,7 +94,7 @@
     #jogo-footer { width:100%; padding:10px 16px; background:rgba(0,0,0,.7); backdrop-filter:blur(8px); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
 
     /* conexão */
-    #bar-con { position:fixed; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:5px; font-size:10px; color:rgba(255,255,255,.2); padding:3px; z-index:100; }
+    #bar-con { position:fixed; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:5px; font-size:10px; color:rgba(255,255,255,.2); padding:3px; z-index:100; pointer-events:none; }
     .dot { width:5px; height:5px; border-radius:50%; }
     .dot.on  { background:#4ade80; }
     .dot.off { background:#ef4444; animation:blink .8s infinite; }
@@ -107,30 +111,24 @@
 <div id="tela-perm" class="tela visivel">
   <div style="font-size:56px">🎥</div>
   <h1>Buzzer por Câmera</h1>
-  <p>O sistema detecta automaticamente cada botoeira pela cor. Nenhum toque manual necessário.</p>
-  <p style="font-size:13px;color:#666">Posicione o celular com visão clara das 4 botoeiras antes de confirmar.</p>
+  <p>Posicione o celular com visão das 4 botoeiras e marque onde cada uma está na tela.</p>
   <button class="btn-prim" onclick="pedirCamera()">📷 Iniciar câmera</button>
 </div>
 
-<!-- TELA 2: Calibração automática por cor -->
+<!-- TELA 2: Posicionamento por toque -->
 <div id="tela-cal" class="tela">
-  <div id="cal-header">
-    <div id="cal-titulo">🎯 Posicione a câmera</div>
-    <div id="cal-sub">O sistema detecta as botoeiras pelas cores automaticamente</div>
-  </div>
 
   <div id="video-wrap">
     <video id="video" autoplay playsinline muted></video>
     <canvas id="overlay-cal"></canvas>
-    <div id="status-chips"></div>
   </div>
 
+  <div id="cal-instrucao">Toque em uma cor abaixo para começar</div>
+
+  <div id="cal-strip"></div>
+
   <div id="cal-footer">
-    <div class="slider-row">
-      <span>Tolerância</span>
-      <input type="range" id="slider-tol" min="10" max="50" value="28" oninput="tolerancia=+this.value">
-      <span id="tol-val">28</span>
-    </div>
+    <button class="btn-sec" onclick="limparPosicoes()">✕ Limpar tudo</button>
     <button class="btn-prim" id="cal-btn-confirmar" disabled onclick="confirmarZonas()">✓ Confirmar</button>
   </div>
 </div>
@@ -153,7 +151,7 @@
 
   <div id="jogo-footer">
     <button class="btn-sec" onclick="resetarRodada()">↺ Nova rodada</button>
-    <span id="det-status" style="font-size:11px;color:#444">—</span>
+    <span style="font-size:11px;color:#444" id="det-status">—</span>
     <button class="btn-sec" onclick="voltarCal()">⚙ Reposicionar</button>
   </div>
 </div>
@@ -167,34 +165,32 @@
 </div>
 
 <script>
-// ── Times e cores ─────────────────────────────────────────────────
-// Faixas HSL amplas para cobrir variações de iluminação e cor física real
+// ── Times ─────────────────────────────────────────────────────────
 const TIMES = [
-  { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴',
-    hMin:330, hMax:25,  sMin:0.28, lMin:0.15, lMax:0.88 },  // wraparound
-  { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵',
-    hMin:185, hMax:260, sMin:0.22, lMin:0.15, lMax:0.88 },
-  { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢',
-    hMin:80,  hMax:175, sMin:0.20, lMin:0.12, lMax:0.85 },
-  { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡',
-    hMin:28,  hMax:82,  sMin:0.30, lMin:0.25, lMax:0.92 },
+  { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
+  { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
+  { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢' },
+  { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡' },
 ];
 
 const RTDB        = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
-const STORAGE_KEY = 'torneio-buzzer-cam:v2';
+const STORAGE_KEY = 'torneio-buzzer-cam:v3';
 
-// Parâmetros
-let tolerancia  = 28;   // tolerância extra na detecção de cor (slider)
-const ANAL_W    = 160;  // largura do canvas de análise
+// Parâmetros LED
+const ANAL_W    = 160;
 const ANAL_H    = 120;
-const ZONA_R_AN = 14;   // raio da zona de amostragem no canvas de análise
-const DET_DELTA = 35;   // variação de luminância para detectar LED aceso
+const ZONA_R_AN = 14;
+const DET_DELTA = 35;
 const LOCK_MS   = 700;
 
-// Estado
-let videoStream = null;
-let zonas       = [];     // [{fx, fy, timeId}] — posições detectadas
-let calLoop     = false;
+// Estado calibração
+let videoStream  = null;
+let posicoes     = {};         // { teamId: {fx, fy} } — fração 0-1
+let selecionado  = null;       // teamId atualmente selecionado para posicionar
+let calAnimFrame = null;
+
+// Estado jogo
+let zonas       = [];
 let detectando  = false;
 let baseline    = [];
 let lumAtual    = [];
@@ -202,14 +198,6 @@ let lockUntil   = 0;
 let declarando  = false;
 let rodadaAtual = -1;
 let sseConn     = null;
-let frameCount  = 0;
-
-// Suavização temporal para calibração (evita oscilação)
-let posSmooth  = Array(4).fill(null);  // {fx, fy} suavizada por EMA
-let confianca  = Array(4).fill(0);     // 0..CONF_MAX
-const CONF_MAX = 18;   // frames com detecção estável para confirmar
-const CONF_UP  = 3;    // pontos ganhos por frame com detecção
-const CONF_DWN = 1;    // pontos perdidos por frame sem detecção
 
 // ── Áudio ─────────────────────────────────────────────────────────
 const aC = new (window.AudioContext || window.webkitAudioContext)();
@@ -225,92 +213,7 @@ function tocarSom(tid) {
   (sons[tid]||sons.vermelha)();
 }
 
-// ── Conversão RGB → HSL ───────────────────────────────────────────
-function rgbParaHsl(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r,g,b), min = Math.min(r,g,b);
-  const l = (max + min) / 2;
-  if (max === min) return [0, 0, l];
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h;
-  if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-  else if (max === g) h = ((b - r) / d + 2) / 6;
-  else                h = ((r - g) / d + 4) / 6;
-  return [h * 360, s, l];
-}
-
-// Verifica se H está dentro da faixa (com suporte a wraparound para vermelho)
-function hueNaFaixa(h, hMin, hMax) {
-  if (hMin > hMax) return h >= hMin || h <= hMax; // wraparound (vermelho)
-  return h >= hMin && h <= hMax;
-}
-
-function pixelMatchCor(r, g, b, tm, tol) {
-  const [h, s, l] = rgbParaHsl(r, g, b);
-  const tolH = tol * 0.55;
-  // Aplica tolerância mantendo o wraparound correto para vermelho
-  let hMin2 = tm.hMin - tolH;
-  let hMax2 = tm.hMax + tolH;
-  let hOk;
-  if (tm.hMin > tm.hMax) {
-    // Faixa wraparound (vermelho: cruza 0°)
-    hOk = h >= ((hMin2 % 360) + 360) % 360 || h <= hMax2;
-  } else {
-    hOk = h >= hMin2 && h <= hMax2;
-  }
-  return hOk && s >= tm.sMin - tol * 0.01 && l >= tm.lMin && l <= tm.lMax;
-}
-
-// ── Detecção de posição por cor ────────────────────────────────────
-// Usa sub-grade 8×6 para encontrar a célula mais densa (evita centroide instável)
-const GCOLS = 8, GROWS = 6;
-
-function detectarPosicaoPorCor(imageData, tm) {
-  const { data, width, height } = imageData;
-  const CW = width  / GCOLS;
-  const CH = height / GROWS;
-  const cellCount = new Int32Array(GCOLS * GROWS);
-
-  for (let y = 0; y < height; y += 2) {
-    for (let x = 0; x < width; x += 2) {
-      const i = (y * width + x) * 4;
-      if (pixelMatchCor(data[i], data[i+1], data[i+2], tm, tolerancia)) {
-        const cx = Math.min(GCOLS - 1, (x / CW) | 0);
-        const cy = Math.min(GROWS - 1, (y / CH) | 0);
-        cellCount[cy * GCOLS + cx]++;
-      }
-    }
-  }
-
-  // Célula mais densa
-  let best = -1, bestN = 0;
-  for (let c = 0; c < cellCount.length; c++) {
-    if (cellCount[c] > bestN) { bestN = cellCount[c]; best = c; }
-  }
-
-  // Mínimo de ~20 px amostrados na célula mais densa
-  if (best < 0 || bestN < 20) return null;
-
-  const cx = best % GCOLS;
-  const cy = (best / GCOLS) | 0;
-  // Centroide refinado nas células vizinhas (3×3 ao redor da melhor)
-  let sumX = 0, sumY = 0, total = 0;
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const nx = cx + dx, ny = cy + dy;
-      if (nx < 0 || nx >= GCOLS || ny < 0 || ny >= GROWS) continue;
-      const n = cellCount[ny * GCOLS + nx];
-      sumX += (nx + 0.5) * CW * n;
-      sumY += (ny + 0.5) * CH * n;
-      total += n;
-    }
-  }
-  if (total === 0) return null;
-  return { fx: (sumX / total) / width, fy: (sumY / total) / height, pixels: total };
-}
-
-// ── Camera ────────────────────────────────────────────────────────
+// ── Câmera ────────────────────────────────────────────────────────
 async function pedirCamera() {
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
@@ -319,152 +222,222 @@ async function pedirCamera() {
     });
     document.getElementById('video').srcObject      = videoStream;
     document.getElementById('video-jogo').srcObject = videoStream;
-    mostrarTela('tela-cal');
-    iniciarCalLoop();
+    iniciarCal();
     conectarSSE();
   } catch(e) {
     alert('Câmera não disponível.\n' + e.message);
   }
 }
 
-// ── Loop de calibração (auto-detecção contínua por cor) ───────────
-function iniciarCalLoop() {
-  calLoop = true;
-  posSmooth = Array(4).fill(null);
-  confianca = Array(4).fill(0);
-  renderStatusChips(Array(4).fill(null));
-  document.getElementById('slider-tol').addEventListener('input', e => {
-    tolerancia = +e.target.value;
-    document.getElementById('tol-val').textContent = tolerancia;
-    // Reseta suavização ao mudar tolerância para reavaliar rápido
-    posSmooth = Array(4).fill(null);
-    confianca = Array(4).fill(0);
-  });
-  loopCal();
+// ── Tela de calibração ────────────────────────────────────────────
+function iniciarCal() {
+  // Carrega posições salvas
+  try {
+    const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (salvo && typeof salvo === 'object') posicoes = salvo;
+  } catch(_) {}
+
+  construirStrip();
+  mostrarTela('tela-cal');
+
+  // Seleciona automaticamente a primeira não posicionada
+  const primeira = TIMES.find(t => !posicoes[t.id]);
+  selecionado = primeira ? primeira.id : null;
+
+  // Eventos de toque/clique no vídeo
+  const wrap = document.getElementById('video-wrap');
+  wrap.addEventListener('click',      aoClicarVideo);
+  wrap.addEventListener('touchend',   aoClicarVideo, { passive: false });
+
+  iniciarLoopCal();
+  atualizarCalUI();
 }
 
-function loopCal() {
-  if (!calLoop) return;
-  requestAnimationFrame(loopCal);
-
-  frameCount++;
-  if (frameCount % 2 !== 0) return; // ~30fps de análise
-
-  const videoEl = document.getElementById('video');
-  if (videoEl.readyState < 2) return;
-
-  const canal = document.getElementById('canal');
-  canal.width  = ANAL_W;
-  canal.height = ANAL_H;
-  const ctx = canal.getContext('2d');
-  ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H);
-  const imageData = ctx.getImageData(0, 0, ANAL_W, ANAL_H);
-
-  // Detecção bruta por frame
-  const brutas = TIMES.map(tm => detectarPosicaoPorCor(imageData, tm));
-
-  // Suavização temporal: EMA na posição + acumulador de confiança
-  brutas.forEach((d, i) => {
-    if (d) {
-      confianca[i] = Math.min(CONF_MAX, confianca[i] + CONF_UP);
-      if (!posSmooth[i]) {
-        posSmooth[i] = { fx: d.fx, fy: d.fy };
-      } else {
-        posSmooth[i].fx = posSmooth[i].fx * 0.72 + d.fx * 0.28;
-        posSmooth[i].fy = posSmooth[i].fy * 0.72 + d.fy * 0.28;
-      }
-    } else {
-      confianca[i] = Math.max(0, confianca[i] - CONF_DWN);
-    }
+function construirStrip() {
+  const strip = document.getElementById('cal-strip');
+  strip.innerHTML = '';
+  TIMES.forEach(tm => {
+    const btn = document.createElement('button');
+    btn.className = 'strip-btn';
+    btn.id = 'sb-' + tm.id;
+    btn.innerHTML = `<div class="sb-emoji">${tm.emoji}</div><div>${tm.nome.split('·')[1].trim()}</div>`;
+    btn.addEventListener('click', () => selecionarTime(tm.id));
+    strip.appendChild(btn);
   });
+}
 
-  // Posições "confirmadas" só quando confiança atingiu o máximo
-  const detectadas = posSmooth.map((p, i) =>
-    (p && confianca[i] >= CONF_MAX) ? { fx: p.fx, fy: p.fy, timeId: TIMES[i].id } : null
-  );
+function selecionarTime(id) {
+  selecionado = (selecionado === id) ? null : id;
+  atualizarCalUI();
+}
 
-  renderOverlayCal(detectadas);
-  renderStatusChips(detectadas);
+function aoClicarVideo(e) {
+  e.preventDefault();
+  const wrap = document.getElementById('video-wrap');
+  const rect  = wrap.getBoundingClientRect();
 
-  const todasOk = detectadas.every(d => d !== null);
-  document.getElementById('cal-btn-confirmar').disabled = !todasOk;
-  if (todasOk) {
-    document.getElementById('cal-titulo').textContent = '✅ Todas as botoeiras detectadas!';
-    document.getElementById('cal-sub').textContent    = 'Confirme para iniciar a detecção';
+  let cx, cy;
+  if (e.changedTouches && e.changedTouches.length > 0) {
+    cx = e.changedTouches[0].clientX;
+    cy = e.changedTouches[0].clientY;
   } else {
-    const faltando = TIMES.filter((_, i) => !detectadas[i]).map(t => t.nome.split('·')[1].trim()).join(', ');
-    document.getElementById('cal-titulo').textContent = '🔍 Procurando botoeiras…';
-    document.getElementById('cal-sub').textContent    = 'Não encontradas: ' + faltando;
+    cx = e.clientX;
+    cy = e.clientY;
   }
 
-  window._ultimasDetectadas = detectadas;
+  const fx = clamp((cx - rect.left)  / rect.width,  0.04, 0.96);
+  const fy = clamp((cy - rect.top)   / rect.height, 0.04, 0.96);
+
+  // Verifica se tocou perto de um círculo já colocado (raio ~9% da largura)
+  const RAIO = 0.09;
+  for (const tm of TIMES) {
+    const p = posicoes[tm.id];
+    if (p && Math.hypot(fx - p.fx, fy - p.fy) < RAIO) {
+      selecionado = tm.id;
+      atualizarCalUI();
+      return;
+    }
+  }
+
+  if (!selecionado) return;
+
+  // Coloca o círculo selecionado na posição tocada
+  posicoes[selecionado] = { fx, fy };
+
+  // Avança para o próximo não posicionado
+  const prox = TIMES.find(t => !posicoes[t.id]);
+  selecionado = prox ? prox.id : null;
+
+  atualizarCalUI();
 }
 
-function renderOverlayCal(detectadas) {
+function atualizarCalUI() {
+  const todas = TIMES.every(t => posicoes[t.id]);
+  document.getElementById('cal-btn-confirmar').disabled = !todas;
+
+  // Instrução
+  const instrEl = document.getElementById('cal-instrucao');
+  if (todas && !selecionado) {
+    instrEl.textContent = '✅ Todas marcadas — confirme para iniciar';
+    instrEl.style.color = '#4ade80';
+  } else if (selecionado) {
+    const tm = TIMES.find(t => t.id === selecionado);
+    instrEl.textContent = `${tm.emoji} Toque no vídeo onde está a botoeira ${tm.nome.split('·')[1].trim()}`;
+    instrEl.style.color = tm.cor;
+  } else {
+    instrEl.textContent = 'Toque em uma cor abaixo para reposicionar';
+    instrEl.style.color = '#fff';
+  }
+
+  // Atualiza strip
+  TIMES.forEach(tm => {
+    const btn = document.getElementById('sb-' + tm.id);
+    if (!btn) return;
+    btn.className = 'strip-btn' +
+      (posicoes[tm.id]  ? ' colocado'   : '') +
+      (selecionado === tm.id ? ' selecionado' : '');
+    btn.style.borderColor = selecionado === tm.id ? tm.cor : (posicoes[tm.id] ? '#4ade80' : '#333');
+    btn.innerHTML = `<div class="sb-emoji">${tm.emoji}</div><div>${posicoes[tm.id] ? '✓' : tm.nome.split('·')[1].trim()}</div>`;
+  });
+}
+
+function limparPosicoes() {
+  posicoes = {};
+  selecionado = TIMES[0].id;
+  atualizarCalUI();
+}
+
+// ── Loop de desenho da calibração ─────────────────────────────────
+function iniciarLoopCal() {
+  if (calAnimFrame) cancelAnimationFrame(calAnimFrame);
+  let fc = 0;
+  function loop() {
+    calAnimFrame = requestAnimationFrame(loop);
+    if (++fc % 2 !== 0) return; // ~30fps
+    desenharOverlayCal();
+  }
+  loop();
+}
+
+function desenharOverlayCal() {
   const wrap = document.getElementById('video-wrap');
   const cvs  = document.getElementById('overlay-cal');
   const W = wrap.offsetWidth  || 360;
   const H = wrap.offsetHeight || 480;
   if (cvs.width !== W) cvs.width = W;
   if (cvs.height !== H) cvs.height = H;
+
   const ctx = cvs.getContext('2d');
   ctx.clearRect(0, 0, W, H);
 
-  detectadas.forEach((d, i) => {
-    if (!d) return;
-    const tm = TIMES[i];
-    const px = d.fx * W;
-    const py = d.fy * H;
-    const r  = 32;
+  // Desenha círculos das posições já colocadas
+  TIMES.forEach(tm => {
+    const p = posicoes[tm.id];
+    if (!p) return;
+    const px = p.fx * W;
+    const py = p.fy * H;
+    const r  = 28;
+    const sel = selecionado === tm.id;
 
-    // Halo externo pulsante simulado (3 círculos)
-    [r + 14, r + 7, r].forEach((rr, j) => {
-      ctx.beginPath(); ctx.arc(px, py, rr, 0, Math.PI * 2);
-      ctx.strokeStyle = tm.cor + ['22','55','cc'][j];
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    });
+    // Anel externo (se selecionado: pisca)
+    if (sel) {
+      const alpha = 0.4 + 0.4 * Math.sin(Date.now() / 200);
+      ctx.beginPath(); ctx.arc(px, py, r + 10, 0, Math.PI * 2);
+      ctx.strokeStyle = tm.cor + Math.round(alpha * 255).toString(16).padStart(2,'0');
+      ctx.lineWidth = 3; ctx.stroke();
+    }
 
+    // Círculo preenchido
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.fillStyle = tm.cor + '33';
+    ctx.fillStyle = tm.cor + 'cc';
     ctx.fill();
+    ctx.strokeStyle = sel ? '#fff' : tm.cor;
+    ctx.lineWidth = sel ? 3 : 2;
+    ctx.stroke();
 
-    // Rótulo
-    ctx.font = 'bold 12px Baloo 2, sans-serif';
+    // Emoji + rótulo
+    ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
-    ctx.fillText(tm.emoji + ' ' + tm.nome.split('·')[1].trim(), px, py);
+    ctx.fillText(tm.emoji, px, py - 5);
+    ctx.font = 'bold 9px Baloo 2, sans-serif';
+    ctx.fillText(tm.nome.split('·')[1].trim(), px, py + 13);
   });
+
+  // Cursor crosshair se há um selecionado ainda não posicionado
+  if (selecionado && !posicoes[selecionado]) {
+    const tm = TIMES.find(t => t.id === selecionado);
+    // Grade de guia suave
+    ctx.strokeStyle = tm.cor + '33';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    // horizontal e vertical no centro
+    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
-function renderStatusChips(detectadas) {
-  const container = document.getElementById('status-chips');
-  container.innerHTML = '';
-  TIMES.forEach((tm, i) => {
-    const ok  = detectadas[i] !== null;
-    const pct = Math.round((confianca[i] / CONF_MAX) * 100);
-    const chip = document.createElement('div');
-    chip.className = ok ? 'chip ok' : 'chip missing';
-    chip.style.setProperty('--c', tm.cor);
-    chip.innerHTML = `
-      <div class="chip-dot"></div>
-      <span>${tm.nome.split('·')[1].trim()}</span>
-      ${!ok ? `<span style="font-size:9px;opacity:.6">${pct}%</span>` : '✓'}
-    `;
-    container.appendChild(chip);
-  });
-}
-
+// ── Confirmar e iniciar jogo ───────────────────────────────────────
 function confirmarZonas() {
-  const detectadas = window._ultimasDetectadas;
-  if (!detectadas || detectadas.some(d => !d)) return;
-  zonas = detectadas.map((d, i) => ({ fx: d.fx, fy: d.fy, timeId: TIMES[i].id }));
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(zonas)); } catch(_) {}
+  if (!TIMES.every(t => posicoes[t.id])) return;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(posicoes)); } catch(_) {}
+  if (calAnimFrame) { cancelAnimationFrame(calAnimFrame); calAnimFrame = null; }
 
-  calLoop = false;
+  // Converte para array de zonas
+  zonas = TIMES.map(tm => ({ fx: posicoes[tm.id].fx, fy: posicoes[tm.id].fy, timeId: tm.id }));
+
   mostrarTela('tela-jogo');
   iniciarDeteccao();
+}
+
+function voltarCal() {
+  detectando = false;
+  mostrarTela('tela-cal');
+  selecionado = null;
+  atualizarCalUI();
+  iniciarLoopCal();
 }
 
 // ── Detecção de LED por luminância ────────────────────────────────
@@ -501,8 +474,7 @@ let fc2 = 0;
 function loopDeteccao() {
   if (!detectando) return;
   requestAnimationFrame(loopDeteccao);
-  fc2++;
-  if (fc2 % 2 !== 0) return;
+  if (++fc2 % 2 !== 0) return;
 
   const videoEl = document.getElementById('video-jogo');
   if (videoEl.readyState < 2) return;
@@ -511,7 +483,7 @@ function loopDeteccao() {
   const ctx   = canal.getContext('2d');
   ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H);
 
-  const agora   = Date.now();
+  const agora    = Date.now();
   const bloqueado = agora < lockUntil;
 
   zonas.forEach((z, i) => {
@@ -537,8 +509,7 @@ function loopDeteccao() {
 
 async function declararVencedor(teamId) {
   if (declarando) return;
-  declarando = true;
-  detectando = false;
+  declarando = true; detectando = false;
   mostrarVencedorUI(teamId);
   try {
     const res  = await fetch(`${RTDB}/winner.json`, { headers: { 'X-Firebase-ETag': 'true' } });
@@ -586,7 +557,7 @@ async function resetarRodada() {
   detectando = true;
 }
 
-// ── Overlays ──────────────────────────────────────────────────────
+// ── Overlays jogo ─────────────────────────────────────────────────
 function renderOverlayJogo() {
   const cvs = document.getElementById('overlay-jogo');
   cvs.width  = cvs.offsetWidth  || 360;
@@ -599,17 +570,21 @@ function renderOverlayJogoLive() {
   const ctx = cvs.getContext('2d');
   ctx.clearRect(0, 0, cvs.width, cvs.height);
   zonas.forEach((z, i) => {
-    const tm  = TIMES.find(t => t.id === z.timeId);
-    const px  = z.fx * cvs.width;
-    const py  = z.fy * cvs.height;
+    const tm    = TIMES.find(t => t.id === z.timeId);
+    const px    = z.fx * cvs.width;
+    const py    = z.fy * cvs.height;
     const delta = Math.max(0, lumAtual[i] - (baseline[i] || 0));
     const ativo = delta >= DET_DELTA;
-    ctx.beginPath(); ctx.arc(px, py, 18, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
     ctx.strokeStyle = ativo ? '#fff' : tm.cor;
     ctx.lineWidth   = ativo ? 3 : 2;
     ctx.stroke();
     ctx.fillStyle = ativo ? tm.cor : tm.cor + '33';
     ctx.fill();
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(tm.emoji, px, py);
   });
 }
 
@@ -664,14 +639,7 @@ function mostrarTela(id) {
   if (id === 'tela-jogo') setTimeout(() => { renderOverlayJogo(); renderDetBars(); }, 120);
 }
 
-function voltarCal() {
-  detectando = false; calLoop = true;
-  zonas = []; frameCount = 0;
-  posSmooth = Array(4).fill(null);
-  confianca = Array(4).fill(0);
-  mostrarTela('tela-cal');
-  loopCal();
-}
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') { e.preventDefault(); resetarRodada(); }
