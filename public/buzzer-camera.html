@@ -168,16 +168,16 @@
 
 <script>
 // ── Times e cores ─────────────────────────────────────────────────
+// Faixas HSL amplas para cobrir variações de iluminação e cor física real
 const TIMES = [
   { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴',
-    // faixa HSL para detecção: vermelho envolve 0° (usa hMin>hMax como wraparound)
-    hMin:345, hMax:15, sMin:0.45, lMin:0.25, lMax:0.72 },
+    hMin:330, hMax:25,  sMin:0.28, lMin:0.15, lMax:0.88 },  // wraparound
   { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵',
-    hMin:200, hMax:240, sMin:0.40, lMin:0.25, lMax:0.72 },
+    hMin:185, hMax:260, sMin:0.22, lMin:0.15, lMax:0.88 },
   { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢',
-    hMin:100, hMax:155, sMin:0.38, lMin:0.20, lMax:0.72 },
+    hMin:80,  hMax:175, sMin:0.20, lMin:0.12, lMax:0.85 },
   { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡',
-    hMin:40,  hMax:70,  sMin:0.50, lMin:0.38, lMax:0.82 },
+    hMin:28,  hMax:82,  sMin:0.30, lMin:0.25, lMax:0.92 },
 ];
 
 const RTDB        = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
@@ -203,6 +203,13 @@ let declarando  = false;
 let rodadaAtual = -1;
 let sseConn     = null;
 let frameCount  = 0;
+
+// Suavização temporal para calibração (evita oscilação)
+let posSmooth  = Array(4).fill(null);  // {fx, fy} suavizada por EMA
+let confianca  = Array(4).fill(0);     // 0..CONF_MAX
+const CONF_MAX = 18;   // frames com detecção estável para confirmar
+const CONF_UP  = 3;    // pontos ganhos por frame com detecção
+const CONF_DWN = 1;    // pontos perdidos por frame sem detecção
 
 // ── Áudio ─────────────────────────────────────────────────────────
 const aC = new (window.AudioContext || window.webkitAudioContext)();
@@ -241,32 +248,66 @@ function hueNaFaixa(h, hMin, hMax) {
 
 function pixelMatchCor(r, g, b, tm, tol) {
   const [h, s, l] = rgbParaHsl(r, g, b);
-  const tolH = tol * 0.6; // tolerância em graus de matiz
-  return (
-    hueNaFaixa(h, tm.hMin - tolH, tm.hMax + tolH) &&
-    s >= tm.sMin - tol * 0.008 &&
-    l >= tm.lMin && l <= tm.lMax
-  );
+  const tolH = tol * 0.55;
+  // Aplica tolerância mantendo o wraparound correto para vermelho
+  let hMin2 = tm.hMin - tolH;
+  let hMax2 = tm.hMax + tolH;
+  let hOk;
+  if (tm.hMin > tm.hMax) {
+    // Faixa wraparound (vermelho: cruza 0°)
+    hOk = h >= ((hMin2 % 360) + 360) % 360 || h <= hMax2;
+  } else {
+    hOk = h >= hMin2 && h <= hMax2;
+  }
+  return hOk && s >= tm.sMin - tol * 0.01 && l >= tm.lMin && l <= tm.lMax;
 }
 
 // ── Detecção de posição por cor ────────────────────────────────────
+// Usa sub-grade 8×6 para encontrar a célula mais densa (evita centroide instável)
+const GCOLS = 8, GROWS = 6;
+
 function detectarPosicaoPorCor(imageData, tm) {
   const { data, width, height } = imageData;
-  let sumX = 0, sumY = 0, count = 0;
+  const CW = width  / GCOLS;
+  const CH = height / GROWS;
+  const cellCount = new Int32Array(GCOLS * GROWS);
 
-  // Amostra 1 em cada 3 pixels para performance
-  for (let y = 0; y < height; y += 3) {
-    for (let x = 0; x < width; x += 3) {
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
       const i = (y * width + x) * 4;
       if (pixelMatchCor(data[i], data[i+1], data[i+2], tm, tolerancia)) {
-        sumX += x; sumY += y; count++;
+        const cx = Math.min(GCOLS - 1, (x / CW) | 0);
+        const cy = Math.min(GROWS - 1, (y / CH) | 0);
+        cellCount[cy * GCOLS + cx]++;
       }
     }
   }
 
-  const minPixels = 8; // mínimo de pixels no canvas de análise (160x120)
-  if (count < minPixels) return null;
-  return { fx: (sumX / count) / width, fy: (sumY / count) / height, pixels: count };
+  // Célula mais densa
+  let best = -1, bestN = 0;
+  for (let c = 0; c < cellCount.length; c++) {
+    if (cellCount[c] > bestN) { bestN = cellCount[c]; best = c; }
+  }
+
+  // Mínimo de ~20 px amostrados na célula mais densa
+  if (best < 0 || bestN < 20) return null;
+
+  const cx = best % GCOLS;
+  const cy = (best / GCOLS) | 0;
+  // Centroide refinado nas células vizinhas (3×3 ao redor da melhor)
+  let sumX = 0, sumY = 0, total = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || nx >= GCOLS || ny < 0 || ny >= GROWS) continue;
+      const n = cellCount[ny * GCOLS + nx];
+      sumX += (nx + 0.5) * CW * n;
+      sumY += (ny + 0.5) * CH * n;
+      total += n;
+    }
+  }
+  if (total === 0) return null;
+  return { fx: (sumX / total) / width, fy: (sumY / total) / height, pixels: total };
 }
 
 // ── Camera ────────────────────────────────────────────────────────
@@ -289,10 +330,15 @@ async function pedirCamera() {
 // ── Loop de calibração (auto-detecção contínua por cor) ───────────
 function iniciarCalLoop() {
   calLoop = true;
-  renderStatusChips([]);
+  posSmooth = Array(4).fill(null);
+  confianca = Array(4).fill(0);
+  renderStatusChips(Array(4).fill(null));
   document.getElementById('slider-tol').addEventListener('input', e => {
     tolerancia = +e.target.value;
     document.getElementById('tol-val').textContent = tolerancia;
+    // Reseta suavização ao mudar tolerância para reavaliar rápido
+    posSmooth = Array(4).fill(null);
+    confianca = Array(4).fill(0);
   });
   loopCal();
 }
@@ -302,7 +348,7 @@ function loopCal() {
   requestAnimationFrame(loopCal);
 
   frameCount++;
-  if (frameCount % 3 !== 0) return; // ~20fps de análise
+  if (frameCount % 2 !== 0) return; // ~30fps de análise
 
   const videoEl = document.getElementById('video');
   if (videoEl.readyState < 2) return;
@@ -314,10 +360,28 @@ function loopCal() {
   ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H);
   const imageData = ctx.getImageData(0, 0, ANAL_W, ANAL_H);
 
-  const detectadas = TIMES.map(tm => {
-    const pos = detectarPosicaoPorCor(imageData, tm);
-    return pos ? { ...pos, timeId: tm.id } : null;
+  // Detecção bruta por frame
+  const brutas = TIMES.map(tm => detectarPosicaoPorCor(imageData, tm));
+
+  // Suavização temporal: EMA na posição + acumulador de confiança
+  brutas.forEach((d, i) => {
+    if (d) {
+      confianca[i] = Math.min(CONF_MAX, confianca[i] + CONF_UP);
+      if (!posSmooth[i]) {
+        posSmooth[i] = { fx: d.fx, fy: d.fy };
+      } else {
+        posSmooth[i].fx = posSmooth[i].fx * 0.72 + d.fx * 0.28;
+        posSmooth[i].fy = posSmooth[i].fy * 0.72 + d.fy * 0.28;
+      }
+    } else {
+      confianca[i] = Math.max(0, confianca[i] - CONF_DWN);
+    }
   });
+
+  // Posições "confirmadas" só quando confiança atingiu o máximo
+  const detectadas = posSmooth.map((p, i) =>
+    (p && confianca[i] >= CONF_MAX) ? { fx: p.fx, fy: p.fy, timeId: TIMES[i].id } : null
+  );
 
   renderOverlayCal(detectadas);
   renderStatusChips(detectadas);
@@ -333,7 +397,6 @@ function loopCal() {
     document.getElementById('cal-sub').textContent    = 'Não encontradas: ' + faltando;
   }
 
-  // Salva as últimas posições detectadas para uso posterior
   window._ultimasDetectadas = detectadas;
 }
 
@@ -379,11 +442,16 @@ function renderStatusChips(detectadas) {
   const container = document.getElementById('status-chips');
   container.innerHTML = '';
   TIMES.forEach((tm, i) => {
-    const ok = detectadas[i] !== null;
+    const ok  = detectadas[i] !== null;
+    const pct = Math.round((confianca[i] / CONF_MAX) * 100);
     const chip = document.createElement('div');
     chip.className = ok ? 'chip ok' : 'chip missing';
     chip.style.setProperty('--c', tm.cor);
-    chip.innerHTML = `<div class="chip-dot"></div>${tm.nome.split('·')[1].trim()}`;
+    chip.innerHTML = `
+      <div class="chip-dot"></div>
+      <span>${tm.nome.split('·')[1].trim()}</span>
+      ${!ok ? `<span style="font-size:9px;opacity:.6">${pct}%</span>` : '✓'}
+    `;
     container.appendChild(chip);
   });
 }
@@ -599,6 +667,8 @@ function mostrarTela(id) {
 function voltarCal() {
   detectando = false; calLoop = true;
   zonas = []; frameCount = 0;
+  posSmooth = Array(4).fill(null);
+  confianca = Array(4).fill(0);
   mostrarTela('tela-cal');
   loopCal();
 }
