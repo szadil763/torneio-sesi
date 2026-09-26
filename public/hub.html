@@ -248,6 +248,12 @@
     }
     .mod-comunicados-admin:hover { border-color: #c0651a; }
 
+    .mod-provas {
+      --grad: linear-gradient(135deg, #064e3b 0%, #16a34a 100%);
+      --cor-cta: #4ade80;
+    }
+    .mod-provas:hover { border-color: #4ade80; }
+
     /* ── Seletor de modo ── */
     .modo-selector-wrap {
       width: 100%; max-width: 540px;
@@ -436,87 +442,96 @@
       </a>
     </div>
 
-    <!-- ── Seletor de modo — Gerenciamento de Provas ── -->
-    <div class="modo-selector-wrap">
-
-      <!-- Tabs -->
-      <div class="modo-tabs" role="tablist">
-        <button id="tab-online" class="modo-tab ativo-online" role="tab"
-          onclick="setModo('online')" aria-selected="true">
-          <span class="tab-icon">📶</span>
-          Modo Online
-          <span class="tab-sub">Firebase · todas as provas</span>
-        </button>
-        <button id="tab-offline" class="modo-tab" role="tab"
-          onclick="setModo('offline')" aria-selected="false">
-          <span class="tab-icon">📴</span>
-          Kahoot Offline
-          <span class="tab-sub">Ginásio · sem internet</span>
-        </button>
-      </div>
-
-      <!-- Corpo -->
-      <div class="modo-body">
-
-        <!-- Painel Online -->
-        <div id="painel-online" class="modo-painel visivel">
-          <div class="modo-prova-row">
-            <span class="modo-prova-pill ok">🌀 Spinner ✓</span>
-            <span class="modo-prova-pill ok">🌉 Ponte Da Vinci ✓</span>
-            <span class="modo-prova-pill ok">🎓 Kahoot English ✓</span>
-          </div>
-          <div class="modo-info">
-            Dados sincronizados em <strong>tempo real</strong> via Firebase. Acesse de qualquer dispositivo com internet.
-          </div>
-          <a href="/index.html" class="modo-link ml-online">
-            <span class="ml-icon">📊</span>
-            <span><div class="ml-label">Gerenciador de Provas</div><div class="ml-addr">torneio-sesi-20de0.web.app/index.html</div></span>
-            <span class="ml-arrow">→</span>
-          </a>
-          <a href="/monitor" class="modo-link ml-online">
-            <span class="ml-icon">🖥️</span>
-            <span><div class="ml-label">Monitor Kahoot English</div><div class="ml-addr">/monitor</div></span>
-            <span class="ml-arrow">→</span>
-          </a>
-          <a href="/buzzer.html" class="modo-link ml-online">
-            <span class="ml-icon">🎯</span>
-            <span><div class="ml-label">Buzzer — Botoeiras USB</div><div class="ml-addr">/buzzer.html</div></span>
-            <span class="ml-arrow">→</span>
-          </a>
+    <!-- ── Card: Gerenciamento de Provas ── -->
+    <div class="grade grade-full" style="margin-bottom:12px">
+      <div class="modulo mod-provas mod-destaque" style="cursor:default">
+        <div class="modulo-topo">
+          <span class="modulo-icone">🎯</span>
+          <span class="modulo-nome">Gerenciamento de Provas</span>
+          <span class="modulo-badge">📊 Mediador</span>
         </div>
+        <div class="modulo-corpo" style="padding:0">
 
-        <!-- Painel Offline -->
-        <div id="painel-offline" class="modo-painel">
-          <div class="modo-prova-row">
-            <span class="modo-prova-pill ok">🌀 Spinner ✓ online</span>
-            <span class="modo-prova-pill ok">🌉 Ponte ✓ online</span>
-            <span class="modo-prova-pill off">🎓 Kahoot 📴 servidor local</span>
+          <!-- Tabs -->
+          <div class="modo-tabs" role="tablist" style="border-bottom:1.5px solid var(--line)">
+            <button id="tab-online" class="modo-tab ativo-online" role="tab"
+              onclick="setModo('online')" aria-selected="true">
+              <span class="tab-icon">📶</span>
+              Modo Online
+              <span class="tab-sub">Firebase · todas as provas</span>
+            </button>
+            <button id="tab-offline" class="modo-tab" role="tab"
+              onclick="setModo('offline')" aria-selected="false">
+              <span class="tab-icon">📴</span>
+              Kahoot Offline
+              <span class="tab-sub">Ginásio · sem internet</span>
+            </button>
           </div>
-          <div class="modo-info">
-            Execute <strong>iniciar-servidor.bat</strong> no notebook e conecte os celulares ao <strong>hotspot Wi-Fi</strong> do notebook. IP fixo: <strong>192.168.137.1</strong>
-          </div>
-          <a href="http://localhost:3000/gerenciador/" class="modo-link ml-offline">
-            <span class="ml-icon">📊</span>
-            <span><div class="ml-label">Gerenciador — Kahoot Offline</div><div class="ml-addr">localhost:3000/gerenciador/</div></span>
-            <span class="ml-arrow">→</span>
-          </a>
-          <a href="http://localhost:3000/monitor" class="modo-link ml-offline">
-            <span class="ml-icon">🖥️</span>
-            <span><div class="ml-label">Monitor Kahoot (projetor)</div><div class="ml-addr">localhost:3000/monitor</div></span>
-            <span class="ml-arrow">→</span>
-          </a>
-          <a href="http://192.168.137.1:3000/buzzer-phone.html?team=vermelha" class="modo-link ml-offline">
-            <span class="ml-icon">🔔</span>
-            <span><div class="ml-label">Botoeiras nos celulares</div><div class="ml-addr">192.168.137.1:3000/buzzer-phone.html?team=vermelha</div></span>
-            <span class="ml-arrow">→</span>
-          </a>
-          <div class="modo-info" style="font-size:11px">
-            💡 Troque <code style="background:#0f172a;padding:1px 4px;border-radius:4px">vermelha</code> por <code style="background:#0f172a;padding:1px 4px;border-radius:4px">azul</code>, <code style="background:#0f172a;padding:1px 4px;border-radius:4px">verde</code> ou <code style="background:#0f172a;padding:1px 4px;border-radius:4px">amarela</code> para cada equipe.
+
+          <!-- Corpo dos painéis -->
+          <div class="modo-body">
+
+            <!-- Painel Online -->
+            <div id="painel-online" class="modo-painel visivel">
+              <div class="modo-prova-row">
+                <span class="modo-prova-pill ok">🌀 Spinner ✓</span>
+                <span class="modo-prova-pill ok">🌉 Ponte Da Vinci ✓</span>
+                <span class="modo-prova-pill ok">🎓 Kahoot English ✓</span>
+              </div>
+              <div class="modo-info">
+                Dados sincronizados em <strong>tempo real</strong> via Firebase. Acesse de qualquer dispositivo com internet.
+              </div>
+              <a href="/index.html" class="modo-link ml-online">
+                <span class="ml-icon">📊</span>
+                <span><div class="ml-label">Gerenciador de Provas</div><div class="ml-addr">torneio-sesi-20de0.web.app/index.html</div></span>
+                <span class="ml-arrow">→</span>
+              </a>
+              <a href="/monitor" class="modo-link ml-online">
+                <span class="ml-icon">🖥️</span>
+                <span><div class="ml-label">Monitor Kahoot English</div><div class="ml-addr">/monitor</div></span>
+                <span class="ml-arrow">→</span>
+              </a>
+              <a href="/buzzer.html" class="modo-link ml-online">
+                <span class="ml-icon">🎯</span>
+                <span><div class="ml-label">Buzzer — Botoeiras USB</div><div class="ml-addr">/buzzer.html</div></span>
+                <span class="ml-arrow">→</span>
+              </a>
+            </div>
+
+            <!-- Painel Offline -->
+            <div id="painel-offline" class="modo-painel">
+              <div class="modo-prova-row">
+                <span class="modo-prova-pill ok">🌀 Spinner ✓ online</span>
+                <span class="modo-prova-pill ok">🌉 Ponte ✓ online</span>
+                <span class="modo-prova-pill off">🎓 Kahoot 📴 servidor local</span>
+              </div>
+              <div class="modo-info">
+                Execute <strong>iniciar-servidor.bat</strong> no notebook e conecte os celulares ao <strong>hotspot Wi-Fi</strong> do notebook. IP fixo: <strong>192.168.137.1</strong>
+              </div>
+              <a href="http://localhost:3000/gerenciador/" class="modo-link ml-offline">
+                <span class="ml-icon">📊</span>
+                <span><div class="ml-label">Gerenciador — Kahoot Offline</div><div class="ml-addr">localhost:3000/gerenciador/</div></span>
+                <span class="ml-arrow">→</span>
+              </a>
+              <a href="http://localhost:3000/monitor" class="modo-link ml-offline">
+                <span class="ml-icon">🖥️</span>
+                <span><div class="ml-label">Monitor Kahoot (projetor)</div><div class="ml-addr">localhost:3000/monitor</div></span>
+                <span class="ml-arrow">→</span>
+              </a>
+              <a href="http://192.168.137.1:3000/buzzer-phone.html?team=vermelha" class="modo-link ml-offline">
+                <span class="ml-icon">🔔</span>
+                <span><div class="ml-label">Botoeiras nos celulares</div><div class="ml-addr">192.168.137.1:3000/buzzer-phone.html?team=vermelha</div></span>
+                <span class="ml-arrow">→</span>
+              </a>
+              <div class="modo-info" style="font-size:11px">
+                💡 Troque <code style="background:#0f172a;padding:1px 4px;border-radius:4px">vermelha</code> por <code style="background:#0f172a;padding:1px 4px;border-radius:4px">azul</code>, <code style="background:#0f172a;padding:1px 4px;border-radius:4px">verde</code> ou <code style="background:#0f172a;padding:1px 4px;border-radius:4px">amarela</code> para cada equipe.
+              </div>
+            </div>
+
           </div>
         </div>
-
       </div>
-    </div><!-- /modo-selector-wrap -->
+    </div><!-- /card gerenciamento de provas -->
 
     <!-- Linha: Propulsão + Ranking -->
     <div class="grade">
