@@ -174,7 +174,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
     <span style="font-size:10px;color:rgba(255,255,255,.35);font-weight:700;flex-shrink:0;width:50px">Sensib.</span>
-    <input type="range" id="accel-slider" min="1" max="15" step="0.5" value="4"
+    <input type="range" id="accel-slider" min="0" max="30" step="0.1" value="4"
       style="flex:1;accent-color:rgba(255,255,255,.6);height:4px;cursor:pointer">
     <span id="accel-slider-val" style="font-size:10px;color:rgba(255,255,255,.5);font-weight:700;width:44px;text-align:right">4.0 m/s²</span>
   </div>
@@ -421,14 +421,14 @@ let accelLock       = false;
 let accelHandler    = null;
 let calSamples      = [];
 let calibrando      = false;
-const ACCEL_BAR_MAX  = 12;   // m/s² = 100% da barra
+const ACCEL_BAR_MAX  = 30;   // m/s² = 100% da barra
 const LOCK_MS_ACCEL  = 800;  // bloqueio após detecção
 const SENS_KEY       = `torneio-buzzer-sens:${teamId}`;
 
 // Carrega sensibilidade salva
 try {
   const saved = parseFloat(localStorage.getItem(SENS_KEY));
-  if (!isNaN(saved) && saved >= 1 && saved <= 15) accelThreshold = saved;
+  if (!isNaN(saved) && saved >= 0 && saved <= 30) accelThreshold = saved;
 } catch(_) {}
 
 function atualizarBarraThresh() {
@@ -440,7 +440,7 @@ function atualizarBarraThresh() {
 
 // Slider de sensibilidade manual
 document.getElementById('accel-slider').addEventListener('input', e => {
-  accelThreshold = parseFloat(e.target.value);
+  accelThreshold = Math.round(parseFloat(e.target.value) * 10) / 10; // 1 casa decimal
   atualizarBarraThresh();
   try { localStorage.setItem(SENS_KEY, accelThreshold.toString()); } catch(_) {}
   if (modoFisicoAtivo && !calibrando) {
