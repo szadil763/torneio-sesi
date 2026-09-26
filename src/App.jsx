@@ -1264,6 +1264,77 @@ function QRPrintModal({ onClose }) {
   );
 }
 
+function ModoStatusCard() {
+  const localBase = `${window.location.protocol}//${window.location.hostname}:3000`;
+
+  if (isLocalMode) {
+    return (
+      <div className="w-full rounded-2xl overflow-hidden shadow"
+        style={{ border: "1.5px solid #16a34a", background: "#f0fdf4" }}>
+        <div className="flex items-center gap-2 px-4 py-2.5"
+          style={{ background: "#16a34a" }}>
+          <span className="text-white text-xs font-extrabold tracking-widest uppercase">
+            📴 Kahoot English — Modo Offline
+          </span>
+        </div>
+        <div className="px-4 py-3 flex flex-col gap-2">
+          <div className="text-xs text-gray-500 mb-1">
+            Servidor local ativo · dados salvos no notebook
+          </div>
+          {[
+            { icon: "📊", label: "Gerenciador", path: "/gerenciador/" },
+            { icon: "🖥️", label: "Monitor Kahoot", path: "/monitor" },
+            { icon: "🔔", label: "Botoeira — Equipe A", path: "/buzzer-phone.html?team=vermelha" },
+          ].map(({ icon, label, path }) => (
+            <a key={path} href={`${localBase}${path}`} target="_blank" rel="noopener"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 no-underline"
+              style={{ background: "#dcfce7" }}>
+              <span>{icon}</span>
+              <span className="flex-1 text-xs font-semibold" style={{ color: "#166534" }}>{label}</span>
+              <span className="font-mono text-xs" style={{ color: "#16a34a" }}>{path}</span>
+            </a>
+          ))}
+          <div className="text-xs text-gray-400 mt-1">
+            💡 Para botoeiras das outras equipes, troque <code>vermelha</code> por <code>azul</code>, <code>verde</code> ou <code>amarela</code>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full rounded-2xl overflow-hidden shadow"
+      style={{ border: `1.5px solid ${AZUL}`, background: "#f0f4ff" }}>
+      <div className="flex items-center gap-2 px-4 py-2.5"
+        style={{ background: AZUL }}>
+        <span className="text-white text-xs font-extrabold tracking-widest uppercase">
+          📶 Modo Online — Firebase Ativo
+        </span>
+      </div>
+      <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="text-xs text-gray-500 mb-1">
+          Dados sincronizados em tempo real · todas as provas disponíveis
+        </div>
+        {[
+          { icon: "🌀", label: "Lançador de Spinner", badge: "✓ online" },
+          { icon: "🌉", label: "Ponte de Da Vinci",   badge: "✓ online" },
+          { icon: "🎓", label: "Kahoot English",      badge: "✓ online" },
+        ].map(({ icon, label, badge }) => (
+          <div key={label} className="flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: "#e0e7ff" }}>
+            <span>{icon}</span>
+            <span className="flex-1 text-xs font-semibold" style={{ color: AZUL }}>{label}</span>
+            <span className="text-xs font-bold" style={{ color: "#16a34a" }}>{badge}</span>
+          </div>
+        ))}
+        <div className="text-xs text-gray-400 mt-1">
+          💡 Se o Kahoot English for no ginásio sem internet, use o <strong>servidor local</strong> (iniciar-servidor.bat)
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomeView() {
   const [open, setOpen] = useState(false);
   return (
@@ -1274,6 +1345,8 @@ function HomeView() {
           <div className="text-3xl font-extrabold mb-1" style={{ color: AZUL }}>🏆 Torneio SESI</div>
           <div className="text-sm text-gray-500">Painel do Professor</div>
         </div>
+
+        <ModoStatusCard />
 
         <div className="bg-white rounded-3xl shadow-xl p-8 flex flex-col items-center gap-4 w-full"
           style={{ border: `2px solid #E5E7EB` }}>
@@ -1839,11 +1912,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {isLocalMode && (
-        <div style={{ background: '#16a34a', color: '#fff', textAlign: 'center', fontSize: '11px', fontWeight: 700, padding: '5px', letterSpacing: '.05em' }}>
-          ● MODO OFFLINE — servidor local · todos os dados salvos no notebook
-        </div>
-      )}
+      <div style={{
+        background: isLocalMode ? '#16a34a' : AZUL,
+        color: '#fff', textAlign: 'center', fontSize: '11px',
+        fontWeight: 700, padding: '6px', letterSpacing: '.05em',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+      }}>
+        {isLocalMode
+          ? '📴 KAHOOT ENGLISH — MODO OFFLINE · servidor local · dados salvos no notebook'
+          : '📶 MODO ONLINE · Firebase ativo · dados sincronizados em tempo real'}
+      </div>
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex flex-col gap-2 px-4 py-3">
           {/* Linha 1: título + seletor de modo (só quando não é home) */}
