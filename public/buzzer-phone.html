@@ -14,7 +14,6 @@
       touch-action:manipulation;
     }
 
-    /* ── Background full-screen ── */
     #bg {
       position:fixed; inset:0;
       background: linear-gradient(160deg, var(--cor-escura, #1a1d27) 0%, var(--cor, #2F8FE0) 100%);
@@ -23,51 +22,45 @@
     body.perdeu #bg { filter: grayscale(1) brightness(.35); }
     body.ganhou #bg { filter: brightness(1.1); }
 
-    /* ── Layout ── */
     #app {
       position:relative; z-index:1;
       height:100vh; display:flex; flex-direction:column;
       align-items:center; justify-content:center;
-      gap:0; padding:24px;
+      gap:0; padding:24px 24px 80px;
     }
 
     .nome-time {
-      font-size:clamp(22px,6vw,38px); font-weight:900; color:#fff;
+      font-size:clamp(20px,5vw,34px); font-weight:900; color:#fff;
       text-align:center; text-shadow:0 3px 12px rgba(0,0,0,.5);
-      line-height:1.2; margin-bottom:32px;
+      line-height:1.2; margin-bottom:24px;
     }
 
     /* ── Botão principal ── */
     #btn-apertar {
-      width: min(280px, 70vw);
-      height: min(280px, 70vw);
+      width: min(260px, 68vw);
+      height: min(260px, 68vw);
       border-radius:50%;
       background:rgba(255,255,255,.18);
       border:4px solid rgba(255,255,255,.55);
       color:#fff;
-      font-size:clamp(16px,4vw,22px); font-weight:900; font-family:inherit;
+      font-size:clamp(15px,4vw,20px); font-weight:900; font-family:inherit;
       cursor:pointer;
       display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
       transition:transform .12s, background .12s, border-color .12s, opacity .3s;
       -webkit-tap-highlight-color:transparent;
       box-shadow:0 8px 40px rgba(0,0,0,.35);
     }
-    #btn-apertar:active:not(:disabled) {
-      transform:scale(.95);
-      background:rgba(255,255,255,.3);
-    }
+    #btn-apertar:active:not(:disabled) { transform:scale(.95); background:rgba(255,255,255,.3); }
     #btn-apertar:disabled { opacity:.4; cursor:not-allowed; }
-    .btn-emoji { font-size:clamp(40px,12vw,64px); line-height:1; }
+    .btn-emoji { font-size:clamp(38px,11vw,58px); line-height:1; }
 
-    /* ── Estados ── */
     #msg-estado {
-      margin-top:28px;
-      font-size:clamp(16px,4vw,22px); font-weight:800; color:rgba(255,255,255,.9);
+      margin-top:24px;
+      font-size:clamp(15px,4vw,20px); font-weight:800; color:rgba(255,255,255,.9);
       text-align:center; min-height:1.4em; letter-spacing:.02em;
       text-shadow:0 2px 8px rgba(0,0,0,.4);
     }
 
-    /* Ganhou — efeito destaque */
     body.ganhou #btn-apertar {
       background:rgba(255,255,255,.35);
       border-color:rgba(255,255,255,.9);
@@ -78,11 +71,59 @@
       to   { box-shadow: 0 0 0 22px rgba(255,255,255,0), 0 8px 40px rgba(0,0,0,.35); }
     }
 
-    /* Confetes simples (só elementos CSS) */
+    /* ── Painel do acelerômetro ── */
+    #accel-panel {
+      position:fixed; bottom:0; left:0; right:0; z-index:10;
+      background:rgba(0,0,0,.75); backdrop-filter:blur(10px);
+      padding:10px 16px 20px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+
+    #accel-top {
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    #accel-status {
+      font-size:12px; font-weight:800; color:rgba(255,255,255,.7);
+      display:flex; align-items:center; gap:5px;
+    }
+    #accel-dot {
+      width:7px; height:7px; border-radius:50%; background:#666;
+      transition:background .2s;
+    }
+    #accel-dot.cal   { background:#f97316; animation:piscar .5s infinite; }
+    #accel-dot.ativo { background:#4ade80; }
+    #accel-dot.hit   { background:#fff; }
+
+    #btn-modo {
+      font-size:11px; font-weight:800; color:rgba(255,255,255,.5);
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+      border-radius:8px; padding:4px 10px; cursor:pointer; font-family:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #btn-modo:hover { color:#fff; }
+
+    #accel-bar-wrap {
+      position:relative; width:100%; height:10px;
+      background:rgba(255,255,255,.1); border-radius:100px; overflow:hidden;
+    }
+    #accel-bar-fill {
+      height:100%; width:0%; border-radius:100px;
+      background:linear-gradient(90deg, #4ade80, #fff);
+      transition:width .04s;
+    }
+    #accel-bar-thresh {
+      position:absolute; top:0; bottom:0; width:2px;
+      background:rgba(255,255,255,.5); border-radius:2px;
+    }
+    #accel-val {
+      font-size:10px; color:rgba(255,255,255,.35); font-weight:700;
+      text-align:right;
+    }
+
+    /* Confetes */
     .confete {
       position:fixed; width:10px; height:10px; border-radius:2px;
-      animation:cair linear forwards;
-      z-index:10; pointer-events:none;
+      animation:cair linear forwards; z-index:20; pointer-events:none;
     }
     @keyframes cair {
       0%   { transform:translateY(-20px) rotate(0deg); opacity:1; }
@@ -91,11 +132,11 @@
 
     /* Conexão */
     #bar-conexao {
-      position:fixed; bottom:16px; left:0; right:0;
-      display:flex; align-items:center; justify-content:center; gap:6px;
-      font-size:11px; color:rgba(255,255,255,.35); font-weight:700;
+      position:fixed; top:10px; right:12px; z-index:20;
+      display:flex; align-items:center; gap:5px;
+      font-size:10px; color:rgba(255,255,255,.3); font-weight:700;
     }
-    .dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.3); }
+    .dot { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.3); }
     .dot.on  { background:#4ade80; }
     .dot.off { background:#ef4444; animation:piscar .8s infinite; }
     @keyframes piscar { 50% { opacity:.3; } }
@@ -115,13 +156,29 @@
   <div id="msg-estado"></div>
 </div>
 
+<!-- Painel acelerômetro (sempre visível) -->
+<div id="accel-panel">
+  <div id="accel-top">
+    <div id="accel-status">
+      <div id="accel-dot"></div>
+      <span id="accel-txt">Modo físico desligado</span>
+    </div>
+    <button id="btn-modo" onclick="alternarModo()">⚡ Ativar modo físico</button>
+  </div>
+  <div id="accel-bar-wrap" style="display:none">
+    <div id="accel-bar-fill"></div>
+    <div id="accel-bar-thresh"></div>
+  </div>
+  <div id="accel-val" style="display:none">0.0 m/s²</div>
+</div>
+
 <div id="bar-conexao">
   <div class="dot off" id="dot-con"></div>
   <span id="txt-con">Conectando…</span>
 </div>
 
 <script>
-// ── Configuração de time ──────────────────────────────────────────
+// ── Times ─────────────────────────────────────────────────────────
 const TIMES = {
   vermelha: { nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
   azul:     { nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
@@ -132,7 +189,6 @@ const TIMES = {
 const teamId = new URLSearchParams(location.search).get('t') || 'vermelha';
 const tm     = TIMES[teamId] || TIMES.vermelha;
 
-// Aplica cor de fundo
 document.documentElement.style.setProperty('--cor', tm.cor);
 document.documentElement.style.setProperty('--cor-escura', tm.corEscura);
 document.getElementById('nome-time').textContent = `${tm.emoji} ${tm.nome}`;
@@ -142,7 +198,7 @@ document.title = `Buzzer · ${tm.nome.split('·')[1].trim()} · SESI`;
 const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
 
 let estadoServidor = { rodada: 0, winner: null, presses: {} };
-let rodadaLocal    = -1;   // -1 = ainda não inicializado
+let rodadaLocal    = -1;
 let jaApertou      = false;
 let sseConn        = null;
 
@@ -151,50 +207,34 @@ function conectarSSE() {
   if (sseConn) { sseConn.close(); sseConn = null; }
   sseConn = new EventSource(`${RTDB}.json`);
 
-  sseConn.addEventListener('put', e => {
-    const { path, data } = JSON.parse(e.data);
-    aplicarEvento(path, data, false);
-  });
-
-  sseConn.addEventListener('patch', e => {
-    const { path, data } = JSON.parse(e.data);
-    aplicarEvento(path, data, true);
-  });
+  sseConn.addEventListener('put',   e => aplicarEvento(...Object.values(JSON.parse(e.data)), false));
+  sseConn.addEventListener('patch', e => aplicarEvento(...Object.values(JSON.parse(e.data)), true));
 
   sseConn.onopen = () => {
     document.getElementById('dot-con').className = 'dot on';
     document.getElementById('txt-con').textContent = 'Conectado';
   };
-
   sseConn.onerror = () => {
     document.getElementById('dot-con').className = 'dot off';
     document.getElementById('txt-con').textContent = 'Reconectando…';
-    sseConn.close();
-    setTimeout(conectarSSE, 4000);
+    sseConn.close(); setTimeout(conectarSSE, 4000);
   };
 }
 
 function aplicarEvento(path, data, isPatch) {
   if (path === '/') {
-    if (isPatch) {
-      if (data && typeof data === 'object') Object.assign(estadoServidor, data);
-    } else {
-      estadoServidor = { rodada: 0, winner: null, presses: {}, ...(data || {}) };
-    }
-  } else if (path === '/winner') {
-    estadoServidor.winner = data;
-  } else if (path === '/rodada') {
-    estadoServidor.rodada = data || 0;
-  } else if (path === '/presses') {
-    estadoServidor.presses = data || {};
-  } else if (path.startsWith('/presses/')) {
+    estadoServidor = isPatch
+      ? Object.assign(estadoServidor, data || {})
+      : { rodada:0, winner:null, presses:{}, ...(data||{}) };
+  } else if (path === '/winner')  { estadoServidor.winner = data; }
+  else if (path === '/rodada')    { estadoServidor.rodada = data || 0; }
+  else if (path === '/presses')   { estadoServidor.presses = data || {}; }
+  else if (path.startsWith('/presses/')) {
     const t = path.slice('/presses/'.length);
     if (!estadoServidor.presses) estadoServidor.presses = {};
-    if (data === null) delete estadoServidor.presses[t];
-    else estadoServidor.presses[t] = data;
+    data === null ? delete estadoServidor.presses[t] : (estadoServidor.presses[t] = data);
   }
 
-  // Reset ao mudar rodada
   if (estadoServidor.rodada !== rodadaLocal) {
     rodadaLocal = estadoServidor.rodada;
     jaApertou   = false;
@@ -203,63 +243,53 @@ function aplicarEvento(path, data, isPatch) {
     return;
   }
 
-  // Atualiza estado
-  if (estadoServidor.winner === teamId) {
-    renderEstado('ganhou');
-  } else if (estadoServidor.winner && estadoServidor.winner !== teamId) {
-    renderEstado('perdeu');
-  } else if (estadoServidor.presses && estadoServidor.presses[teamId]) {
-    renderEstado('apertado');
-  } else {
-    renderEstado('aguardando');
-  }
+  if      (estadoServidor.winner === teamId)                      renderEstado('ganhou');
+  else if (estadoServidor.winner && estadoServidor.winner !== teamId) renderEstado('perdeu');
+  else if (estadoServidor.presses && estadoServidor.presses[teamId]) renderEstado('apertado');
+  else                                                             renderEstado('aguardando');
 }
 
-// ── Renderização de estado ────────────────────────────────────────
+// ── Renderização ──────────────────────────────────────────────────
 function renderEstado(estado) {
-  const btn    = document.getElementById('btn-apertar');
-  const emoji  = document.getElementById('btn-emoji');
-  const label  = document.getElementById('btn-label');
-  const msg    = document.getElementById('msg-estado');
-
+  const btn   = document.getElementById('btn-apertar');
+  const emoji = document.getElementById('btn-emoji');
+  const label = document.getElementById('btn-label');
+  const msg   = document.getElementById('msg-estado');
   document.body.className = estado;
 
   switch (estado) {
     case 'aguardando':
-      btn.disabled  = false;
-      emoji.textContent = tm.emoji;
-      label.textContent = 'APERTAR!';
+      btn.disabled      = false;
+      emoji.textContent = modoFisicoAtivo ? '📳' : tm.emoji;
+      label.textContent = modoFisicoAtivo ? 'Aguardando vibração…' : 'APERTAR!';
       msg.textContent   = '';
       break;
-
     case 'apertado':
-      btn.disabled  = true;
+      btn.disabled      = true;
       emoji.textContent = '⏳';
       label.textContent = 'Aguardando…';
       msg.textContent   = 'Sinal enviado!';
       break;
-
     case 'ganhou':
-      btn.disabled  = true;
+      btn.disabled      = true;
       emoji.textContent = '🏆';
       label.textContent = 'PRIMEIRO!';
       msg.textContent   = '🎉 Você foi primeiro!';
       criarConfetes();
       break;
-
     case 'perdeu':
-      btn.disabled  = true;
+      btn.disabled      = true;
       emoji.textContent = tm.emoji;
       label.textContent = 'Não foi…';
-      const vencedor = TIMES[estadoServidor.winner];
-      msg.textContent = vencedor
-        ? `${vencedor.emoji} ${vencedor.nome.split('·')[1].trim()} chegou primeiro`
+      const v = TIMES[estadoServidor.winner];
+      msg.textContent = v
+        ? `${v.emoji} ${v.nome.split('·')[1].trim()} chegou primeiro`
         : 'Outra equipe chegou primeiro';
       break;
   }
 }
 
-// ── Apertar botoeira ──────────────────────────────────────────────
+// ── Apertar (manual ou automático) ────────────────────────────────
 async function apertar() {
   const btn = document.getElementById('btn-apertar');
   if (btn.disabled || jaApertou) return;
@@ -268,36 +298,166 @@ async function apertar() {
   renderEstado('apertado');
 
   const rodadaAoApertar = rodadaLocal;
-
   try {
-    // 1. Grava timestamp do servidor para esta equipe
     await fetch(`${RTDB}/presses/${teamId}.json`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ts: { '.sv': 'timestamp' } })
+      method:'PUT', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ ts:{ '.sv':'timestamp' } })
     });
-
-    // 2. Tenta reivindicar vencedor atomicamente via ETag
-    //    (garante que só um time seja declarado vencedor, mesmo com múltiplas
-    //    pressões simultâneas ou múltiplas instâncias do telão abertas)
-    const res = await fetch(`${RTDB}/winner.json`, {
-      headers: { 'X-Firebase-ETag': 'true' }
-    });
-    const etag    = res.headers.get('ETag');
-    const winAtual = await res.json();
-
-    if (winAtual === null && rodadaLocal === rodadaAoApertar) {
+    const res  = await fetch(`${RTDB}/winner.json`, { headers:{ 'X-Firebase-ETag':'true' } });
+    const etag = res.headers.get('ETag');
+    const win  = await res.json();
+    if (win === null && rodadaLocal === rodadaAoApertar) {
       await fetch(`${RTDB}/winner.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'if-match': etag },
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json', 'if-match':etag },
         body: JSON.stringify(teamId)
       });
-      // Se der 412 = outro time chegou primeiro, o SSE vai mostrar o resultado certo
     }
-  } catch (err) {
-    // Falha de rede: o SSE vai atualizar o estado quando reconectar
-    console.warn('Erro ao apertar:', err);
+  } catch(err) { console.warn('Erro ao apertar:', err); }
+}
+
+// ── Modo físico (acelerômetro) ────────────────────────────────────
+let modoFisicoAtivo = false;
+let accelThreshold  = 4.0;   // m/s² — ajustado na calibração
+let accelLock       = false;
+let accelHandler    = null;
+let calSamples      = [];
+let calibrando      = false;
+const ACCEL_BAR_MAX = 12;    // m/s² = 100% da barra
+const LOCK_MS_ACCEL = 800;   // bloqueio após detecção
+
+function alternarModo() {
+  if (modoFisicoAtivo) {
+    desativarModoFisico();
+  } else {
+    ativarModoFisico();
   }
+}
+
+function ativarModoFisico() {
+  if (typeof DeviceMotionEvent === 'undefined') {
+    alert('Este dispositivo não suporta acelerômetro.');
+    return;
+  }
+
+  // iOS 13+ exige permissão explícita
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(result => {
+      if (result === 'granted') iniciarAcelerometro();
+      else alert('Permissão negada para o acelerômetro.');
+    }).catch(() => alert('Erro ao solicitar permissão do acelerômetro.'));
+  } else {
+    iniciarAcelerometro();
+  }
+}
+
+function iniciarAcelerometro() {
+  modoFisicoAtivo = true;
+
+  // Mostra painel
+  document.getElementById('accel-bar-wrap').style.display = '';
+  document.getElementById('accel-val').style.display      = '';
+  document.getElementById('btn-modo').textContent         = '✕ Desativar';
+
+  // Calibração: 2 segundos de silêncio para medir ruído de fundo
+  calibrando = true;
+  calSamples = [];
+  setarStatusAceel('cal', 'Calibrando — mantenha quieto…');
+
+  accelHandler = (e) => processarMotion(e);
+  window.addEventListener('devicemotion', accelHandler);
+
+  setTimeout(finalizarCalibracao, 2200);
+}
+
+function finalizarCalibracao() {
+  calibrando = false;
+  if (calSamples.length < 5) {
+    // Sensor não retornou dados — provavelmente não suportado
+    desativarModoFisico();
+    alert('Acelerômetro não retornou dados. Tente em outro navegador.');
+    return;
+  }
+
+  const media = calSamples.reduce((a,b) => a+b, 0) / calSamples.length;
+  const std   = Math.sqrt(calSamples.reduce((a,b) => a + (b-media)**2, 0) / calSamples.length);
+
+  // Threshold = média + 4 desvios padrão, mínimo 2.5 m/s²
+  accelThreshold = Math.max(2.5, media + 4 * std);
+
+  // Atualiza linha de threshold na barra
+  const pct = Math.min(98, accelThreshold / ACCEL_BAR_MAX * 100);
+  document.getElementById('accel-bar-thresh').style.left = pct + '%';
+
+  setarStatusAceel('ativo', `Pronto — limite ${accelThreshold.toFixed(1)} m/s²`);
+  renderEstado('aguardando');  // atualiza botão para mostrar "Aguardando vibração…"
+}
+
+function processarMotion(e) {
+  const a = e.acceleration || e.accelerationIncludingGravity;
+  if (!a) return;
+
+  // Magnitude da aceleração (sem gravidade preferido)
+  const useGrav = !e.acceleration || (e.acceleration.x == null && e.acceleration.y == null);
+  const src     = useGrav ? e.accelerationIncludingGravity : e.acceleration;
+  const mag     = Math.sqrt((src.x||0)**2 + (src.y||0)**2 + (src.z||0)**2);
+
+  // Durante calibração: apenas coleta amostras
+  if (calibrando) {
+    calSamples.push(mag);
+    return;
+  }
+
+  // Atualiza barra visual
+  const pct  = Math.min(100, mag / ACCEL_BAR_MAX * 100);
+  document.getElementById('accel-bar-fill').style.width = pct + '%';
+  document.getElementById('accel-val').textContent = mag.toFixed(1) + ' m/s²';
+
+  // Cor da barra conforme proximidade do threshold
+  const fill = document.getElementById('accel-bar-fill');
+  fill.style.background = mag >= accelThreshold
+    ? '#fff'
+    : mag > accelThreshold * 0.6
+    ? 'linear-gradient(90deg,#f97316,#ffd700)'
+    : 'linear-gradient(90deg,#4ade80,#fff)';
+
+  // Detecção — threshold ultrapassado e não bloqueado
+  if (!accelLock && mag >= accelThreshold) {
+    accelLock = true;
+    setarStatusAceel('hit', '⚡ Detectado!');
+
+    const btn = document.getElementById('btn-apertar');
+    if (!btn.disabled && !jaApertou) apertar();
+
+    setTimeout(() => {
+      accelLock = false;
+      if (modoFisicoAtivo) setarStatusAceel('ativo', `Ativo — limite ${accelThreshold.toFixed(1)} m/s²`);
+    }, LOCK_MS_ACCEL);
+  }
+}
+
+function desativarModoFisico() {
+  modoFisicoAtivo = false;
+  calibrando      = false;
+  if (accelHandler) {
+    window.removeEventListener('devicemotion', accelHandler);
+    accelHandler = null;
+  }
+  document.getElementById('accel-bar-wrap').style.display = 'none';
+  document.getElementById('accel-val').style.display      = 'none';
+  document.getElementById('btn-modo').textContent         = '⚡ Ativar modo físico';
+  setarStatusAceel('', 'Modo físico desligado');
+  renderEstado(document.body.className || 'aguardando');
+}
+
+function setarStatusAceel(cls, txt) {
+  document.getElementById('accel-dot').className = 'dot' + (cls ? ' '+cls : ' off');
+  document.getElementById('accel-dot').className = cls ? cls : '';
+  document.getElementById('accel-dot').style.background =
+    cls === 'cal'  ? '#f97316' :
+    cls === 'ativo'? '#4ade80' :
+    cls === 'hit'  ? '#fff' : '#444';
+  document.getElementById('accel-txt').textContent = txt;
 }
 
 // ── Confetes ──────────────────────────────────────────────────────
@@ -306,7 +466,7 @@ function criarConfetes() {
   for (let i = 0; i < 40; i++) {
     const c = document.createElement('div');
     c.className = 'confete';
-    c.style.left   = Math.random() * 100 + 'vw';
+    c.style.left = Math.random() * 100 + 'vw';
     c.style.background = cores[Math.floor(Math.random() * cores.length)];
     c.style.animationDuration = (1.5 + Math.random() * 2) + 's';
     c.style.animationDelay    = (Math.random() * .8) + 's';
@@ -315,13 +475,12 @@ function criarConfetes() {
     c.addEventListener('animationend', () => c.remove());
   }
 }
-
 function limparConfetes() {
   document.querySelectorAll('.confete').forEach(c => c.remove());
 }
 
 // ── Init ──────────────────────────────────────────────────────────
-renderEstado('aguardando');  // estado visual inicial
+renderEstado('aguardando');
 conectarSSE();
 </script>
 </body>
