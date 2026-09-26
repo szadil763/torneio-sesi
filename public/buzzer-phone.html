@@ -169,7 +169,13 @@
     <div id="accel-bar-fill"></div>
     <div id="accel-bar-thresh"></div>
   </div>
-  <div id="accel-val">0.0 m/s²</div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+    <span style="font-size:10px;color:rgba(255,255,255,.35);font-weight:700;flex-shrink:0;width:50px">Sensib.</span>
+    <input type="range" id="accel-slider" min="1" max="15" step="0.5" value="4"
+      style="flex:1;accent-color:rgba(255,255,255,.6);height:4px;cursor:pointer">
+    <span id="accel-slider-val" style="font-size:10px;color:rgba(255,255,255,.5);font-weight:700;width:44px;text-align:right">4.0 m/s²</span>
+  </div>
+  <div id="accel-val" style="display:none">0.0 m/s²</div>
 </div>
 
 <div id="bar-conexao">
@@ -318,13 +324,40 @@ async function apertar() {
 
 // ── Modo físico (acelerômetro) ────────────────────────────────────
 let modoFisicoAtivo = false;
-let accelThreshold  = 4.0;   // m/s² — ajustado na calibração
+let accelThreshold  = 4.0;   // m/s² — ajustado na calibração ou slider
 let accelLock       = false;
 let accelHandler    = null;
 let calSamples      = [];
 let calibrando      = false;
-const ACCEL_BAR_MAX = 12;    // m/s² = 100% da barra
-const LOCK_MS_ACCEL = 800;   // bloqueio após detecção
+const ACCEL_BAR_MAX  = 12;   // m/s² = 100% da barra
+const LOCK_MS_ACCEL  = 800;  // bloqueio após detecção
+const SENS_KEY       = `torneio-buzzer-sens:${teamId}`;
+
+// Carrega sensibilidade salva
+try {
+  const saved = parseFloat(localStorage.getItem(SENS_KEY));
+  if (!isNaN(saved) && saved >= 1 && saved <= 15) accelThreshold = saved;
+} catch(_) {}
+
+function atualizarBarraThresh() {
+  const pct = Math.min(98, accelThreshold / ACCEL_BAR_MAX * 100);
+  document.getElementById('accel-bar-thresh').style.left = pct + '%';
+  document.getElementById('accel-slider').value          = accelThreshold;
+  document.getElementById('accel-slider-val').textContent = accelThreshold.toFixed(1) + ' m/s²';
+}
+
+// Slider de sensibilidade manual
+document.getElementById('accel-slider').addEventListener('input', e => {
+  accelThreshold = parseFloat(e.target.value);
+  atualizarBarraThresh();
+  try { localStorage.setItem(SENS_KEY, accelThreshold.toString()); } catch(_) {}
+  if (modoFisicoAtivo && !calibrando) {
+    setarStatusAceel('ativo', `Ativo — limite ${accelThreshold.toFixed(1)} m/s²`);
+  }
+});
+
+// Inicializa linha de threshold com valor carregado
+atualizarBarraThresh();
 
 function alternarModo() {
   if (modoFisicoAtivo) {
@@ -380,10 +413,10 @@ function finalizarCalibracao() {
 
   // Threshold = média + 4 desvios padrão, mínimo 2.5 m/s²
   accelThreshold = Math.max(2.5, media + 4 * std);
+  try { localStorage.setItem(SENS_KEY, accelThreshold.toString()); } catch(_) {}
 
-  // Atualiza linha de threshold na barra
-  const pct = Math.min(98, accelThreshold / ACCEL_BAR_MAX * 100);
-  document.getElementById('accel-bar-thresh').style.left = pct + '%';
+  // Sincroniza slider e linha de threshold
+  atualizarBarraThresh();
 
   setarStatusAceel('ativo', `Pronto — limite ${accelThreshold.toFixed(1)} m/s²`);
   renderEstado('aguardando');  // atualiza botão para mostrar "Aguardando vibração…"
@@ -427,7 +460,7 @@ function processarMotion(e) {
 
     setTimeout(() => {
       accelLock = false;
-      if (modoFisicoAtivo) setarStatusAceel('ativo', `Ativo — limite ${accelThreshold.toFixed(1)} m/s²`);
+      if (modoFisicoAtivo && !calibrando) setarStatusAceel('ativo', `Ativo — limite ${accelThreshold.toFixed(1)} m/s²`);
     }, LOCK_MS_ACCEL);
   }
 }
