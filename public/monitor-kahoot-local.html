@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor — Kahoot Local SESI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px 16px 32px;
+    }
+
+    .container { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    /* Cabeçalho */
+    .header { text-align: center; padding-bottom: 4px; }
+    .header h1 { font-size: 17px; font-weight: 900; color: #f8fafc; letter-spacing: .04em; }
+    .offline-badge {
+      display: inline-block;
+      background: #16a34a; color: #fff;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 10px; border-radius: 99px;
+      margin-top: 4px; letter-spacing: .07em;
+    }
+
+    /* Card de status */
+    .status-card {
+      border-radius: 20px; overflow: hidden;
+      outline: 5px solid transparent;
+      transition: background .3s, outline .15s;
+    }
+    .status-inner { padding: 24px 20px; text-align: center; }
+    .status-idle    { background: #1e293b; }
+    .status-active  { background: #F5821F; }
+
+    .idle-msg   { color: #64748b; font-size: 14px; font-weight: 600; }
+    .active-msg {
+      color: #fff; font-size: 20px; font-weight: 900;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    .winner-name {
+      color: #fff; font-weight: 900; font-size: 30px;
+      text-shadow: 0 3px 14px rgba(0,0,0,.5);
+      line-height: 1.1;
+    }
+    .winner-sub { color: rgba(255,255,255,.75); font-size: 13px; font-weight: 600; margin: 4px 0 18px; }
+
+    .action-btns { display: flex; gap: 12px; justify-content: center; }
+    .btn-correto, .btn-errado {
+      padding: 11px 24px; border-radius: 12px; border: 2px solid rgba(255,255,255,.5);
+      background: rgba(255,255,255,.2); color: #fff;
+      font-size: 14px; font-weight: 800; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-correto:hover { background: rgba(255,255,255,.35); }
+    .btn-errado { background: rgba(0,0,0,.2); border-color: rgba(255,255,255,.25); }
+    .btn-errado:hover { background: rgba(0,0,0,.38); }
+
+    /* Buzzers */
+    .buzzers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .buz {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      height: 100px; border-radius: 20px; border: none;
+      font-weight: 900; font-size: 14px; letter-spacing: .02em;
+      cursor: pointer; transition: all .25s;
+    }
+    .buz .icon { font-size: 28px; line-height: 1; }
+    .buz .pts  { font-size: 11px; opacity: .65; font-weight: 600; }
+    .buz:disabled { cursor: default; }
+    .buz .star {
+      position: absolute; top: 6px; right: 10px; font-size: 18px;
+      animation: spin 1s linear infinite;
+    }
+
+    /* Nova pergunta */
+    .btn-nova {
+      width: 100%; padding: 16px; border-radius: 16px; border: none;
+      background: #004B8D; color: #fff;
+      font-size: 17px; font-weight: 900; cursor: pointer;
+      letter-spacing: .02em; transition: background .2s;
+    }
+    .btn-nova:hover { background: #005fad; }
+
+    /* Placar */
+    .placar { background: #1e293b; border-radius: 16px; padding: 16px; }
+    .placar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #64748b; margin-bottom: 12px; }
+    .placar-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 12px; margin-bottom: 6px; }
+    .placar-pos  { font-size: 16px; font-weight: 800; width: 28px; text-align: center; }
+    .placar-name { flex: 1; font-weight: 600; font-size: 14px; color: #e2e8f0; }
+    .placar-pts  { font-size: 20px; font-weight: 900; }
+
+    /* Reset */
+    .btn-reset {
+      width: 100%; padding: 10px; border-radius: 12px;
+      border: 1px solid rgba(239,68,68,.25); background: rgba(239,68,68,.08);
+      color: #ef4444; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+
+    /* Indicador de conexão */
+    .conn-bar {
+      text-align: center; font-size: 11px; font-weight: 700;
+      padding: 5px; border-radius: 8px; letter-spacing: .05em;
+    }
+    .conn-ok   { background: rgba(22,163,74,.15); color: #4ade80; }
+    .conn-err  { background: rgba(239,68,68,.15); color: #f87171; animation: pulse .8s infinite; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>🏆 Kahoot English — Monitor</h1>
+    <span class="offline-badge">● MODO LOCAL — SEM INTERNET</span>
+  </div>
+
+  <div class="conn-bar conn-ok" id="connBar">● Servidor local conectado</div>
+
+  <div class="status-card status-idle" id="statusCard">
+    <div class="status-inner" id="statusInner">
+      <div class="idle-msg">Pronto — pressione "Nova Pergunta"</div>
+    </div>
+  </div>
+
+  <div class="buzzers" id="buzzers"></div>
+
+  <button class="btn-nova" id="btnNova" onclick="novaPergunta()">▶ Nova Pergunta — Ativar Botoeiras</button>
+
+  <div class="placar">
+    <div class="placar-title">Placar</div>
+    <div id="placarRows"></div>
+  </div>
+
+  <button class="btn-reset" onclick="resetAll()">⚠️ Zerar pontuação do Kahoot</button>
+
+</div>
+
+<script>
+const TEAMS = [
+  { id: 'A', label: 'Equipe A', color: '#E5484D' },
+  { id: 'B', label: 'Equipe B', color: '#2F8FE0' },
+  { id: 'C', label: 'Equipe C', color: '#3C9A5F' },
+  { id: 'D', label: 'Equipe D', color: '#E0B23C', dark: true },
+];
+
+let gameState  = { active: false, buzz: null, pts: {} };
+let prevBuzzKey = null;
+let errCount    = 0;
+
+async function api(endpoint, method = 'GET', body) {
+  const opts = { method };
+  if (body !== undefined) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(endpoint, opts);
+  return r.json().catch(() => null);
+}
+
+async function fetchState() {
+  try {
+    const [a, b, p] = await Promise.all([
+      api('/kahoot_active.json'),
+      api('/kahoot_buzz.json'),
+      api('/kahoot_pts.json'),
+    ]);
+    errCount = 0;
+    setConn(true);
+
+    const newBuzz   = b || null;
+    const buzzKey   = newBuzz ? `${newBuzz.teamId}-${newBuzz.ts || ''}` : null;
+
+    if (buzzKey && buzzKey !== prevBuzzKey) {
+      prevBuzzKey = buzzKey;
+      playBuzzer();
+      flashCard();
+    }
+    if (!newBuzz) prevBuzzKey = null;
+
+    gameState = { active: !!a, buzz: newBuzz, pts: p || {} };
+    render();
+  } catch (_) {
+    errCount++;
+    if (errCount >= 3) setConn(false);
+  }
+}
+
+async function novaPergunta() {
+  try {
+    await Promise.all([
+      api('/kahoot_buzz.json', 'DELETE'),
+      api('/kahoot_active.json', 'PUT', true),
+    ]);
+    gameState.buzz = null; gameState.active = true;
+    prevBuzzKey = null;
+    render();
+  } catch (_) {}
+}
+
+async function pressVirtual(teamId) {
+  if (!gameState.active || gameState.buzz) return;
+  try {
+    const existing = await api('/kahoot_buzz.json');
+    if (!existing) {
+      await api('/kahoot_buzz.json', 'PUT', { teamId, ts: Date.now() });
+      playBuzzer();
+    }
+    await fetchState();
+  } catch (_) {}
+}
+
+async function correto(teamId) {
+  try {
+    const newPts = { ...gameState.pts, [teamId]: (gameState.pts[teamId] || 0) + 1 };
+    await Promise.all([
+      api('/kahoot_pts.json', 'PUT', newPts),
+      api('/kahoot_active.json', 'DELETE'),
+      api('/kahoot_buzz.json', 'DELETE'),
+    ]);
+    gameState = { active: false, buzz: null, pts: newPts };
+    prevBuzzKey = null;
+    render();
+  } catch (_) {}
+}
+
+async function errado() {
+  try {
+    await Promise.all([
+      api('/kahoot_active.json', 'DELETE'),
+      api('/kahoot_buzz.json', 'DELETE'),
+    ]);
+    gameState.active = false; gameState.buzz = null;
+    prevBuzzKey = null;
+    render();
+  } catch (_) {}
+}
+
+async function resetAll() {
+  if (!confirm('Zerar toda a pontuação do Kahoot English?')) return;
+  try {
+    await Promise.all([
+      api('/kahoot_pts.json', 'DELETE'),
+      api('/kahoot_buzz.json', 'DELETE'),
+      api('/kahoot_active.json', 'DELETE'),
+    ]);
+    gameState = { active: false, buzz: null, pts: {} };
+    prevBuzzKey = null;
+    render();
+  } catch (_) {}
+}
+
+function playBuzzer() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.2].forEach(t => {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, ctx.currentTime + t);
+      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + t + 0.18);
+      g.gain.setValueAtTime(0.55, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.18);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.19);
+    });
+  } catch (_) {}
+}
+
+function flashCard() {
+  const c = document.getElementById('statusCard');
+  c.style.outline = '5px solid #fff';
+  setTimeout(() => { c.style.outline = '5px solid transparent'; }, 220);
+}
+
+function setConn(ok) {
+  const b = document.getElementById('connBar');
+  b.className = 'conn-bar ' + (ok ? 'conn-ok' : 'conn-err');
+  b.textContent = ok ? '● Servidor local conectado' : '⚠ Sem resposta do servidor — verifique o notebook';
+}
+
+function render() {
+  const { active, buzz, pts } = gameState;
+  const winner  = buzz ? TEAMS.find(t => t.id === buzz.teamId) : null;
+  const card    = document.getElementById('statusCard');
+  const inner   = document.getElementById('statusInner');
+  const btnNova = document.getElementById('btnNova');
+
+  // Status card
+  if (winner) {
+    card.style.background = winner.color;
+    inner.innerHTML = `
+      <div class="winner-name">🏆 ${winner.label}</div>
+      <div class="winner-sub">foi a primeira!</div>
+      <div class="action-btns">
+        <button class="btn-correto" onclick="correto('${winner.id}')">✓ Correto +1 pt</button>
+        <button class="btn-errado"  onclick="errado()">✗ Errado</button>
+      </div>`;
+  } else if (active) {
+    card.style.background = '#F5821F';
+    inner.innerHTML = `<div class="active-msg">⚡ Botoeiras ativas — aguardando...</div>`;
+  } else {
+    card.style.background = '#1e293b';
+    inner.innerHTML = `<div class="idle-msg">Pronto — pressione "Nova Pergunta"</div>`;
+  }
+
+  // Botão nova pergunta
+  btnNova.style.display = active ? 'none' : 'block';
+
+  // Botoeiras virtuais
+  const canPress = active && !buzz;
+  document.getElementById('buzzers').innerHTML = TEAMS.map(t => {
+    const isWinner = winner?.id === t.id;
+    const isLoser  = !!winner && !isWinner;
+    return `<button class="buz"
+      onclick="pressVirtual('${t.id}')"
+      ${!canPress ? 'disabled' : ''}
+      style="
+        background:${t.color};
+        color:${t.dark ? '#1a1a1a' : '#fff'};
+        opacity:${isLoser ? 0.2 : 1};
+        transform:${isWinner ? 'scale(1.06)' : canPress ? 'scale(1)' : 'scale(0.97)'};
+        box-shadow:${isWinner
+          ? `0 0 0 4px #fff, 0 0 40px 10px ${t.color}99`
+          : canPress ? `0 6px 20px ${t.color}88` : '0 2px 6px rgba(0,0,0,.15)'};
+      ">
+      ${isWinner ? '<span class="star">⭐</span>' : ''}
+      <span class="icon">🔔</span>
+      <span>${t.label}</span>
+      <span class="pts">${pts[t.id] || 0} pts</span>
+    </button>`;
+  }).join('');
+
+  // Placar
+  const sorted = [...TEAMS].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  document.getElementById('placarRows').innerHTML = sorted.map((t, i) => `
+    <div class="placar-row" style="background:${t.color}22">
+      <span class="placar-pos"  style="color:${t.color}">${i + 1}º</span>
+      <span class="placar-name">${t.label}</span>
+      <span class="placar-pts" style="color:${t.color}">${pts[t.id] || 0} pts</span>
+    </div>`).join('');
+}
+
+render();
+fetchState();
+setInterval(fetchState, 700);
+</script>
+</body>
+</html>
