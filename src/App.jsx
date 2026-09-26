@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { safeGet, safeSet, safeDelete, isLocalMode } from "./firebase.js";
+import { safeGet, safeSet, safeDelete, isLocalMode, kahootGet, kahootSet, kahootDelete } from "./firebase.js";
 import { QRCodeSVG } from "qrcode.react";
 
 const TEAMS = [
@@ -1264,77 +1264,6 @@ function QRPrintModal({ onClose }) {
   );
 }
 
-function ModoStatusCard() {
-  const localBase = `${window.location.protocol}//${window.location.hostname}:3000`;
-
-  if (isLocalMode) {
-    return (
-      <div className="w-full rounded-2xl overflow-hidden shadow"
-        style={{ border: "1.5px solid #16a34a", background: "#f0fdf4" }}>
-        <div className="flex items-center gap-2 px-4 py-2.5"
-          style={{ background: "#16a34a" }}>
-          <span className="text-white text-xs font-extrabold tracking-widest uppercase">
-            📴 Kahoot English — Modo Offline
-          </span>
-        </div>
-        <div className="px-4 py-3 flex flex-col gap-2">
-          <div className="text-xs text-gray-500 mb-1">
-            Servidor local ativo · dados salvos no notebook
-          </div>
-          {[
-            { icon: "📊", label: "Gerenciador", path: "/gerenciador/" },
-            { icon: "🖥️", label: "Monitor Kahoot", path: "/monitor" },
-            { icon: "🔔", label: "Botoeira — Equipe A", path: "/buzzer-phone.html?team=vermelha" },
-          ].map(({ icon, label, path }) => (
-            <a key={path} href={`${localBase}${path}`} target="_blank" rel="noopener"
-              className="flex items-center gap-2 rounded-xl px-3 py-2 no-underline"
-              style={{ background: "#dcfce7" }}>
-              <span>{icon}</span>
-              <span className="flex-1 text-xs font-semibold" style={{ color: "#166534" }}>{label}</span>
-              <span className="font-mono text-xs" style={{ color: "#16a34a" }}>{path}</span>
-            </a>
-          ))}
-          <div className="text-xs text-gray-400 mt-1">
-            💡 Para botoeiras das outras equipes, troque <code>vermelha</code> por <code>azul</code>, <code>verde</code> ou <code>amarela</code>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full rounded-2xl overflow-hidden shadow"
-      style={{ border: `1.5px solid ${AZUL}`, background: "#f0f4ff" }}>
-      <div className="flex items-center gap-2 px-4 py-2.5"
-        style={{ background: AZUL }}>
-        <span className="text-white text-xs font-extrabold tracking-widest uppercase">
-          📶 Modo Online — Firebase Ativo
-        </span>
-      </div>
-      <div className="px-4 py-3 flex flex-col gap-2">
-        <div className="text-xs text-gray-500 mb-1">
-          Dados sincronizados em tempo real · todas as provas disponíveis
-        </div>
-        {[
-          { icon: "🌀", label: "Lançador de Spinner", badge: "✓ online" },
-          { icon: "🌉", label: "Ponte de Da Vinci",   badge: "✓ online" },
-          { icon: "🎓", label: "Kahoot English",      badge: "✓ online" },
-        ].map(({ icon, label, badge }) => (
-          <div key={label} className="flex items-center gap-2 rounded-xl px-3 py-2"
-            style={{ background: "#e0e7ff" }}>
-            <span>{icon}</span>
-            <span className="flex-1 text-xs font-semibold" style={{ color: AZUL }}>{label}</span>
-            <span className="text-xs font-bold" style={{ color: "#16a34a" }}>{badge}</span>
-          </div>
-        ))}
-        <div className="text-xs text-gray-400 mt-1">
-          💡 Se o Kahoot English for no ginásio sem internet, use o <strong>servidor local</strong> (iniciar-servidor.bat)
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function HomeView() {
   const [open, setOpen] = useState(false);
   return (
@@ -1345,8 +1274,6 @@ function HomeView() {
           <div className="text-3xl font-extrabold mb-1" style={{ color: AZUL }}>🏆 Torneio SESI</div>
           <div className="text-sm text-gray-500">Painel do Professor</div>
         </div>
-
-        <ModoStatusCard />
 
         <div className="bg-white rounded-3xl shadow-xl p-8 flex flex-col items-center gap-4 w-full"
           style={{ border: `2px solid #E5E7EB` }}>
@@ -1565,7 +1492,7 @@ function playBuzzerSound() {
   } catch (_) {}
 }
 
-function KahootMonitorView() {
+function KahootMonitorView({ forceLocal = false }) {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz]   = useState(null);
   const [pts, setPts]     = useState({});
@@ -1573,10 +1500,14 @@ function KahootMonitorView() {
   const pollRef    = useRef(null);
   const prevBuzzId = useRef(null);
 
+  const kGet = useCallback((k) => kahootGet(k, forceLocal), [forceLocal]);
+  const kSet = useCallback((k, v) => kahootSet(k, v, forceLocal), [forceLocal]);
+  const kDel = useCallback((k) => kahootDelete(k, forceLocal), [forceLocal]);
+
   const fetchState = useCallback(async () => {
-    const a = await safeGet("kahoot_active");
-    const b = await safeGet("kahoot_buzz");
-    const p = await safeGet("kahoot_pts");
+    const a = await kGet("kahoot_active");
+    const b = await kGet("kahoot_buzz");
+    const p = await kGet("kahoot_pts");
     const newBuzz = b ?? null;
     // dispara som + flash somente quando buzz aparece pela primeira vez
     const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
@@ -1590,7 +1521,7 @@ function KahootMonitorView() {
     setActive(!!a);
     setBuzz(newBuzz);
     setPts(p ?? {});
-  }, []);
+  }, [kGet]);
 
   useEffect(() => {
     fetchState();
@@ -1599,8 +1530,8 @@ function KahootMonitorView() {
   }, [fetchState]);
 
   const novaPergunta = async () => {
-    await safeDelete("kahoot_buzz");
-    await safeSet("kahoot_active", true);
+    await kDel("kahoot_buzz");
+    await kSet("kahoot_active", true);
     setBuzz(null);
     setActive(true);
     prevBuzzId.current = null;
@@ -1608,9 +1539,9 @@ function KahootMonitorView() {
 
   const pressVirtual = async (teamId) => {
     if (!active || buzz) return;
-    const existing = await safeGet("kahoot_buzz");
+    const existing = await kGet("kahoot_buzz");
     if (!existing) {
-      await safeSet("kahoot_buzz", { teamId, ts: Date.now() });
+      await kSet("kahoot_buzz", { teamId, ts: Date.now() });
       playBuzzerSound();
     }
     await fetchState();
@@ -1618,9 +1549,9 @@ function KahootMonitorView() {
 
   const awarPoint = async (teamId) => {
     const newPts = { ...pts, [teamId]: (pts[teamId] || 0) + 1 };
-    await safeSet("kahoot_pts", newPts);
-    await safeDelete("kahoot_active");
-    await safeDelete("kahoot_buzz");
+    await kSet("kahoot_pts", newPts);
+    await kDel("kahoot_active");
+    await kDel("kahoot_buzz");
     setPts(newPts);
     setActive(false);
     setBuzz(null);
@@ -1628,8 +1559,8 @@ function KahootMonitorView() {
   };
 
   const errado = async () => {
-    await safeDelete("kahoot_active");
-    await safeDelete("kahoot_buzz");
+    await kDel("kahoot_active");
+    await kDel("kahoot_buzz");
     setActive(false);
     setBuzz(null);
     prevBuzzId.current = null;
@@ -1637,9 +1568,9 @@ function KahootMonitorView() {
 
   const resetAll = async () => {
     if (!window.confirm("Zerar toda a pontuação do Kahoot English?")) return;
-    await safeDelete("kahoot_pts");
-    await safeDelete("kahoot_buzz");
-    await safeDelete("kahoot_active");
+    await kDel("kahoot_pts");
+    await kDel("kahoot_buzz");
+    await kDel("kahoot_active");
     setPts({});
     setBuzz(null);
     setActive(false);
@@ -1809,21 +1740,21 @@ function KahootMonitorView() {
 }
 
 // ── Kahoot English — Telão ────────────────────────────────────────
-function KahootTelaoView() {
+function KahootTelaoView({ forceLocal = false }) {
   const [pts, setPts] = useState({});
   const [buzz, setBuzz] = useState(null);
   const [active, setActive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
   const fetchAll = useCallback(async () => {
-    const p = await safeGet("kahoot_pts");
-    const b = await safeGet("kahoot_buzz");
-    const a = await safeGet("kahoot_active");
+    const p = await kahootGet("kahoot_pts", forceLocal);
+    const b = await kahootGet("kahoot_buzz", forceLocal);
+    const a = await kahootGet("kahoot_active", forceLocal);
     setPts(p ?? {});
     setBuzz(b ?? null);
     setActive(!!a);
     setLastUpdate(new Date());
-  }, []);
+  }, [forceLocal]);
 
   useEffect(() => {
     fetchAll();
@@ -1896,7 +1827,21 @@ function KahootTelaoView() {
 
 export default function App() {
   const [page, setPage] = useState("home");  // "home" | "propulsao" | "ponte" | "kahoot"
-  const [mode, setMode] = useState("monitor"); // "monitor" | "telao" | "buzzer"
+  const [mode, setMode] = useState("monitor"); // "monitor" | "telao"
+
+  // Modo offline do Kahoot English (servidor local, ginásio sem internet)
+  const [kahootOffline, setKahootOffline] = useState(() => {
+    if (isLocalMode) return true;
+    try { return localStorage.getItem("kahoot-mode") === "offline"; } catch { return false; }
+  });
+
+  const toggleKahootMode = () => {
+    setKahootOffline((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("kahoot-mode", next ? "offline" : "online"); } catch {}
+      return next;
+    });
+  };
 
   const pageLabel = page === "home"      ? "🏠 Início"
     : page === "propulsao" ? "🌀 Lançador de Spinner"
@@ -1912,16 +1857,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div style={{
-        background: isLocalMode ? '#16a34a' : AZUL,
-        color: '#fff', textAlign: 'center', fontSize: '11px',
-        fontWeight: 700, padding: '6px', letterSpacing: '.05em',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-      }}>
-        {isLocalMode
-          ? '📴 KAHOOT ENGLISH — MODO OFFLINE · servidor local · dados salvos no notebook'
-          : '📶 MODO ONLINE · Firebase ativo · dados sincronizados em tempo real'}
-      </div>
+      {isLocalMode && (
+        <div style={{ background: '#16a34a', color: '#fff', textAlign: 'center', fontSize: '11px', fontWeight: 700, padding: '5px', letterSpacing: '.05em' }}>
+          ● MODO OFFLINE — servidor local · todos os dados salvos no notebook
+        </div>
+      )}
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex flex-col gap-2 px-4 py-3">
           {/* Linha 1: título + seletor de modo (só quando não é home) */}
@@ -1968,6 +1908,29 @@ export default function App() {
               </button>
             ))}
           </div>
+          {/* Linha 3: toggle online/offline — só na aba Kahoot */}
+          {page === "kahoot" && !isLocalMode && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-white text-opacity-60" style={{ color: "rgba(255,255,255,0.55)" }}>
+                Kahoot:
+              </span>
+              <button
+                onClick={toggleKahootMode}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all"
+                style={{
+                  backgroundColor: kahootOffline ? "#16a34a" : "rgba(255,255,255,0.15)",
+                  color: "#fff",
+                  border: kahootOffline ? "1.5px solid #4ade80" : "1.5px solid rgba(255,255,255,0.25)",
+                }}>
+                {kahootOffline ? "📴 Offline — servidor local" : "📶 Online — Firebase"}
+              </button>
+              {kahootOffline && (
+                <span className="text-xs font-semibold" style={{ color: "#4ade80" }}>
+                  ← ginásio sem internet
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1975,7 +1938,9 @@ export default function App() {
       {page === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
       {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
       {page === "kahoot"    && (
-        mode === "monitor" ? <KahootMonitorView /> : <KahootTelaoView />
+        mode === "monitor"
+          ? <KahootMonitorView forceLocal={kahootOffline} />
+          : <KahootTelaoView  forceLocal={kahootOffline} />
       )}
     </div>
   );

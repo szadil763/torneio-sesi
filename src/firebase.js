@@ -72,3 +72,58 @@ export async function safeDelete(key) {
 
 // Exporta flag para o app mostrar badge offline
 export const isLocalMode = IS_LOCAL;
+
+// ── Funções específicas do Kahoot — suportam forceLocal ───────────
+// Quando forceLocal=true, sempre usa localhost:3000 mesmo se o app
+// está hospedado no Firebase (para ginásio sem internet).
+const KAHOOT_LOCAL_BASE = 'http://localhost:3000';
+
+function kahootBase(forceLocal) {
+  if (IS_LOCAL) return LOCAL_BASE;
+  if (forceLocal) return KAHOOT_LOCAL_BASE;
+  return null;
+}
+
+export async function kahootGet(key, forceLocal = false) {
+  const base = kahootBase(forceLocal);
+  if (base) {
+    try {
+      const r = await fetch(`${base}/db/${encodeURIComponent(key)}.json`);
+      if (!r.ok) return null;
+      const v = await r.json();
+      return v === null ? null : v;
+    } catch { return null; }
+  }
+  try {
+    const snapshot = await get(ref(db, key));
+    if (!snapshot.exists()) return null;
+    return snapshot.val();
+  } catch { return null; }
+}
+
+export async function kahootSet(key, value, forceLocal = false) {
+  const base = kahootBase(forceLocal);
+  if (base) {
+    try {
+      await fetch(`${base}/db/${encodeURIComponent(key)}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value),
+      });
+      return true;
+    } catch { return false; }
+  }
+  try {
+    await set(ref(db, key), value);
+    return true;
+  } catch { return false; }
+}
+
+export async function kahootDelete(key, forceLocal = false) {
+  const base = kahootBase(forceLocal);
+  if (base) {
+    try { await fetch(`${base}/db/${encodeURIComponent(key)}.json`, { method: 'DELETE' }); } catch {}
+    return;
+  }
+  try { await remove(ref(db, key)); } catch {}
+}
