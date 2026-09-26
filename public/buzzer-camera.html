@@ -15,10 +15,10 @@
     h1  { font-size:clamp(20px,4vw,28px); font-weight:900; }
     p   { font-size:14px; color:#aaa; max-width:38ch; line-height:1.6; }
 
-    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:13px 32px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s; }
+    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:13px 32px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s; -webkit-tap-highlight-color:transparent; }
     .btn-prim:hover { opacity:.88; }
     .btn-prim:disabled { opacity:.3; cursor:not-allowed; }
-    .btn-sec { font-size:13px; color:#aaa; background:none; border:1px solid #333; border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; }
+    .btn-sec { font-size:13px; color:#aaa; background:none; border:1px solid #333; border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; }
     .btn-sec:hover { color:#fff; border-color:#666; }
 
     /* ── Tela calibração ── */
@@ -31,51 +31,62 @@
     #video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }
     #overlay-cal { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
+    /* Barra de progresso */
+    #cal-progresso {
+      width:100%; padding:8px 14px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background:rgba(0,0,0,.9); backdrop-filter:blur(8px); flex-shrink:0;
+    }
+    #cal-prog-nome  { font-size:15px; font-weight:900; flex:1; text-align:left; }
+    #cal-prog-dots  { display:flex; gap:5px; align-items:center; }
+    .prog-dot { width:8px; height:8px; border-radius:50%; background:#333; transition:all .25s; flex-shrink:0; }
+    .prog-dot.feito { background:#4ade80; }
+    .prog-dot.atual { background:#fff; transform:scale(1.4); }
+    #cal-prog-passo { font-size:11px; color:#666; font-weight:700; white-space:nowrap; }
+
+    /* Instrução */
     #cal-instrucao {
-      width:100%; padding:9px 16px; text-align:center;
+      width:100%; padding:10px 16px; text-align:center;
       font-size:14px; font-weight:800; color:#fff;
       background:rgba(0,0,0,.82); backdrop-filter:blur(6px);
-      flex-shrink:0; min-height:42px; display:flex; align-items:center; justify-content:center;
-      transition: color .2s;
+      flex-shrink:0; min-height:44px; display:flex; align-items:center; justify-content:center;
     }
 
-    #cal-strip {
-      width:100%; display:flex; justify-content:center; gap:10px; padding:10px 12px;
-      background:rgba(0,0,0,.88); backdrop-filter:blur(8px); flex-shrink:0;
+    /* Barra de luminância (fase press) */
+    #cal-lum-wrap {
+      width:100%; padding:8px 14px 10px;
+      background:rgba(0,0,0,.85); flex-shrink:0;
+      display:none; flex-direction:column; gap:5px;
     }
-    .strip-btn {
-      display:flex; flex-direction:column; align-items:center; gap:3px;
-      width:64px; padding:8px 4px; border-radius:14px; border:2px solid #333;
-      background:rgba(255,255,255,.04); cursor:pointer; transition:all .15s;
-      font-family:inherit; color:#fff; font-size:10px; font-weight:800;
-      -webkit-tap-highlight-color:transparent;
-    }
-    .strip-btn .sb-emoji { font-size:26px; line-height:1; }
-    .strip-btn.colocado  { border-color:#4ade80; background:rgba(74,222,128,.12); }
-    .strip-btn.selecionado {
-      border-width:3px; background:rgba(255,255,255,.15);
-      transform:scale(1.08);
-      animation:sel-pulse .8s ease-in-out infinite alternate;
-    }
-    @keyframes sel-pulse {
-      from { box-shadow:0 0 0 0 rgba(255,255,255,.0); }
-      to   { box-shadow:0 0 0 8px rgba(255,255,255,.0); }
-    }
+    #cal-lum-header { display:flex; justify-content:space-between; align-items:center; }
+    #cal-lum-titulo { font-size:11px; color:#888; font-weight:700; }
+    #cal-lum-delta  { font-size:13px; font-weight:900; }
+    #cal-lum-track  { position:relative; width:100%; height:14px; background:#1a1d27; border-radius:100px; overflow:visible; }
+    #cal-lum-fill   { height:100%; border-radius:100px; width:0%; transition:width .05s; background:#4ade80; }
+    #cal-lum-line   { position:absolute; top:-4px; bottom:-4px; width:3px; background:#fff; border-radius:2px; opacity:.7; }
 
+    /* Resumo final */
+    #cal-resumo {
+      width:100%; padding:6px 14px;
+      background:rgba(0,0,0,.85); flex-shrink:0;
+      display:none; flex-direction:column;
+    }
+    .resumo-linha {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:5px 0; border-bottom:1px solid #1a1d27;
+    }
+    .resumo-linha:last-child { border-bottom:none; }
+    .resumo-nome { font-size:13px; font-weight:800; }
+    .resumo-val  { font-size:11px; color:#aaa; font-weight:700; background:#1a1d27; border-radius:6px; padding:2px 8px; }
+
+    /* Footer calibração */
     #cal-footer {
       width:100%; padding:10px 14px 22px;
       background:rgba(0,0,0,.9); backdrop-filter:blur(8px);
-      display:flex; flex-direction:column; gap:8px;
-      flex-shrink:0;
+      display:flex; gap:10px; align-items:stretch; flex-shrink:0;
     }
-    #cal-footer .btn-prim {
-      width:100%; font-size:17px; padding:14px;
-      border-radius:14px;
-    }
-    #cal-footer .btn-sec {
-      width:100%; font-size:14px; padding:11px;
-      border-radius:12px; text-align:center;
-    }
+    #cal-btn-refazer { font-size:14px; padding:13px 16px; border-radius:12px; white-space:nowrap; }
+    #cal-btn-acao { flex:1; font-size:16px; padding:13px; border-radius:14px; }
 
     /* ── Tela jogo ── */
     #tela-jogo { padding:0; justify-content:flex-start; }
@@ -99,20 +110,9 @@
     .det-track { width:100%; height:12px; background:#1a1d27; border-radius:100px; overflow:hidden; }
     .det-fill  { height:100%; border-radius:100px; width:0%; transition:width .06s; }
 
-    #sens-bloco {
-      width:100%; max-width:340px;
-      background:rgba(255,255,255,.05); border-radius:14px;
-      padding:12px 14px; display:flex; flex-direction:column; gap:6px;
-    }
-    #sens-header { display:flex; justify-content:space-between; align-items:center; }
-    #sens-titulo { font-size:12px; font-weight:800; color:#aaa; }
-    #sens-valor  { font-size:13px; font-weight:900; color:#fff; background:#333; border-radius:8px; padding:2px 9px; }
-    #sens-slider { width:100%; accent-color:#fff; cursor:pointer; }
-    #sens-labels { display:flex; justify-content:space-between; font-size:10px; color:#444; font-weight:700; }
-
     #jogo-footer { width:100%; padding:10px 16px; background:rgba(0,0,0,.7); backdrop-filter:blur(8px); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
 
-    /* conexão */
+    /* Conexão */
     #bar-con { position:fixed; bottom:0; left:0; right:0; display:flex; align-items:center; justify-content:center; gap:5px; font-size:10px; color:rgba(255,255,255,.2); padding:3px; z-index:100; pointer-events:none; }
     .dot { width:5px; height:5px; border-radius:50%; }
     .dot.on  { background:#4ade80; }
@@ -130,48 +130,53 @@
 <div id="tela-perm" class="tela visivel">
   <div style="font-size:56px">🎥</div>
   <h1>Buzzer por Câmera</h1>
-  <p>Posicione o celular com visão das 4 botoeiras e marque onde cada uma está na tela.</p>
+  <p>Posicione o celular com visão das 4 botoeiras. Cada uma será calibrada individualmente.</p>
   <button class="btn-prim" onclick="pedirCamera()">📷 Iniciar câmera</button>
 </div>
 
-<!-- TELA 2: Posicionamento por toque -->
+<!-- TELA 2: Calibração individual -->
 <div id="tela-cal" class="tela">
-
   <div id="video-wrap">
     <video id="video" autoplay playsinline muted disablePictureInPicture x-webkit-airplay="deny"></video>
     <canvas id="overlay-cal"></canvas>
   </div>
 
-  <div id="cal-instrucao">Toque em uma cor abaixo para começar</div>
+  <div id="cal-progresso">
+    <div id="cal-prog-nome">🔴 Vermelha</div>
+    <div id="cal-prog-dots"></div>
+    <div id="cal-prog-passo">1 de 4</div>
+  </div>
 
-  <div id="cal-strip"></div>
+  <div id="cal-instrucao">Toque no vídeo para marcar a posição</div>
+
+  <div id="cal-lum-wrap">
+    <div id="cal-lum-header">
+      <span id="cal-lum-titulo">💡 Variação de luz detectada</span>
+      <span id="cal-lum-delta">+0</span>
+    </div>
+    <div id="cal-lum-track">
+      <div id="cal-lum-fill"></div>
+      <div id="cal-lum-line"></div>
+    </div>
+  </div>
+
+  <div id="cal-resumo"></div>
 
   <div id="cal-footer">
-    <button class="btn-prim" id="cal-btn-confirmar" disabled onclick="confirmarZonas()">✓ Salvar calibração e iniciar</button>
-    <button class="btn-sec" onclick="limparPosicoes()">↺ Refazer calibração</button>
+    <button class="btn-sec" id="cal-btn-refazer" onclick="refazerAtual()">↺ Refazer</button>
+    <button class="btn-prim" id="cal-btn-acao" disabled onclick="acaoPrincipal()">Próxima →</button>
   </div>
 </div>
 
 <!-- TELA 3: Jogo -->
 <div id="tela-jogo" class="tela">
   <div id="cam-preview">
-    <video id="video-jogo" autoplay playsinline muted></video>
+    <video id="video-jogo" autoplay playsinline muted disablePictureInPicture x-webkit-airplay="deny"></video>
     <canvas id="overlay-jogo"></canvas>
   </div>
 
   <div id="jogo-corpo">
     <div id="det-bars"></div>
-
-    <div id="sens-bloco">
-      <div id="sens-header">
-        <span id="sens-titulo">⚡ Sensibilidade de detecção</span>
-        <span id="sens-valor">20</span>
-      </div>
-      <input type="range" id="sens-slider" min="5" max="80" value="20"
-             oninput="ajustarSensibilidade(+this.value)">
-      <div id="sens-labels"><span>Mais sensível</span><span>Menos sensível</span></div>
-    </div>
-
     <div id="status-jogo">🟢 Aguardando…</div>
     <div id="winner-card">
       <div id="winner-emoji">🏆</div>
@@ -182,12 +187,12 @@
   <div id="jogo-footer">
     <button class="btn-sec" onclick="resetarRodada()">↺ Nova rodada</button>
     <span style="font-size:11px;color:#444" id="det-status">—</span>
-    <button class="btn-sec" onclick="voltarCal()">⚙ Reposicionar</button>
+    <button class="btn-sec" onclick="voltarCal()">⚙ Recalibrar</button>
   </div>
 </div>
 
 <div id="flash"></div>
-<canvas id="canal" style="display:none"></canvas>
+<canvas id="canal" style="display:none" width="160" height="120"></canvas>
 
 <div id="bar-con">
   <div class="dot off" id="dot-con"></div>
@@ -195,7 +200,7 @@
 </div>
 
 <script>
-// ── Times ─────────────────────────────────────────────────────────
+// ── Constantes ────────────────────────────────────────────────────
 const TIMES = [
   { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
   { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
@@ -203,52 +208,60 @@ const TIMES = [
   { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡' },
 ];
 
-const RTDB        = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
-const STORAGE_KEY = 'torneio-buzzer-cam:v4';
+const RTDB         = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
+const STORAGE_KEY  = 'torneio-buzzer-cam:v5';
+const ANAL_W       = 160;
+const ANAL_H       = 120;
+const ZONA_R_AN    = 14;
+const LOCK_MS      = 700;
+const MEASURE_FRAMES = 50;   // ~1.7 s de medição de ambiente
+const PRESS_MIN_DELTA = 15;  // delta mínimo para detectar LED
+const LUM_MAX      = 60;     // escala máxima da barra de lum
 
-// Parâmetros LED
-const ANAL_W    = 160;
-const ANAL_H    = 120;
-const ZONA_R_AN = 14;
-let DET_DELTA = 20;
-const LOCK_MS   = 700;
+// ── Câmera ────────────────────────────────────────────────────────
+let videoStream    = null;
+let calContainerAR = null;
 
-// Estado calibração
-let videoStream  = null;
-let posicoes     = {};         // { teamId: {fx, fy} } — fração 0-1
-let selecionado  = null;       // teamId atualmente selecionado para posicionar
-let calAnimFrame = null;
-let calContainerAR = null;     // aspect ratio do container na calibração (para alinhar detecção)
+// ── Estado calibração ─────────────────────────────────────────────
+// calZonasData[i] = null | { fx, fy, timeId, ambient, threshold }
+let calZonasData  = new Array(TIMES.length).fill(null);
+let calBuzzerIdx  = 0;
+let calEtapa      = 'tap';   // 'tap' | 'measure' | 'press' | 'done' | 'summary'
+let calLoopFrame  = null;
+let calFrameCount = 0;
+let calAmbSamples = [];
+let calAmbient    = 0;
+let calTapPos     = null;    // { fx, fy } posição atual (durante calibração)
 
-// Estado jogo
-let zonas       = [];
-let detectando  = false;
-let baseline    = [];
-let lumAtual    = [];
-let lockUntil   = 0;
-let declarando  = false;
+// ── Estado jogo ───────────────────────────────────────────────────
+let zonas      = [];
+let detectando = false;
+let baseline   = [];
+let lumAtual   = [];
+let lockUntil  = 0;
+let declarando = false;
 let rodadaAtual = -1;
-let sseConn     = null;
+let sseConn    = null;
 
 // ── Áudio ─────────────────────────────────────────────────────────
 const aC = new (window.AudioContext || window.webkitAudioContext)();
 function tocarSom(tid) {
-  if (aC.state==='suspended') aC.resume();
-  const t=aC.currentTime;
-  const sons={
-    vermelha:()=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='sawtooth';o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(80,t+.5);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.55);o.start(t);o.stop(t+.6);},
-    azul:()=>{[880,1320,1760].forEach((f,i)=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='sine';o.frequency.value=f;const t0=t+i*.04;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.3-i*.08,t0+.02);g.gain.exponentialRampToValueAtTime(.001,t0+.6);o.start(t0);o.stop(t0+.65);});},
-    verde:()=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='triangle';o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(700,t+.25);g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.start(t);o.stop(t+.45);},
-    amarela:()=>{[0,.18].forEach(d=>{const o=aC.createOscillator(),g=aC.createGain();o.connect(g);g.connect(aC.destination);o.type='square';o.frequency.value=660;const t0=t+d;g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.14);o.start(t0);o.stop(t0+.15);});},
+  if (aC.state === 'suspended') aC.resume();
+  const t = aC.currentTime;
+  const sons = {
+    vermelha: () => { const o=aC.createOscillator(),g=aC.createGain(); o.connect(g); g.connect(aC.destination); o.type='sawtooth'; o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(80,t+.5); g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.55); o.start(t); o.stop(t+.6); },
+    azul:     () => { [880,1320,1760].forEach((f,i)=>{ const o=aC.createOscillator(),g=aC.createGain(); o.connect(g); g.connect(aC.destination); o.type='sine'; o.frequency.value=f; const t0=t+i*.04; g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.3-i*.08,t0+.02); g.gain.exponentialRampToValueAtTime(.001,t0+.6); o.start(t0); o.stop(t0+.65); }); },
+    verde:    () => { const o=aC.createOscillator(),g=aC.createGain(); o.connect(g); g.connect(aC.destination); o.type='triangle'; o.frequency.setValueAtTime(300,t); o.frequency.exponentialRampToValueAtTime(700,t+.25); g.gain.setValueAtTime(.4,t); g.gain.exponentialRampToValueAtTime(.001,t+.4); o.start(t); o.stop(t+.45); },
+    amarela:  () => { [0,.18].forEach(d=>{ const o=aC.createOscillator(),g=aC.createGain(); o.connect(g); g.connect(aC.destination); o.type='square'; o.frequency.value=660; const t0=t+d; g.gain.setValueAtTime(.3,t0); g.gain.exponentialRampToValueAtTime(.001,t0+.14); o.start(t0); o.stop(t0+.15); }); },
   };
-  (sons[tid]||sons.vermelha)();
+  (sons[tid] || sons.vermelha)();
 }
 
 // ── Câmera ────────────────────────────────────────────────────────
 async function pedirCamera() {
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: { facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } },
       audio: false
     });
     document.getElementById('video').srcObject      = videoStream;
@@ -260,56 +273,53 @@ async function pedirCamera() {
   }
 }
 
-// ── Tela de calibração ────────────────────────────────────────────
+// ── Calibração ────────────────────────────────────────────────────
 function iniciarCal() {
-  // Carrega posições salvas
+  // Carrega dados salvos
   try {
     const salvo = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (salvo && typeof salvo === 'object') {
-      posicoes = salvo.posicoes || salvo;
+    if (salvo && Array.isArray(salvo.zonas) && salvo.zonas.length === TIMES.length) {
+      calZonasData   = salvo.zonas;
       calContainerAR = salvo.calContainerAR || null;
     }
   } catch(_) {}
 
-  construirStrip();
   mostrarTela('tela-cal');
 
-  // Seleciona automaticamente a primeira não posicionada
-  const primeira = TIMES.find(t => !posicoes[t.id]);
-  selecionado = primeira ? primeira.id : null;
+  // Captura AR do container assim que a tela aparecer
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('video-wrap');
+    if (wrap.offsetWidth && wrap.offsetHeight)
+      calContainerAR = wrap.offsetWidth / wrap.offsetHeight;
+  });
 
-  // Eventos de toque/clique no vídeo
+  // Registra eventos de toque
   const wrap = document.getElementById('video-wrap');
-  wrap.addEventListener('click',      aoClicarVideo);
-  wrap.addEventListener('touchend',   aoClicarVideo, { passive: false });
+  wrap.removeEventListener('click',    aoClicarVideo);
+  wrap.removeEventListener('touchend', aoClicarVideo);
+  wrap.addEventListener('click',    aoClicarVideo);
+  wrap.addEventListener('touchend', aoClicarVideo, { passive:false });
+
+  // Determina ponto de partida
+  if (calZonasData.every(z => z && z.threshold != null)) {
+    calEtapa = 'summary';
+  } else {
+    calBuzzerIdx = calZonasData.findIndex(z => !z || z.threshold == null);
+    if (calBuzzerIdx < 0) calBuzzerIdx = 0;
+    calEtapa  = 'tap';
+    calTapPos = calZonasData[calBuzzerIdx] ? { fx: calZonasData[calBuzzerIdx].fx, fy: calZonasData[calBuzzerIdx].fy } : null;
+  }
 
   iniciarLoopCal();
   atualizarCalUI();
 }
 
-function construirStrip() {
-  const strip = document.getElementById('cal-strip');
-  strip.innerHTML = '';
-  TIMES.forEach(tm => {
-    const btn = document.createElement('button');
-    btn.className = 'strip-btn';
-    btn.id = 'sb-' + tm.id;
-    btn.innerHTML = `<div class="sb-emoji">${tm.emoji}</div><div>${tm.nome.split('·')[1].trim()}</div>`;
-    btn.addEventListener('click', () => selecionarTime(tm.id));
-    strip.appendChild(btn);
-  });
-}
-
-function selecionarTime(id) {
-  selecionado = (selecionado === id) ? null : id;
-  atualizarCalUI();
-}
-
 function aoClicarVideo(e) {
   e.preventDefault();
-  const wrap = document.getElementById('video-wrap');
-  const rect  = wrap.getBoundingClientRect();
+  if (calEtapa !== 'tap') return;
 
+  const wrap = document.getElementById('video-wrap');
+  const rect = wrap.getBoundingClientRect();
   let cx, cy;
   if (e.changedTouches && e.changedTouches.length > 0) {
     cx = e.changedTouches[0].clientX;
@@ -319,80 +329,234 @@ function aoClicarVideo(e) {
     cy = e.clientY;
   }
 
-  const fx = clamp((cx - rect.left)  / rect.width,  0.04, 0.96);
-  const fy = clamp((cy - rect.top)   / rect.height, 0.04, 0.96);
+  const fx = clamp((cx - rect.left) / rect.width,  0.04, 0.96);
+  const fy = clamp((cy - rect.top)  / rect.height, 0.04, 0.96);
 
-  // Verifica se tocou perto de um círculo já colocado (raio ~9% da largura)
-  const RAIO = 0.09;
-  for (const tm of TIMES) {
-    const p = posicoes[tm.id];
-    if (p && Math.hypot(fx - p.fx, fy - p.fy) < RAIO) {
-      selecionado = tm.id;
-      atualizarCalUI();
-      return;
-    }
-  }
+  // Captura AR exato no momento do toque
+  if (wrap.offsetWidth && wrap.offsetHeight)
+    calContainerAR = wrap.offsetWidth / wrap.offsetHeight;
 
-  if (!selecionado) return;
+  calTapPos     = { fx, fy };
+  calEtapa      = 'measure';
+  calFrameCount = 0;
+  calAmbSamples = [];
 
-  // Coloca o círculo selecionado na posição tocada
-  posicoes[selecionado] = { fx, fy };
-
-  // Avança para o próximo não posicionado
-  const prox = TIMES.find(t => !posicoes[t.id]);
-  selecionado = prox ? prox.id : null;
+  // Garante que canvas de análise está pronto
+  const canal = document.getElementById('canal');
+  canal.width = ANAL_W; canal.height = ANAL_H;
 
   atualizarCalUI();
 }
 
-function atualizarCalUI() {
-  const todas = TIMES.every(t => posicoes[t.id]);
-  document.getElementById('cal-btn-confirmar').disabled = !todas;
-
-  // Instrução
-  const instrEl = document.getElementById('cal-instrucao');
-  if (todas && !selecionado) {
-    instrEl.textContent = '✅ Todas marcadas — confirme para iniciar';
-    instrEl.style.color = '#4ade80';
-  } else if (selecionado) {
-    const tm = TIMES.find(t => t.id === selecionado);
-    instrEl.textContent = `${tm.emoji} Toque no vídeo onde está a botoeira ${tm.nome.split('·')[1].trim()}`;
-    instrEl.style.color = tm.cor;
-  } else {
-    instrEl.textContent = 'Toque em uma cor abaixo para reposicionar';
-    instrEl.style.color = '#fff';
-  }
-
-  // Atualiza strip
-  TIMES.forEach(tm => {
-    const btn = document.getElementById('sb-' + tm.id);
-    if (!btn) return;
-    btn.className = 'strip-btn' +
-      (posicoes[tm.id]  ? ' colocado'   : '') +
-      (selecionado === tm.id ? ' selecionado' : '');
-    btn.style.borderColor = selecionado === tm.id ? tm.cor : (posicoes[tm.id] ? '#4ade80' : '#333');
-    btn.innerHTML = `<div class="sb-emoji">${tm.emoji}</div><div>${posicoes[tm.id] ? '✓' : tm.nome.split('·')[1].trim()}</div>`;
-  });
-}
-
-function limparPosicoes() {
-  posicoes = {};
-  selecionado = TIMES[0].id;
-  atualizarCalUI();
-}
-
-// ── Loop de desenho da calibração ─────────────────────────────────
+// ── Loop de calibração ─────────────────────────────────────────────
 function iniciarLoopCal() {
-  if (calAnimFrame) cancelAnimationFrame(calAnimFrame);
+  if (calLoopFrame) cancelAnimationFrame(calLoopFrame);
   let fc = 0;
   function loop() {
-    calAnimFrame = requestAnimationFrame(loop);
-    if (++fc % 2 !== 0) return; // ~30fps
+    calLoopFrame = requestAnimationFrame(loop);
+    if (++fc % 2 !== 0) return;
     desenharOverlayCal();
+    if (calEtapa === 'measure' || calEtapa === 'press') rodarAnaliseCal();
   }
   loop();
 }
 
+function rodarAnaliseCal() {
+  const videoEl = document.getElementById('video');
+  if (videoEl.readyState < 2 || !calTapPos) return;
+
+  const canal = document.getElementById('canal');
+  const ctx   = canal.getContext('2d');
+  desenharFrameAlinhado(ctx, videoEl);
+
+  const zona = { fx: calTapPos.fx, fy: calTapPos.fy };
+  const lum  = lerLuminanciaZona(ctx, zona);
+
+  if (calEtapa === 'measure') {
+    calAmbSamples.push(lum);
+    calFrameCount++;
+    const pct = Math.round(calFrameCount / MEASURE_FRAMES * 100);
+    document.getElementById('cal-instrucao').textContent =
+      `📐 Medindo luz ambiente… ${pct}%`;
+
+    if (calFrameCount >= MEASURE_FRAMES) {
+      calAmbient = calAmbSamples.reduce((a, b) => a + b, 0) / calAmbSamples.length;
+      calEtapa   = 'press';
+      calFrameCount = 0;
+      atualizarCalUI();
+    }
+
+  } else if (calEtapa === 'press') {
+    const delta = lum - calAmbient;
+    const pct   = Math.min(100, Math.max(0, delta / LUM_MAX * 100));
+    const fill  = document.getElementById('cal-lum-fill');
+    fill.style.width = pct + '%';
+    fill.style.background = delta >= PRESS_MIN_DELTA ? '#fff'
+                          : delta > PRESS_MIN_DELTA * 0.55 ? '#f97316'
+                          : '#4ade80';
+    document.getElementById('cal-lum-delta').textContent = '+' + Math.round(Math.max(0, delta));
+
+    if (delta >= PRESS_MIN_DELTA) {
+      const threshold = Math.max(8, Math.round(delta * 0.6));
+      calZonasData[calBuzzerIdx] = {
+        fx:        calTapPos.fx,
+        fy:        calTapPos.fy,
+        timeId:    TIMES[calBuzzerIdx].id,
+        ambient:   calAmbient,
+        threshold
+      };
+      calEtapa = 'done';
+      salvarCal();
+      atualizarCalUI();
+    }
+  }
+}
+
+// ── UI de calibração ───────────────────────────────────────────────
+function atualizarCalUI() {
+  const tm          = TIMES[calBuzzerIdx] || TIMES[0];
+  const progNome    = document.getElementById('cal-prog-nome');
+  const progPasso   = document.getElementById('cal-prog-passo');
+  const progDots    = document.getElementById('cal-prog-dots');
+  const instrEl     = document.getElementById('cal-instrucao');
+  const lumWrap     = document.getElementById('cal-lum-wrap');
+  const resumoEl    = document.getElementById('cal-resumo');
+  const btnRefazer  = document.getElementById('cal-btn-refazer');
+  const btnAcao     = document.getElementById('cal-btn-acao');
+
+  // Dots de progresso
+  progDots.innerHTML = '';
+  TIMES.forEach((_, i) => {
+    const d = document.createElement('div');
+    const done = calZonasData[i] && calZonasData[i].threshold != null;
+    d.className = 'prog-dot'
+      + (done ? ' feito' : '')
+      + (i === calBuzzerIdx && calEtapa !== 'summary' ? ' atual' : '');
+    progDots.appendChild(d);
+  });
+
+  // Reset visibilidades
+  lumWrap.style.display  = 'none';
+  resumoEl.style.display = 'none';
+
+  if (calEtapa === 'summary') {
+    progNome.textContent  = '✅ Calibração concluída';
+    progNome.style.color  = '#4ade80';
+    progPasso.textContent = '';
+    instrEl.textContent   = 'Tudo pronto! Confirme para iniciar a detecção.';
+    instrEl.style.color   = '#4ade80';
+
+    resumoEl.style.display = 'flex';
+    resumoEl.style.flexDirection = 'column';
+    resumoEl.innerHTML = TIMES.map((t, i) => {
+      const cal = calZonasData[i];
+      return `<div class="resumo-linha">
+        <span class="resumo-nome" style="color:${t.cor}">${t.emoji} ${t.nome.split('·')[1].trim()}</span>
+        <span class="resumo-val">limite ${cal ? cal.threshold : '—'}</span>
+      </div>`;
+    }).join('');
+
+    btnRefazer.textContent = '↺ Recalibrar';
+    btnRefazer.style.display = '';
+    btnAcao.disabled    = false;
+    btnAcao.textContent = '▶ Iniciar';
+
+  } else if (calEtapa === 'tap') {
+    progNome.textContent  = `${tm.emoji} ${tm.nome.split('·')[1].trim()}`;
+    progNome.style.color  = tm.cor;
+    progPasso.textContent = `${calBuzzerIdx + 1} de ${TIMES.length}`;
+    instrEl.textContent   = `${tm.emoji} Toque no vídeo onde está a botoeira ${tm.nome.split('·')[1].trim()}`;
+    instrEl.style.color   = tm.cor;
+    btnRefazer.textContent   = '↺ Refazer';
+    btnRefazer.style.display = calBuzzerIdx > 0 || calZonasData.some(z => z) ? '' : 'none';
+    btnAcao.disabled    = true;
+    btnAcao.textContent = 'Próxima →';
+
+  } else if (calEtapa === 'measure') {
+    progNome.textContent  = `${tm.emoji} ${tm.nome.split('·')[1].trim()}`;
+    progNome.style.color  = tm.cor;
+    progPasso.textContent = `${calBuzzerIdx + 1} de ${TIMES.length}`;
+    instrEl.textContent   = '📐 Medindo luz ambiente…';
+    instrEl.style.color   = '#fff';
+    btnRefazer.textContent   = '↺ Refazer';
+    btnRefazer.style.display = '';
+    btnAcao.disabled    = true;
+    btnAcao.textContent = 'Aguardando…';
+
+  } else if (calEtapa === 'press') {
+    progNome.textContent  = `${tm.emoji} ${tm.nome.split('·')[1].trim()}`;
+    progNome.style.color  = tm.cor;
+    progPasso.textContent = `${calBuzzerIdx + 1} de ${TIMES.length}`;
+    instrEl.textContent   = `${tm.emoji} Pressione a botoeira ${tm.nome.split('·')[1].trim()} agora!`;
+    instrEl.style.color   = tm.cor;
+    lumWrap.style.display = 'flex';
+    document.getElementById('cal-lum-line').style.left = (PRESS_MIN_DELTA / LUM_MAX * 100) + '%';
+    btnRefazer.textContent   = '↺ Refazer';
+    btnRefazer.style.display = '';
+    btnAcao.disabled    = true;
+    btnAcao.textContent = 'Aguardando aperto…';
+
+  } else if (calEtapa === 'done') {
+    const thresh  = calZonasData[calBuzzerIdx] ? calZonasData[calBuzzerIdx].threshold : '?';
+    const isLast  = calBuzzerIdx === TIMES.length - 1;
+    progNome.textContent  = `${tm.emoji} ${tm.nome.split('·')[1].trim()}`;
+    progNome.style.color  = '#4ade80';
+    progPasso.textContent = `${calBuzzerIdx + 1} de ${TIMES.length}`;
+    instrEl.textContent   = `✅ ${tm.nome.split('·')[1].trim()} calibrada! Limite: ${thresh}`;
+    instrEl.style.color   = '#4ade80';
+    lumWrap.style.display = 'flex';
+    document.getElementById('cal-lum-fill').style.width  = '0%';
+    document.getElementById('cal-lum-delta').textContent = '+0';
+    btnRefazer.textContent   = '↺ Refazer';
+    btnRefazer.style.display = '';
+    btnAcao.disabled    = false;
+    btnAcao.textContent = isLast ? '✓ Iniciar →' : 'Próxima →';
+  }
+}
+
+function acaoPrincipal() {
+  if (calEtapa === 'done') {
+    const prox = calBuzzerIdx + 1;
+    if (prox >= TIMES.length) {
+      calEtapa = 'summary';
+    } else {
+      calBuzzerIdx = prox;
+      calEtapa  = 'tap';
+      calTapPos = calZonasData[prox] ? { fx: calZonasData[prox].fx, fy: calZonasData[prox].fy } : null;
+    }
+    atualizarCalUI();
+  } else if (calEtapa === 'summary') {
+    iniciarJogo();
+  }
+}
+
+function refazerAtual() {
+  if (calEtapa === 'summary') {
+    calZonasData = new Array(TIMES.length).fill(null);
+    calBuzzerIdx = 0;
+    calEtapa     = 'tap';
+    calTapPos    = null;
+    salvarCal();
+    atualizarCalUI();
+    return;
+  }
+  // Refaz o buzzer atual do zero
+  calZonasData[calBuzzerIdx] = null;
+  calEtapa      = 'tap';
+  calTapPos     = null;
+  calFrameCount = 0;
+  calAmbSamples = [];
+  salvarCal();
+  atualizarCalUI();
+}
+
+function salvarCal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ zonas: calZonasData, calContainerAR }));
+  } catch(_) {}
+}
+
+// ── Overlay calibração ─────────────────────────────────────────────
 function desenharOverlayCal() {
   const wrap = document.getElementById('video-wrap');
   const cvs  = document.getElementById('overlay-cal');
@@ -404,71 +568,64 @@ function desenharOverlayCal() {
   const ctx = cvs.getContext('2d');
   ctx.clearRect(0, 0, W, H);
 
-  // Desenha círculos das posições já colocadas
-  TIMES.forEach(tm => {
-    const p = posicoes[tm.id];
-    if (!p) return;
-    const px = p.fx * W;
-    const py = p.fy * H;
-    const r  = 28;
-    const sel = selecionado === tm.id;
-
-    // Anel externo (se selecionado: pisca)
-    if (sel) {
-      const alpha = 0.4 + 0.4 * Math.sin(Date.now() / 200);
-      ctx.beginPath(); ctx.arc(px, py, r + 10, 0, Math.PI * 2);
-      ctx.strokeStyle = tm.cor + Math.round(alpha * 255).toString(16).padStart(2,'0');
-      ctx.lineWidth = 3; ctx.stroke();
-    }
-
-    // Círculo preenchido
+  // Buzzers já calibrados (exceto o atual em modo não-summary)
+  TIMES.forEach((tm, i) => {
+    if (i === calBuzzerIdx && calEtapa !== 'summary') return;
+    const cal = calZonasData[i];
+    if (!cal) return;
+    const px = cal.fx * W, py = cal.fy * H, r = 28;
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.fillStyle = tm.cor + 'cc';
-    ctx.fill();
-    ctx.strokeStyle = sel ? '#fff' : tm.cor;
-    ctx.lineWidth = sel ? 3 : 2;
-    ctx.stroke();
-
-    // Emoji + rótulo
+    ctx.fillStyle = tm.cor + 'cc'; ctx.fill();
+    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.stroke();
     ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
     ctx.fillText(tm.emoji, px, py - 5);
     ctx.font = 'bold 9px Baloo 2, sans-serif';
-    ctx.fillText(tm.nome.split('·')[1].trim(), px, py + 13);
+    ctx.fillText('✓', px, py + 13);
   });
 
-  // Cursor crosshair se há um selecionado ainda não posicionado
-  if (selecionado && !posicoes[selecionado]) {
-    const tm = TIMES.find(t => t.id === selecionado);
-    // Grade de guia suave
-    ctx.strokeStyle = tm.cor + '33';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 6]);
-    // horizontal e vertical no centro
-    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
-    ctx.setLineDash([]);
+  // Buzzer atual (em calibração)
+  if (calEtapa !== 'summary' && calTapPos) {
+    const tm  = TIMES[calBuzzerIdx];
+    const px  = calTapPos.fx * W, py = calTapPos.fy * H, r = 28;
+    const alpha = 0.3 + 0.35 * Math.sin(Date.now() / 220);
+    ctx.beginPath(); ctx.arc(px, py, r + 12, 0, Math.PI * 2);
+    ctx.strokeStyle = tm.cor + Math.round(alpha * 255).toString(16).padStart(2, '0');
+    ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = calEtapa === 'done' ? tm.cor + 'cc' : tm.cor + '77';
+    ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(tm.emoji, px, py - 5);
+    ctx.font = 'bold 9px Baloo 2, sans-serif';
+    ctx.fillText(calEtapa === 'done' ? '✓' : '…', px, py + 13);
+  }
+
+  // Crosshair se em tap sem posição
+  if (calEtapa === 'tap' && !calTapPos) {
+    const tm = TIMES[calBuzzerIdx];
+    if (tm) {
+      ctx.strokeStyle = tm.cor + '44';
+      ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
+      ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+      ctx.setLineDash([]);
+    }
   }
 }
 
-// ── Confirmar e iniciar jogo ───────────────────────────────────────
-function confirmarZonas() {
-  if (!TIMES.every(t => posicoes[t.id])) return;
-
-  // Salva o aspect ratio do container de calibração para alinhar coordenadas na detecção
-  const wrap = document.getElementById('video-wrap');
-  calContainerAR = wrap.offsetWidth / (wrap.offsetHeight || 1);
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ posicoes, calContainerAR }));
-  } catch(_) {}
-
-  if (calAnimFrame) { cancelAnimationFrame(calAnimFrame); calAnimFrame = null; }
-
-  zonas = TIMES.map(tm => ({ fx: posicoes[tm.id].fx, fy: posicoes[tm.id].fy, timeId: tm.id }));
-
+// ── Iniciar jogo ───────────────────────────────────────────────────
+function iniciarJogo() {
+  if (calLoopFrame) { cancelAnimationFrame(calLoopFrame); calLoopFrame = null; }
+  zonas = calZonasData.map(cal => ({
+    fx: cal.fx, fy: cal.fy,
+    timeId: cal.timeId,
+    threshold: cal.threshold
+  }));
   mostrarTela('tela-jogo');
   iniciarDeteccao();
 }
@@ -476,26 +633,12 @@ function confirmarZonas() {
 function voltarCal() {
   detectando = false;
   mostrarTela('tela-cal');
-  selecionado = null;
+  calEtapa = 'summary';
   atualizarCalUI();
   iniciarLoopCal();
 }
 
-// ── Detecção de LED por luminância ────────────────────────────────
-function iniciarDeteccao() {
-  if (aC.state === 'suspended') aC.resume();
-  const canal = document.getElementById('canal');
-  canal.width  = ANAL_W;
-  canal.height = ANAL_H;
-
-  baseline  = Array(4).fill(-1);
-  lumAtual  = Array(4).fill(0);
-  detectando = true;
-  renderDetBars();
-  renderOverlayJogo();
-  loopDeteccao();
-}
-
+// ── Análise de frame ───────────────────────────────────────────────
 function lerLuminanciaZona(ctx, zona) {
   const px = Math.round(zona.fx * ANAL_W);
   const py = Math.round(zona.fy * ANAL_H);
@@ -511,31 +654,33 @@ function lerLuminanciaZona(ctx, zona) {
   return sum / (d.length / 4);
 }
 
-// Desenha o frame com o mesmo corte que object-fit:cover usa no container de calibração.
-// Sem isso, as coordenadas do toque (display space) não batem com o frame completo.
 function desenharFrameAlinhado(ctx, videoEl) {
-  const vw = videoEl.videoWidth;
-  const vh = videoEl.videoHeight;
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
   if (!vw || !vh) { ctx.drawImage(videoEl, 0, 0, ANAL_W, ANAL_H); return; }
-
-  const ar  = calContainerAR || (ANAL_W / ANAL_H);
-  const var_ = vw / vh;  // aspect ratio do vídeo
-
+  const ar   = calContainerAR || (ANAL_W / ANAL_H);
+  const var_ = vw / vh;
   let sx, sy, sw, sh;
   if (var_ > ar) {
-    // Vídeo mais largo que o container → corta laterais
-    sh = vh;
-    sw = Math.round(vh * ar);
-    sx = Math.round((vw - sw) / 2);
-    sy = 0;
+    sh = vh; sw = Math.round(vh * ar);
+    sx = Math.round((vw - sw) / 2); sy = 0;
   } else {
-    // Vídeo mais alto → corta topo/base
-    sw = vw;
-    sh = Math.round(vw / ar);
-    sx = 0;
-    sy = Math.round((vh - sh) / 2);
+    sw = vw; sh = Math.round(vw / ar);
+    sx = 0; sy = Math.round((vh - sh) / 2);
   }
   ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, ANAL_W, ANAL_H);
+}
+
+// ── Detecção no jogo ───────────────────────────────────────────────
+function iniciarDeteccao() {
+  if (aC.state === 'suspended') aC.resume();
+  const canal = document.getElementById('canal');
+  canal.width = ANAL_W; canal.height = ANAL_H;
+  baseline   = Array(zonas.length).fill(-1);
+  lumAtual   = Array(zonas.length).fill(0);
+  detectando = true;
+  renderDetBars();
+  renderOverlayJogo();
+  loopDeteccao();
 }
 
 let fc2 = 0;
@@ -549,7 +694,7 @@ function loopDeteccao() {
 
   const canal = document.getElementById('canal');
   const ctx   = canal.getContext('2d');
-  desenharFrameAlinhado(ctx, videoEl);  // corte alinhado com calibração
+  desenharFrameAlinhado(ctx, videoEl);
 
   const agora    = Date.now();
   const bloqueado = agora < lockUntil;
@@ -566,7 +711,7 @@ function loopDeteccao() {
 
   if (!bloqueado && !declarando) {
     for (let i = 0; i < zonas.length; i++) {
-      if ((lumAtual[i] - baseline[i]) >= DET_DELTA) {
+      if ((lumAtual[i] - baseline[i]) >= zonas[i].threshold) {
         declararVencedor(zonas[i].timeId);
         lockUntil = agora + LOCK_MS;
         break;
@@ -580,13 +725,13 @@ async function declararVencedor(teamId) {
   declarando = true; detectando = false;
   mostrarVencedorUI(teamId);
   try {
-    const res  = await fetch(`${RTDB}/winner.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+    const res  = await fetch(`${RTDB}/winner.json`, { headers:{ 'X-Firebase-ETag':'true' } });
     const etag = res.headers.get('ETag');
     const atual = await res.json();
     if (atual === null) {
       await fetch(`${RTDB}/winner.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'if-match': etag },
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json', 'if-match':etag },
         body: JSON.stringify(teamId)
       });
     }
@@ -614,10 +759,10 @@ async function resetarRodada() {
   declarando = false; detectando = false;
   const nova = (rodadaAtual || 0) + 1;
   await fetch(`${RTDB}.json`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rodada: nova, winner: null, presses: null })
+    method:'PUT', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ rodada:nova, winner:null, presses:null })
   });
-  baseline  = Array(4).fill(-1);
+  baseline  = Array(zonas.length).fill(-1);
   lockUntil = 0;
   document.getElementById('status-jogo').style.display = '';
   document.getElementById('status-jogo').textContent   = '🟢 Aguardando…';
@@ -625,7 +770,7 @@ async function resetarRodada() {
   detectando = true;
 }
 
-// ── Overlays jogo ─────────────────────────────────────────────────
+// ── Overlay jogo ───────────────────────────────────────────────────
 function renderOverlayJogo() {
   const cvs = document.getElementById('overlay-jogo');
   cvs.width  = cvs.offsetWidth  || 360;
@@ -642,13 +787,11 @@ function renderOverlayJogoLive() {
     const px    = z.fx * cvs.width;
     const py    = z.fy * cvs.height;
     const delta = Math.max(0, lumAtual[i] - (baseline[i] || 0));
-    const ativo = delta >= DET_DELTA;
+    const ativo = delta >= z.threshold;
     ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
     ctx.strokeStyle = ativo ? '#fff' : tm.cor;
-    ctx.lineWidth   = ativo ? 3 : 2;
-    ctx.stroke();
-    ctx.fillStyle = ativo ? tm.cor : tm.cor + '33';
-    ctx.fill();
+    ctx.lineWidth   = ativo ? 3 : 2; ctx.stroke();
+    ctx.fillStyle   = ativo ? tm.cor : tm.cor + '33'; ctx.fill();
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
@@ -660,38 +803,47 @@ function renderDetBars() {
   const c = document.getElementById('det-bars');
   c.innerHTML = '';
   TIMES.forEach(tm => {
-    c.innerHTML += `
-      <div class="det-col">
-        <div class="det-label" style="color:${tm.cor}">${tm.emoji}</div>
-        <div class="det-track"><div class="det-fill" id="df-${tm.id}" style="background:${tm.cor}"></div></div>
-      </div>`;
+    c.innerHTML += `<div class="det-col">
+      <div class="det-label" style="color:${tm.cor}">${tm.emoji}</div>
+      <div class="det-track"><div class="det-fill" id="df-${tm.id}" style="background:${tm.cor}"></div></div>
+    </div>`;
   });
 }
 
 function atualizarDetBars() {
   zonas.forEach((z, i) => {
-    const el  = document.getElementById('df-' + z.timeId);
+    const el = document.getElementById('df-' + z.timeId);
     if (!el) return;
-    const pct = Math.min(100, Math.max(0, (lumAtual[i] - (baseline[i]||0)) / (DET_DELTA * 1.5) * 100));
+    const thr = z.threshold || 20;
+    const pct = Math.min(100, Math.max(0, (lumAtual[i] - (baseline[i]||0)) / (thr * 1.5) * 100));
     el.style.width = pct + '%';
   });
 }
 
-// ── SSE Firebase ──────────────────────────────────────────────────
+// ── SSE Firebase ───────────────────────────────────────────────────
 function conectarSSE() {
   sseConn = new EventSource(`${RTDB}.json`);
   sseConn.addEventListener('put',   e => tratarSSE(JSON.parse(e.data)));
   sseConn.addEventListener('patch', e => tratarSSE(JSON.parse(e.data)));
-  sseConn.onopen  = () => { document.getElementById('dot-con').className='dot on';  document.getElementById('txt-con').textContent='Conectado ao telão'; };
-  sseConn.onerror = () => { document.getElementById('dot-con').className='dot off'; document.getElementById('txt-con').textContent='Reconectando…'; sseConn.close(); setTimeout(conectarSSE, 4000); };
+  sseConn.onopen  = () => {
+    document.getElementById('dot-con').className = 'dot on';
+    document.getElementById('txt-con').textContent = 'Conectado ao telão';
+  };
+  sseConn.onerror = () => {
+    document.getElementById('dot-con').className = 'dot off';
+    document.getElementById('txt-con').textContent = 'Reconectando…';
+    sseConn.close(); setTimeout(conectarSSE, 4000);
+  };
 }
 
 function tratarSSE({ path, data }) {
-  const rodada = path==='/' ? data?.rodada : (path==='/rodada' ? data : undefined);
+  const rodada = path === '/' ? data?.rodada : (path === '/rodada' ? data : undefined);
   if (rodada !== undefined && rodada !== rodadaAtual) {
     rodadaAtual = rodada;
     if (!detectando) {
-      declarando = false; baseline = Array(4).fill(-1); lockUntil = 0;
+      declarando = false;
+      baseline   = Array(zonas.length).fill(-1);
+      lockUntil  = 0;
       document.getElementById('status-jogo').style.display = '';
       document.getElementById('status-jogo').textContent   = '🟢 Aguardando…';
       document.getElementById('winner-card').style.display = 'none';
@@ -700,18 +852,11 @@ function tratarSSE({ path, data }) {
   }
 }
 
-// ── Navegação ─────────────────────────────────────────────────────
+// ── Navegação ──────────────────────────────────────────────────────
 function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('visivel'));
   document.getElementById(id).classList.add('visivel');
   if (id === 'tela-jogo') setTimeout(() => { renderOverlayJogo(); renderDetBars(); }, 120);
-}
-
-function ajustarSensibilidade(val) {
-  DET_DELTA = val;
-  document.getElementById('sens-valor').textContent = val;
-  // Reseta baseline para reavaliação imediata
-  baseline = Array(4).fill(-1);
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
