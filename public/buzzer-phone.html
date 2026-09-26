@@ -414,6 +414,30 @@ async function apertar() {
   } catch(err) { console.warn('Erro ao apertar:', err); }
 }
 
+// ── Wake Lock (tela sempre ativa) ────────────────────────────────
+let wakeLock = null;
+
+async function ativarWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+        // re-adquire automaticamente se ainda estiver no modo físico
+        if (modoFisicoAtivo && document.visibilityState === 'visible') ativarWakeLock();
+      });
+    }
+  } catch (_) {}
+}
+
+function liberarWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch(_){} wakeLock = null; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && modoFisicoAtivo && !wakeLock) ativarWakeLock();
+});
+
 // ── Modo físico (acelerômetro) ────────────────────────────────────
 let modoFisicoAtivo = false;
 let accelThreshold  = 4.0;   // m/s² — ajustado na calibração ou slider
@@ -512,6 +536,7 @@ function finalizarCalibracao() {
 
   setarStatusAceel('ativo', `Pronto — limite ${accelThreshold.toFixed(1)} m/s²`);
   renderEstado('aguardando');  // atualiza botão para mostrar "Aguardando vibração…"
+  ativarWakeLock();            // mantém tela ativa durante toda a prova
 }
 
 function processarMotion(e) {
@@ -560,6 +585,7 @@ function processarMotion(e) {
 function desativarModoFisico() {
   modoFisicoAtivo = false;
   calibrando      = false;
+  liberarWakeLock();
   if (accelHandler) {
     window.removeEventListener('devicemotion', accelHandler);
     accelHandler = null;
