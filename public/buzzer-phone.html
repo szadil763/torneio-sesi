@@ -145,6 +145,9 @@
 <body>
 <div id="bg"></div>
 
+<!-- Banner Kahoot (aparece quando o mediador ativa uma pergunta) -->
+<div id="kahoot-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff"></div>
+
 <div id="app">
   <div class="nome-time" id="nome-time">Carregando…</div>
 
@@ -201,7 +204,10 @@ document.getElementById('nome-time').textContent = `${tm.emoji} ${tm.nome}`;
 document.title = `Buzzer · ${tm.nome.split('·')[1].trim()} · SESI`;
 
 // ── Firebase ──────────────────────────────────────────────────────
-const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
+const RTDB      = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
+const RTDB_ROOT = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
+// Mapeamento: id do celular → id da equipe Kahoot (A/B/C/D)
+const KAHOOT_ID = ({ vermelha:'A', azul:'B', verde:'C', amarela:'D' })[teamId] || 'A';
 
 let estadoServidor = { rodada: 0, winner: null, presses: {} };
 let rodadaLocal    = -1;
@@ -255,8 +261,75 @@ function aplicarEvento(path, data, isPatch) {
   else                                                             renderEstado('aguardando');
 }
 
+// ── Kahoot English — estado integrado ────────────────────────────
+let kahootAtivo = false;
+let kahootBuzz  = null;
+
+async function pollKahoot() {
+  try {
+    const [a, b] = await Promise.all([
+      fetch(`${RTDB_ROOT}/kahoot_active.json`).then(r => r.json()).catch(() => null),
+      fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json()).catch(() => null),
+    ]);
+    const novoAtivo = !!a;
+    const novoBuzz  = b || null;
+    const mudou = novoAtivo !== kahootAtivo
+               || JSON.stringify(novoBuzz) !== JSON.stringify(kahootBuzz);
+    if (mudou) {
+      const eraAtivo = kahootAtivo;
+      kahootAtivo = novoAtivo;
+      kahootBuzz  = novoBuzz;
+      if (novoAtivo && !eraAtivo) { jaApertou = false; limparConfetes(); }
+      renderEstado('aguardando'); // dispara re-render no estado atual
+    }
+  } catch (_) {}
+}
+
+function renderEstadoKahoot() {
+  const btn   = document.getElementById('btn-apertar');
+  const emoji = document.getElementById('btn-emoji');
+  const label = document.getElementById('btn-label');
+  const msg   = document.getElementById('msg-estado');
+  const ban   = document.getElementById('kahoot-banner');
+
+  if (kahootBuzz) {
+    const euFui = kahootBuzz.teamId === KAHOOT_ID;
+    btn.disabled = true;
+    if (euFui) {
+      document.body.className = 'ganhou';
+      emoji.textContent = '🏆'; label.textContent = 'PRIMEIRO!';
+      msg.textContent   = '🎉 Você foi primeiro!';
+      ban.textContent   = '🎓 KAHOOT — Você buzou!';
+      ban.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;background:#2E9E4F';
+      criarConfetes();
+    } else {
+      document.body.className = 'perdeu';
+      emoji.textContent = tm.emoji; label.textContent = 'Tarde…';
+      msg.textContent   = 'Outra equipe chegou primeiro';
+      ban.textContent   = '🎓 KAHOOT — Outra equipe buzou';
+      ban.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;background:#D92B2B';
+    }
+  } else {
+    // kahootAtivo=true mas ainda sem buzz
+    jaApertou = false;
+    document.body.className = '';
+    btn.disabled = false;
+    emoji.textContent = '⚡'; label.textContent = 'BUZZE AGORA!';
+    msg.textContent   = '';
+    ban.textContent   = '🎓 KAHOOT ENGLISH — Botoeira ativa!';
+    ban.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;background:#F5821F;animation:piscar .5s infinite';
+  }
+}
+
 // ── Renderização ──────────────────────────────────────────────────
 function renderEstado(estado) {
+  // Kahoot tem prioridade sobre o jogo normal de buzzer
+  if (kahootAtivo || kahootBuzz) { renderEstadoKahoot(); return; }
+
+  // Banner Kahoot sumiu — modo normal
+  const ban = document.getElementById('kahoot-banner');
+  if (ban) ban.style.display = 'none';
+
   const btn   = document.getElementById('btn-apertar');
   const emoji = document.getElementById('btn-emoji');
   const label = document.getElementById('btn-label');
@@ -299,6 +372,25 @@ function renderEstado(estado) {
 async function apertar() {
   const btn = document.getElementById('btn-apertar');
   if (btn.disabled || jaApertou) return;
+
+  // ── Modo Kahoot: escreve em kahoot_buzz ────────────────────────
+  if (kahootAtivo && !kahootBuzz) {
+    jaApertou = true;
+    btn.disabled = true;
+    try {
+      const atual = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json());
+      if (!atual) {
+        await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: KAHOOT_ID, ts: { '.sv': 'timestamp' } }),
+        });
+      }
+    } catch(err) { console.warn('Kahoot buzz erro:', err); }
+    return;
+  }
+
+  // ── Modo normal: escreve em buzzer/presses ─────────────────────
   jaApertou = true;
   btn.disabled = true;
   renderEstado('apertado');
@@ -511,6 +603,10 @@ function limparConfetes() {
 // ── Init ──────────────────────────────────────────────────────────
 renderEstado('aguardando');
 conectarSSE();
+
+// Kahoot: verifica estado a cada 600ms
+pollKahoot();
+setInterval(pollKahoot, 600);
 
 // Auto-inicia modo físico ao carregar a página
 // (iOS exige gesto do usuário antes de requestPermission, então aguarda 1 toque)
