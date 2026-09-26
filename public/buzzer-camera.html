@@ -93,11 +93,22 @@
     #winner-emoji { font-size:54px; line-height:1; }
     #winner-nome  { font-size:20px; font-weight:900; }
 
-    #det-bars { display:flex; gap:6px; width:100%; max-width:340px; }
-    .det-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
-    .det-label { font-size:9px; font-weight:800; }
-    .det-track { width:100%; height:7px; background:#1a1d27; border-radius:100px; overflow:hidden; }
+    #det-bars { display:flex; gap:8px; width:100%; max-width:340px; }
+    .det-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .det-label { font-size:11px; font-weight:800; }
+    .det-track { width:100%; height:12px; background:#1a1d27; border-radius:100px; overflow:hidden; }
     .det-fill  { height:100%; border-radius:100px; width:0%; transition:width .06s; }
+
+    #sens-bloco {
+      width:100%; max-width:340px;
+      background:rgba(255,255,255,.05); border-radius:14px;
+      padding:12px 14px; display:flex; flex-direction:column; gap:6px;
+    }
+    #sens-header { display:flex; justify-content:space-between; align-items:center; }
+    #sens-titulo { font-size:12px; font-weight:800; color:#aaa; }
+    #sens-valor  { font-size:13px; font-weight:900; color:#fff; background:#333; border-radius:8px; padding:2px 9px; }
+    #sens-slider { width:100%; accent-color:#fff; cursor:pointer; }
+    #sens-labels { display:flex; justify-content:space-between; font-size:10px; color:#444; font-weight:700; }
 
     #jogo-footer { width:100%; padding:10px 16px; background:rgba(0,0,0,.7); backdrop-filter:blur(8px); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
 
@@ -150,6 +161,17 @@
 
   <div id="jogo-corpo">
     <div id="det-bars"></div>
+
+    <div id="sens-bloco">
+      <div id="sens-header">
+        <span id="sens-titulo">⚡ Sensibilidade de detecção</span>
+        <span id="sens-valor">35</span>
+      </div>
+      <input type="range" id="sens-slider" min="5" max="80" value="35" id="sens-slider"
+             oninput="ajustarSensibilidade(+this.value)">
+      <div id="sens-labels"><span>Mais sensível</span><span>Menos sensível</span></div>
+    </div>
+
     <div id="status-jogo">🟢 Aguardando…</div>
     <div id="winner-card">
       <div id="winner-emoji">🏆</div>
@@ -188,7 +210,7 @@ const STORAGE_KEY = 'torneio-buzzer-cam:v3';
 const ANAL_W    = 160;
 const ANAL_H    = 120;
 const ZONA_R_AN = 14;
-const DET_DELTA = 35;
+let DET_DELTA = 35;
 const LOCK_MS   = 700;
 
 // Estado calibração
@@ -645,6 +667,13 @@ function mostrarTela(id) {
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('visivel'));
   document.getElementById(id).classList.add('visivel');
   if (id === 'tela-jogo') setTimeout(() => { renderOverlayJogo(); renderDetBars(); }, 120);
+}
+
+function ajustarSensibilidade(val) {
+  DET_DELTA = val;
+  document.getElementById('sens-valor').textContent = val;
+  // Reseta baseline para reavaliação imediata
+  baseline = Array(4).fill(-1);
 }
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
