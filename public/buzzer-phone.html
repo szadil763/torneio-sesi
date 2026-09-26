@@ -161,15 +161,15 @@
   <div id="accel-top">
     <div id="accel-status">
       <div id="accel-dot"></div>
-      <span id="accel-txt">Modo físico desligado</span>
+      <span id="accel-txt">Iniciando…</span>
     </div>
-    <button id="btn-modo" onclick="alternarModo()">⚡ Ativar modo físico</button>
+    <button id="btn-modo" onclick="alternarModo()">Carregando…</button>
   </div>
-  <div id="accel-bar-wrap" style="display:none">
+  <div id="accel-bar-wrap">
     <div id="accel-bar-fill"></div>
     <div id="accel-bar-thresh"></div>
   </div>
-  <div id="accel-val" style="display:none">0.0 m/s²</div>
+  <div id="accel-val">0.0 m/s²</div>
 </div>
 
 <div id="bar-conexao">
@@ -353,11 +353,7 @@ function ativarModoFisico() {
 
 function iniciarAcelerometro() {
   modoFisicoAtivo = true;
-
-  // Mostra painel
-  document.getElementById('accel-bar-wrap').style.display = '';
-  document.getElementById('accel-val').style.display      = '';
-  document.getElementById('btn-modo').textContent         = '✕ Desativar';
+  document.getElementById('btn-modo').textContent = '✕ Desativar';
 
   // Calibração: 2 segundos de silêncio para medir ruído de fundo
   calibrando = true;
@@ -443,9 +439,9 @@ function desativarModoFisico() {
     window.removeEventListener('devicemotion', accelHandler);
     accelHandler = null;
   }
-  document.getElementById('accel-bar-wrap').style.display = 'none';
-  document.getElementById('accel-val').style.display      = 'none';
-  document.getElementById('btn-modo').textContent         = '⚡ Ativar modo físico';
+  document.getElementById('accel-bar-fill').style.width = '0%';
+  document.getElementById('accel-val').textContent      = '0.0 m/s²';
+  document.getElementById('btn-modo').textContent       = '⚡ Ativar modo físico';
   setarStatusAceel('', 'Modo físico desligado');
   renderEstado(document.body.className || 'aguardando');
 }
@@ -482,6 +478,23 @@ function limparConfetes() {
 // ── Init ──────────────────────────────────────────────────────────
 renderEstado('aguardando');
 conectarSSE();
+
+// Auto-inicia modo físico ao carregar a página
+// (iOS exige gesto do usuário antes de requestPermission, então aguarda 1 toque)
+if (typeof DeviceMotionEvent !== 'undefined') {
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    // iOS: precisa de gesto — mostra instrução e ativa no primeiro toque
+    setarStatusAceel('', 'Toque uma vez na tela para ativar o modo físico');
+    document.getElementById('btn-modo').textContent = '⚡ Ativar modo físico';
+    document.body.addEventListener('touchend', function iosInit() {
+      document.body.removeEventListener('touchend', iosInit);
+      ativarModoFisico();
+    }, { once: true });
+  } else {
+    // Android: ativa direto
+    setTimeout(ativarModoFisico, 300);
+  }
+}
 </script>
 </body>
 </html>
