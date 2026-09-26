@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { safeGet, safeSet, safeDelete } from "./firebase.js";
+import { safeGet, safeSet, safeDelete, isLocalMode } from "./firebase.js";
 import { QRCodeSVG } from "qrcode.react";
 
 const TEAMS = [
@@ -1839,6 +1839,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {isLocalMode && (
+        <div style={{ background: '#16a34a', color: '#fff', textAlign: 'center', fontSize: '11px', fontWeight: 700, padding: '5px', letterSpacing: '.05em' }}>
+          ● MODO OFFLINE — servidor local · todos os dados salvos no notebook
+        </div>
+      )}
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: AZUL_ESCURO }}>
         <div className="max-w-5xl mx-auto flex flex-col gap-2 px-4 py-3">
           {/* Linha 1: título + seletor de modo (só quando não é home) */}

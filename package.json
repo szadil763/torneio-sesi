@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:offline": "vite build --mode offline",
     "preview": "vite preview",
-    "servidor": "node servidor.js"
+    "servidor": "node servidor.cjs"
   },
   "dependencies": {
     "firebase": "^10.12.0",
