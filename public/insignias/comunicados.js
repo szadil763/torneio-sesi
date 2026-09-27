@@ -972,14 +972,40 @@ function _renderBotaoPush(container) {
   const permBloqueado = 'Notification' in window && Notification.permission === 'denied';
 
   if (permBloqueado) {
-    // Mostra dica de como desbloquear em vez de botão desabilitado
+    const isIOS    = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isFF     = navigator.userAgent.includes('Firefox');
+
+    const passos = isIOS
+      ? ['Abra os <strong>Ajustes</strong> do iPhone/iPad',
+         'Role até <strong>Safari</strong> (ou seu navegador) e toque',
+         'Toque em <strong>Notificações</strong> → ative para este site',
+         'Volte aqui e toque em "Já desbloqueei"']
+      : isSafari
+      ? ['Na barra de endereço, clique em <strong>Safari</strong> (menu superior)',
+         'Clique em <strong>Preferências para este site…</strong>',
+         'Mude <strong>Notificações</strong> para <strong>Permitir</strong>',
+         'Clique em "Já desbloqueei" abaixo']
+      : isFF
+      ? ['Clique no <strong>ícone de escudo 🛡</strong> ou no <strong>cadeado 🔒</strong> à esquerda do endereço',
+         'Clique em <strong>Permissões</strong>',
+         'Ao lado de <strong>Receber notificações</strong>, clique em ✕ para remover o bloqueio',
+         'Clique em "Já desbloqueei" abaixo']
+      : ['Clique no <strong>cadeado 🔒</strong> à esquerda do endereço',
+         'Clique em <strong>Permissões do site</strong>',
+         'Mude <strong>Notificações</strong> de "Bloqueado" para <strong>"Permitir"</strong>',
+         'Clique em "Já desbloqueei" abaixo'];
+
     const div = document.createElement('div');
-    div.className = 'com-push-bloqueado';
+    div.className = 'com-push-bloqueado-card';
     div.innerHTML = `
-      <span>🔕</span>
-      <span>Notificações bloqueadas neste navegador.
-        Para ativar: clique no <strong>cadeado 🔒</strong> na barra de endereço
-        → <strong>Notificações</strong> → <strong>Permitir</strong> → recarregue a página.</span>`;
+      <div class="com-push-bloq-titulo">🔕 Notificações bloqueadas</div>
+      <ol class="com-push-bloq-passos">
+        ${passos.map(p => `<li>${p}</li>`).join('')}
+      </ol>
+      <button class="com-push-btn" onclick="location.reload()" style="margin-top:4px;width:100%">
+        ✅ Já desbloqueei — Recarregar
+      </button>`;
     container.appendChild(div);
     return;
   }
