@@ -4,6 +4,21 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
+// Network-first para HTML/JS/CSS: nunca serve conteúdo stale
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  if (
+    e.request.method !== 'GET' ||
+    !url.startsWith(self.location.origin)
+  ) return;
+  const ext = url.split('?')[0].split('.').pop();
+  if (['html', 'js', 'css'].includes(ext)) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request))
+    );
+  }
+});
+
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) {}
