@@ -1,0 +1,912 @@
+// Página pública de comunicados — pais e alunos.
+// Sem token, acessível a todos. Dados do Firebase RTDB.
+
+const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
+const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
+
+// ── Idioma ────────────────────────────────────────────────────────
+const STRINGS_COM = {
+  pt: {
+    titulo_pagina:    'Comunicados',
+    subtitulo_pagina: 'Recados, dicas e novidades do torneio para pais e alunos',
+    estojos_titulo:   '🏅 Estojos de Insígnias',
+    estojos_sub:      'Toque em um estojo para abrir e ver as insígnias conquistadas',
+    insignias:        'insígnias',
+    dica_insignia:    '💡 Toque em uma insígnia para ver em tamanho grande',
+    recados_titulo:   '📢 Recados dos professores',
+    recados_vazio:    'Nenhum recado por enquanto.',
+    dicas_titulo:     '💡 Dicas para o torneio',
+    dicas_vazio:      'Nenhuma dica por enquanto.',
+    boletim_titulo:   '📸 Boletim do torneio',
+    rodape:           'Atualizado automaticamente · SESI Torneio Infantil 2026',
+    andamento:        'TORNEIO EM ANDAMENTO!',
+    comeca_em:        'começa em',
+    data_evento:      '📅 02 de outubro de 2026 · 14h50',
+    dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
+    ao_vivo:          '📺 Assistir abertura ao vivo',
+    ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
+    aba_inicio:    'Início',
+    aba_insignias: 'Insígnias',
+    aba_recados:   'Recados',
+    aba_boletim:   'Boletim',
+    aba_dicas:     'Dicas',
+    inicio_boas_vindas: 'Bem-vindo ao Torneio!',
+    inicio_nav:         'Navegue pelas abas para ver tudo',
+    inicio_ultimo_recado: 'Último recado',
+    inicio_ver_recados:   'Ver todos os recados →',
+    inicio_no_boletim:    'No boletim',
+    inicio_ver_boletim:   'Ver boletim →',
+  },
+  en: {
+    titulo_pagina:    'Updates',
+    subtitulo_pagina: 'Messages, tips and news from the tournament for parents and students',
+    estojos_titulo:   '🏅 Badge Cases',
+    estojos_sub:      'Tap a case to open it and see the earned badges',
+    insignias:        'badges',
+    dica_insignia:    '💡 Tap a badge to see it full size',
+    recados_titulo:   '📢 Teacher messages',
+    recados_vazio:    'No messages yet.',
+    dicas_titulo:     '💡 Tournament tips',
+    dicas_vazio:      'No tips yet.',
+    boletim_titulo:   '📸 Tournament Bulletin',
+    rodape:           'Auto-updated · SESI Children\'s Tournament 2026',
+    andamento:        'TOURNAMENT IN PROGRESS!',
+    comeca_em:        'starts in',
+    data_evento:      '📅 October 2, 2026 · 2:50 PM',
+    dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
+    ao_vivo:          '📺 Watch opening ceremony live',
+    ao_vivo_btn:      '📺 Live opening — Teams',
+    aba_inicio:    'Home',
+    aba_insignias: 'Badges',
+    aba_recados:   'Messages',
+    aba_boletim:   'Bulletin',
+    aba_dicas:     'Tips',
+    inicio_boas_vindas: 'Welcome to the Tournament!',
+    inicio_nav:         'Use the tabs to explore',
+    inicio_ultimo_recado: 'Latest message',
+    inicio_ver_recados:   'See all messages →',
+    inicio_no_boletim:    'In the bulletin',
+    inicio_ver_boletim:   'View bulletin →',
+  }
+};
+
+let _langCom = (() => {
+  try {
+    const s = localStorage.getItem('torneio-lang');
+    if (s === 'pt' || s === 'en') return s;
+  } catch (_) {}
+  return navigator.language && navigator.language.startsWith('pt') ? 'pt' : 'en';
+})();
+
+function tc(key) {
+  return (STRINGS_COM[_langCom] || STRINGS_COM.pt)[key] || key;
+}
+
+function alternarIdiomaCom() {
+  _langCom = _langCom === 'pt' ? 'en' : 'pt';
+  try { localStorage.setItem('torneio-lang', _langCom); } catch (_) {}
+  _estojoAtivoCom = null;
+  renderComunicados();
+}
+
+let _countdownInterval = null;
+
+// ── Abas ──────────────────────────────────────────────────────────
+let _abaAtiva  = 'inicio';
+let _dadosCache = null; // { recados, dicas, boletim }
+
+const ABAS_CONFIG = [
+  { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
+  { id: 'insignias', emoji: '🏅', labelKey: 'aba_insignias' },
+  { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
+  { id: 'boletim',   emoji: '🎬', labelKey: 'aba_boletim'   },
+  { id: 'dicas',     emoji: '💡', labelKey: 'aba_dicas'     },
+];
+
+function getMountEl() {
+  return document.getElementById('com-content') || document.getElementById('app');
+}
+
+function renderTabBar() {
+  return `
+    <nav class="com-tabs-bar" id="com-tabs-bar" role="tablist">
+      <div class="com-tabs-inner">
+        ${ABAS_CONFIG.map(aba => `
+          <button class="com-tab-btn${_abaAtiva === aba.id ? ' ativo' : ''}"
+                  onclick="trocarAba('${aba.id}')"
+                  data-aba="${aba.id}"
+                  role="tab"
+                  aria-selected="${_abaAtiva === aba.id}">
+            <span class="com-tab-emoji">${aba.emoji}</span>
+            <span class="com-tab-label">${tc(aba.labelKey)}</span>
+          </button>`).join('')}
+      </div>
+    </nav>`;
+}
+
+function trocarAba(id) {
+  if (!_dadosCache) return;
+  _abaAtiva = id;
+  _estojoAtivoCom = null;
+  _filtroRecados = 'todas';
+  _filtroDicas   = 'todas';
+  _filtroBoletim = 'todas';
+
+  // Para o countdown se estava rodando e vai sair de Início
+  if (id !== 'inicio' && _countdownInterval) {
+    clearInterval(_countdownInterval);
+    _countdownInterval = null;
+  }
+
+  // Atualiza estado visual das abas
+  document.querySelectorAll('.com-tab-btn').forEach(btn => {
+    const ativo = btn.dataset.aba === id;
+    btn.classList.toggle('ativo', ativo);
+    btn.setAttribute('aria-selected', ativo);
+  });
+
+  // Re-renderiza conteúdo
+  const content = document.getElementById('com-content');
+  if (content) {
+    content.innerHTML = '';
+    renderConteudoAba(_dadosCache);
+    content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function renderConteudoAba(dados) {
+  switch (_abaAtiva) {
+    case 'inicio':    renderInicio(dados);             break;
+    case 'insignias': renderEstojosSection();           break;
+    case 'recados':   renderRecados(dados.recados);    break;
+    case 'boletim':
+      renderBoletimCom(dados.boletim);
+      document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
+      carregarVideosPendentes();
+      break;
+    case 'dicas':     renderDicas(dados.dicas);        break;
+  }
+  getMountEl().insertAdjacentHTML('beforeend',
+    `<div class="com-rodape">${tc('rodape')}<br><span id="com-stats-visitors" style="font-size:11px;color:var(--muted)"></span></div>`);
+}
+
+// ── Aba Início ────────────────────────────────────────────────────
+function renderInicio(dados) {
+  // Countdown sempre no topo
+  renderContadorCom();
+
+  const recados = (dados.recados && dados.recados.itens) || [];
+  const boletim = (dados.boletim && dados.boletim.itens) || [];
+
+  // Cards de acesso rápido
+  const totalInsignias = (() => {
+    try {
+      const estado = lerEstadoAreas();
+      return TEAMS.reduce((acc, tm) =>
+        acc + AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length, 0);
+    } catch (_) { return 0; }
+  })();
+
+  const cards = [
+    { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
+    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} item${boletim.length !== 1 ? 's' : ''}`,  cor: '#2E9E4F' },
+    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
+  ];
+
+  const divCards = document.createElement('div');
+  divCards.className = 'com-secao';
+  divCards.innerHTML = `
+    <div class="com-inicio-cards">
+      ${cards.map(c => `
+        <button class="com-inicio-card" onclick="trocarAba('${c.id}')" style="--cc:${c.cor}">
+          <span class="com-inicio-card-emoji">${c.emoji}</span>
+          <span class="com-inicio-card-label">${c.label}</span>
+          <span class="com-inicio-card-count">${c.count}</span>
+        </button>`).join('')}
+    </div>`;
+  getMountEl().appendChild(divCards);
+
+  // Preview do último recado visível na Início
+  const agora = Date.now();
+  const recadoInicio = recados.find(r =>
+    r.inicioAte !== -1 && (r.inicioAte === null || r.inicioAte === undefined || agora <= r.inicioAte)
+  );
+  if (recadoInicio) {
+    const ultimo = recadoInicio;
+    const texto  = ultimo.texto || '';
+    const preview = texto.length > 120 ? texto.substring(0, 120) + '…' : texto;
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_ultimo_recado')}</div>
+      <div class="com-recado${ultimo.destaque ? ' com-recado-destaque' : ''} com-recado-clicavel"
+           onclick="trocarAba('recados')" role="button" tabindex="0">
+        ${ultimo.titulo ? `<div class="com-recado-titulo">${ultimo.titulo}</div>` : ''}
+        <div class="com-recado-texto">${preview}</div>
+        <div class="com-recado-data">${formatarDataCom(ultimo.ts)}</div>
+        <div class="com-inicio-ver-mais">${tc('inicio_ver_recados')}</div>
+      </div>`;
+    getMountEl().appendChild(div);
+  }
+
+  // Boletim — itens visíveis na Início (sem inicioAte=-1 e dentro do prazo)
+  const bolInicio = boletim.filter(b =>
+    b.inicioAte !== -1 && (b.inicioAte === null || b.inicioAte === undefined || agora <= b.inicioAte)
+  );
+  if (bolInicio.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'com-secao boletim-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_no_boletim')}</div>
+      <div class="boletim-galeria">${bolInicio.map(_renderBoletimItem).join('')}</div>
+      <div class="com-inicio-ver-mais" onclick="trocarAba('boletim')" role="button" style="cursor:pointer">
+        ${tc('inicio_ver_boletim')}
+      </div>`;
+    getMountEl().appendChild(div);
+    // Carrega vídeos do Firebase que aparecem no Início
+    setTimeout(() => {
+      getMountEl().querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
+      carregarVideosPendentes();
+    }, 0);
+  } else if (boletim.length > 0) {
+    // Tem itens mas nenhum visível na Início — mostra só o link
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_no_boletim')}</div>
+      <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
+        <span class="com-inicio-boletim-emoji">🎬</span>
+        <div class="com-inicio-boletim-info">
+          <div class="com-inicio-boletim-titulo">${boletim.length} item${boletim.length !== 1 ? 's' : ''} no boletim</div>
+          <div class="com-inicio-boletim-sub">${tc('inicio_ver_boletim')}</div>
+        </div>
+        <span class="com-inicio-boletim-arrow">›</span>
+      </button>`;
+    getMountEl().appendChild(div);
+  }
+}
+
+// ── Contador regressivo ───────────────────────────────────────────
+function renderContadorCom() {
+  function calcular() {
+    const diff = TORNEIO_INICIO.getTime() - Date.now();
+    if (diff <= 0) return null;
+    return {
+      dias:    Math.floor(diff / 86400000),
+      horas:   Math.floor((diff % 86400000) / 3600000),
+      minutos: Math.floor((diff % 3600000)  / 60000),
+      segs:    Math.floor((diff % 60000)     / 1000)
+    };
+  }
+
+  const secao = document.createElement('div');
+  secao.id = 'contador-torneio';
+  secao.className = 'contador-secao';
+  secao.innerHTML = `<div id="contador-inner"></div>`;
+  getMountEl().appendChild(secao);
+
+  function atualizar() {
+    const tempo = calcular();
+    const inner = document.getElementById('contador-inner');
+    if (!inner) return;
+
+    if (!tempo) {
+      inner.innerHTML = `
+        <div class="contador-ao-vivo" style="--c:#F5821F">
+          🏆 <span>${tc('andamento')}</span>
+        </div>
+        ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
+          ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">${tc('ao_vivo')}</a>`
+          : ''}`;
+      clearInterval(_countdownInterval);
+      _countdownInterval = null;
+      return;
+    }
+
+    inner.innerHTML = `
+      <div class="contador-titulo">🏆 SESI TORNEIO INFANTIL</div>
+      <div class="contador-subtitulo">${tc('comeca_em')}</div>
+      <div class="contador-numeros">
+        <div class="contador-bloco" style="--c:#004B8D">
+          <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
+          <span class="contador-label">${tc('dias')}</span>
+        </div>
+        <span class="contador-sep">:</span>
+        <div class="contador-bloco" style="--c:#004B8D">
+          <span class="contador-num">${String(tempo.horas).padStart(2,'0')}</span>
+          <span class="contador-label">${tc('horas')}</span>
+        </div>
+        <span class="contador-sep">:</span>
+        <div class="contador-bloco" style="--c:#004B8D">
+          <span class="contador-num">${String(tempo.minutos).padStart(2,'0')}</span>
+          <span class="contador-label">${tc('min')}</span>
+        </div>
+        <span class="contador-sep">:</span>
+        <div class="contador-bloco" style="--c:#F5821F">
+          <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
+          <span class="contador-label">${tc('seg')}</span>
+        </div>
+      </div>
+      <div class="contador-data">${tc('data_evento')}</div>
+      ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
+        ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#004B8D">${tc('ao_vivo_btn')}</a>`
+        : ''}`;
+  }
+
+  atualizar();
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  _countdownInterval = setInterval(atualizar, 1000);
+}
+
+// ── Formatação de data ────────────────────────────────────────────
+function formatarDataCom(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// ── Estojos de Insígnias ──────────────────────────────────────────
+let _estojoAtivoCom = null;
+
+function emblemaLid() {
+  return `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="40" stroke="rgba(0,0,0,0.5)" stroke-width="4"/>
+    <rect x="10" y="47" width="80" height="6" fill="rgba(0,0,0,0.4)" rx="3"/>
+    <circle cx="50" cy="50" r="13" fill="rgba(0,0,0,0.3)" stroke="rgba(0,0,0,0.5)" stroke-width="4"/>
+    <path d="M50 16 L60 47 L50 42 L40 47 Z"
+          fill="rgba(220,168,0,0.75)" stroke="rgba(180,130,0,0.6)" stroke-width="1"/>
+    <circle cx="50" cy="50" r="5" fill="rgba(220,168,0,0.8)"/>
+    <circle cx="50" cy="50" r="2.5" fill="rgba(255,220,80,0.9)"/>
+  </svg>`;
+}
+
+function tocarSomCom(tipo) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (tipo === 'abrir') {
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(330, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.35);
+      g.gain.setValueAtTime(0.2, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } else if (tipo === 'snap') {
+      const freqs = [900, 820, 740, 660];
+      freqs.forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'triangle'; o.frequency.value = freq;
+        const t0 = ctx.currentTime + i * 0.22;
+        g.gain.setValueAtTime(0.13, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.18);
+        o.start(t0); o.stop(t0 + 0.2);
+      });
+    } else if (tipo === 'completo') {
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        const t0 = ctx.currentTime + i * 0.13;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(0.25, t0 + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.38);
+        o.start(t0); o.stop(t0 + 0.4);
+      });
+    }
+  } catch (_) {}
+}
+
+function dispararConfeteCom(cor) {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const c = canvas.getContext('2d');
+  const palette = [cor, '#fff', '#ffd700', cor + 'bb', '#ffaa44'];
+  const pcs = Array.from({ length: 150 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height * 0.4 - 40,
+    vx: (Math.random() - 0.5) * 8,
+    vy: Math.random() * 6 + 1,
+    rot: Math.random() * Math.PI * 2,
+    vrot: (Math.random() - 0.5) * 0.3,
+    w: Math.random() * 14 + 6,
+    h: Math.random() * 6 + 3,
+    cor: palette[Math.floor(Math.random() * palette.length)],
+    alpha: 1,
+  }));
+  let frame = 0;
+  (function animar() {
+    c.clearRect(0, 0, canvas.width, canvas.height);
+    pcs.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.14; p.rot += p.vrot;
+      if (frame > 90) p.alpha = Math.max(0, p.alpha - 0.012);
+      c.save();
+      c.translate(p.x, p.y); c.rotate(p.rot);
+      c.globalAlpha = p.alpha;
+      c.fillStyle = p.cor;
+      c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      c.restore();
+    });
+    frame++;
+    if (frame < 160) requestAnimationFrame(animar);
+    else canvas.remove();
+  })();
+}
+
+function abrirModalInsigniaCom(areaId, teamId) {
+  const area   = AREAS.find(a => a.id === areaId);
+  const equipe = TEAMS.find(t => t.id === teamId);
+  if (!area || !equipe) return;
+  document.getElementById('modal-img-com').src = area.imagem;
+  document.getElementById('modal-img-com').alt = 'Insígnia ' + area.nome;
+  document.getElementById('modal-nome-com').textContent = area.nome;
+  document.getElementById('modal-nome-com').style.color = equipe.cor;
+  document.getElementById('modal-equipe-com').textContent = equipe.nome;
+  document.getElementById('modal-insignia-com').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function fecharModalCom() {
+  document.getElementById('modal-insignia-com').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function renderEstojoNoContainerCom(equipe, container) {
+  const estado   = lerEstadoAreas();
+  const ganhas   = AREAS.filter(a => conquistouArea(estado, a.id, equipe.id)).length;
+  const completo = ganhas === AREAS.length;
+  const BASE_DELAY = 1.65;
+  const STEP       = 0.22;
+
+  const slots = AREAS.map((area, i) => {
+    const ganhou = conquistouArea(estado, area.id, equipe.id);
+    const delay  = (BASE_DELAY + i * STEP).toFixed(2);
+    return `
+      <div class="slot ${ganhou ? 'conquistada recem-aberta' : ''}" style="--c:${equipe.cor}">
+        <div class="slot-label" style="background:${equipe.cor}">${area.nome}</div>
+        <div class="slot-corpo">
+          ${ganhou
+            ? `<div class="badge-3d-wrap recem-conquistada"
+                    style="animation-delay:${delay}s;--c:${equipe.cor}"
+                    onclick="abrirModalInsigniaCom('${area.id}','${equipe.id}')"
+                    title="Toque para ampliar">
+                 <img src="${area.imagem}"
+                      alt="Insígnia ${area.nome}"
+                      class="slot-insignia"
+                      onerror="this.closest('.badge-3d-wrap').outerHTML='<div class=\\'slot-fallback\\'>${area.emoji}</div>'">
+                 <div class="badge-gloss"></div>
+               </div>`
+            : `<div class="slot-vazio">
+                 <div class="slot-vazio-circulo" style="--c:${equipe.cor}">
+                   <span class="slot-vazio-lock">${ICONS.cadeado}</span>
+                 </div>
+                 <span class="slot-vazio-nome">${area.nome}</span>
+               </div>`
+          }
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    ${completo ? `<div class="banner-completo" style="--c:${equipe.cor}">⭐ Estojo completo! Parabéns, ${equipe.nome}! ⭐</div>` : ''}
+    <div class="case-scene">
+      <div class="case-3d">
+        <div class="case-base">
+          <div class="estojo-topo">
+            <span class="equipe-nome-estojo" style="color:${equipe.cor}">${equipe.nome}</span>
+          </div>
+          <div class="estojo-corpo">${slots}</div>
+          <div class="estojo-prog">
+            <div class="estojo-prog-fill" style="width:${Math.round(ganhas/AREAS.length*100)}%;background:${equipe.cor}"></div>
+          </div>
+        </div>
+        <div class="case-lid" style="--c:${equipe.cor}; --cd:${equipe.corEscura}">
+          <div class="lid-front">
+            <div class="lid-emblem">${emblemaLid()}</div>
+          </div>
+          <div class="lid-back">
+            <span class="lid-back-mark">SESI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="rodape-nota alunos-dica" style="margin-bottom:0">${tc('dica_insignia')}</p>`;
+
+  tocarSomCom('abrir');
+  if (ganhas > 0) setTimeout(() => tocarSomCom('snap'), BASE_DELAY * 1000);
+  if (completo) setTimeout(() => {
+    dispararConfeteCom(equipe.cor);
+    tocarSomCom('completo');
+  }, (BASE_DELAY + AREAS.length * STEP + 0.4) * 1000);
+}
+
+function abrirEstojoCom(teamId) {
+  const equipe = TEAMS.find(t => t.id === teamId);
+  if (!equipe) return;
+  const expandWrap = document.getElementById('estojos-expand-com');
+  if (!expandWrap) return;
+
+  if (_estojoAtivoCom === teamId) {
+    _estojoAtivoCom = null;
+    expandWrap.hidden = true;
+    expandWrap.innerHTML = '';
+    document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
+    return;
+  }
+
+  _estojoAtivoCom = teamId;
+  document.querySelectorAll('.mini-estojo-card').forEach(c => c.classList.remove('aberto'));
+  const card = document.getElementById('mini-com-' + teamId);
+  if (card) card.classList.add('aberto');
+
+  const teamIndex = TEAMS.findIndex(t => t.id === teamId);
+  const isLinhaDeСima = teamIndex < 2;
+  if (isLinhaDeСima) {
+    const rowLastIndex = Math.min(teamIndex % 2 === 0 ? teamIndex + 1 : teamIndex, TEAMS.length - 1);
+    const anchorCard = document.getElementById('mini-com-' + TEAMS[rowLastIndex].id);
+    if (anchorCard) anchorCard.after(expandWrap);
+  } else {
+    const gridEl = document.querySelector('.com-secao-estojos .mini-estojos-grid');
+    if (gridEl) gridEl.after(expandWrap);
+  }
+
+  expandWrap.hidden = false;
+  expandWrap.innerHTML = '';
+  renderEstojoNoContainerCom(equipe, expandWrap);
+  setTimeout(() => expandWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 180);
+}
+
+function renderEstojosSection() {
+  const estado = lerEstadoAreas();
+  const secao = document.createElement('div');
+  secao.className = 'com-secao com-secao-estojos';
+  secao.innerHTML = `
+    <div class="com-secao-titulo">${tc('estojos_titulo')}</div>
+    <p class="com-estojos-sub">${tc('estojos_sub')}</p>
+    <div class="mini-estojos-grid">
+      ${TEAMS.map(tm => {
+        const n = AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length;
+        return `
+          <div class="mini-estojo-card" id="mini-com-${tm.id}"
+               onclick="abrirEstojoCom('${tm.id}')"
+               style="--c:${tm.cor};--cd:${tm.corEscura}">
+            <div class="mini-case-wrap">
+              <div class="mini-case-lid"></div>
+              <div class="mini-case-base"></div>
+              <div class="mini-case-clasp"></div>
+            </div>
+            <div class="mini-nome">${tm.nome}</div>
+            <div class="mini-count">${n} / ${AREAS.length} ${tc('insignias')}</div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div id="estojos-expand-com" class="estojos-expand-wrap" hidden></div>`;
+  getMountEl().appendChild(secao);
+}
+
+// ── Filtro por área ───────────────────────────────────────────────
+const _AREAS_FILTRO = [
+  { id: 'todas',          label: 'Todas',          emoji: '🔵', cor: '#004B8D' },
+  { id: 'robotica',       label: 'Robótica',        emoji: '🤖', cor: '#7C3AED' },
+  { id: 'ingles',         label: 'Inglês',          emoji: '🌎', cor: '#2E9E4F' },
+  { id: 'artes',          label: 'Artes',           emoji: '🎨', cor: '#E53E3E' },
+  { id: 'educacao-fisica',label: 'Ed. Física',      emoji: '⚽', cor: '#F5821F' },
+];
+
+let _filtroRecados = 'todas';
+let _filtroDicas   = 'todas';
+let _filtroBoletim = 'todas';
+
+function _areaNome(id) {
+  const a = _AREAS_FILTRO.find(x => x.id === id);
+  return a ? `${a.emoji} ${a.label}` : '';
+}
+function _areaCor(id) {
+  const a = _AREAS_FILTRO.find(x => x.id === id);
+  return a ? a.cor : '#004B8D';
+}
+
+function _renderChips(filtroAtual, onChange) {
+  const wrap = document.createElement('div');
+  wrap.className = 'com-area-chips';
+  _AREAS_FILTRO.forEach(area => {
+    const btn = document.createElement('button');
+    btn.className = 'com-area-chip' + (filtroAtual === area.id ? ' ativo' : '');
+    btn.style.setProperty('--chip-cor', area.cor);
+    btn.textContent = `${area.emoji} ${area.label}`;
+    btn.onclick = () => onChange(area.id);
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+function _filtrarItens(itens, filtro) {
+  if (filtro === 'todas') return itens;
+  return itens.filter(i => (i.area || '') === filtro);
+}
+
+function _badgeArea(item) {
+  if (!item.area) return '';
+  const cor = _areaCor(item.area);
+  return `<span class="com-area-badge" style="background:${cor}">${_areaNome(item.area)}</span>`;
+}
+
+// ── Barra de reações emoji ────────────────────────────────────────
+function _reacoesBar(itemId) {
+  const locais = lerReacoesLocais();
+  const btns = EMOJIS_REACAO.map(e => {
+    const count = getContagemReacao(itemId, e.key);
+    const ativo = !!locais[`${itemId}:${e.key}`];
+    return `<button class="com-reacao-btn${ativo ? ' ativo' : ''}"
+              onclick="reagirComItem('${itemId}','${e.key}',this)" aria-label="${e.key}">
+              ${e.emoji}<span class="com-reacao-count">${count > 0 ? count : ''}</span>
+            </button>`;
+  }).join('');
+  return `<div class="com-reacoes-bar">${btns}</div>`;
+}
+
+async function reagirComItem(itemId, emojiKey, btn) {
+  const result = await reagirItem(itemId, emojiKey);
+  btn.classList.toggle('ativo', result.ativo);
+  const countEl = btn.querySelector('.com-reacao-count');
+  if (countEl) countEl.textContent = result.contagem > 0 ? result.contagem : '';
+  if (result.ativo) {
+    btn.classList.add('com-reacao-animando');
+    setTimeout(() => btn.classList.remove('com-reacao-animando'), 400);
+  }
+}
+
+// ── Renderização de recados ───────────────────────────────────────
+function renderRecados(recados) {
+  const todos  = recados.itens || [];
+  const secao  = document.createElement('div');
+  secao.className = 'com-secao';
+
+  function desenhar() {
+    const itens = _filtrarItens(todos, _filtroRecados);
+    secao.innerHTML = `<div class="com-secao-titulo">${tc('recados_titulo')}</div>`;
+    secao.appendChild(_renderChips(_filtroRecados, id => {
+      _filtroRecados = id;
+      desenhar();
+    }));
+    const lista = document.createElement('div');
+    lista.innerHTML = itens.length === 0
+      ? `<div class="com-vazio">${tc('recados_vazio')}</div>`
+      : itens.map(r => {
+          const id = `rec-${r.ts || Math.random().toString(36).slice(2)}`;
+          return `
+          <div class="com-recado ${r.destaque ? 'com-recado-destaque' : ''}">
+            ${_badgeArea(r)}
+            ${r.titulo ? `<div class="com-recado-titulo">${r.titulo}</div>` : ''}
+            <div class="com-recado-texto">${r.texto}</div>
+            <div class="com-recado-data">${formatarDataCom(r.ts)}</div>
+            ${_reacoesBar(id)}
+          </div>`;
+        }).join('');
+    secao.appendChild(lista);
+  }
+
+  desenhar();
+  getMountEl().appendChild(secao);
+}
+
+// ── Renderização de dicas ─────────────────────────────────────────
+function renderDicas(dicas) {
+  const todos = dicas.itens || [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  function desenhar() {
+    const itens = _filtrarItens(todos, _filtroDicas);
+    secao.innerHTML = `<div class="com-secao-titulo">${tc('dicas_titulo')}</div>`;
+    secao.appendChild(_renderChips(_filtroDicas, id => {
+      _filtroDicas = id;
+      desenhar();
+    }));
+    const lista = document.createElement('div');
+    lista.innerHTML = itens.length === 0
+      ? `<div class="com-vazio">${tc('dicas_vazio')}</div>`
+      : `<div class="com-dicas-lista">
+          ${itens.map(d => {
+            const id = `dic-${d.ts || Math.random().toString(36).slice(2)}`;
+            return `
+            <div class="com-dica">
+              ${_badgeArea(d)}
+              <span class="com-dica-icone">${d.icone || '💡'}</span>
+              <span class="com-dica-texto">${d.texto}</span>
+              ${_reacoesBar(id)}
+            </div>`;
+          }).join('')}
+        </div>`;
+    secao.appendChild(lista);
+  }
+
+  desenhar();
+  getMountEl().appendChild(secao);
+}
+
+// ── Renderização de um item de boletim ───────────────────────────
+function _renderBoletimItem(item) {
+    const bolId = `bol-${item.ts || Math.random().toString(36).slice(2)}`;
+    if (item.tipo === 'noticia') return renderNoticiaCard(item) + _reacoesBar(bolId);
+    const tipo = item.videoId ? 'video' : detectarTipoMidia(item.url || '');
+    const vid  = tipo === 'youtube' ? youtubeId(item.url) : null;
+    const midia = vid
+      ? `<div class="bol-video-wrap">
+           <iframe src="https://www.youtube.com/embed/${vid}?rel=0" frameborder="0"
+             allowfullscreen allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+             class="bol-iframe"></iframe>
+         </div>`
+      : item.videoId
+      ? `<div class="bol-video-wrap">
+           <video data-video-id="${item.videoId}" controls playsinline class="bol-iframe bol-video-lazy"
+             style="background:#111;width:100%;max-height:360px;object-fit:contain"></video>
+           <div class="bol-video-carregando" data-for="${item.videoId}">⏳ Carregando vídeo…</div>
+         </div>`
+      : tipo === 'video'
+      ? `<div class="bol-video-wrap">
+           <video src="${item.url}" controls playsinline class="bol-iframe"
+             style="background:#000;width:100%;max-height:360px;object-fit:contain"></video>
+         </div>`
+      : `<div class="bol-img-wrap">
+           <img src="${item.url}" alt="${item.titulo || 'Foto'}" class="bol-img"
+             onerror="this.closest('.bol-img-wrap').innerHTML='<span class=bol-img-erro>Imagem indisponível</span>'">
+         </div>`;
+    return `
+      <div class="bol-card">
+        ${midia}
+        ${_badgeArea(item)}
+        ${item.titulo  ? `<div class="bol-card-titulo">${item.titulo}</div>`   : ''}
+        ${item.legenda ? `<div class="bol-card-legenda">${item.legenda}</div>` : ''}
+        ${_reacoesBar(bolId)}
+      </div>`;
+}
+
+// ── Renderização do boletim (aba Boletim) ────────────────────────
+function renderBoletimCom(boletim) {
+  const todos = boletim.itens || [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao boletim-secao';
+
+  function desenhar() {
+    const itens = _filtrarItens(todos, _filtroBoletim);
+    secao.innerHTML = `<div class="com-secao-titulo">${tc('boletim_titulo')}</div>`;
+    secao.appendChild(_renderChips(_filtroBoletim, id => {
+      _filtroBoletim = id;
+      desenhar();
+      secao.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
+      carregarVideosPendentes();
+    }));
+    const lista = document.createElement('div');
+    lista.innerHTML = itens.length === 0
+      ? `<div class="com-vazio">Nenhum item no boletim por enquanto.</div>`
+      : `<div class="boletim-galeria">${itens.map(_renderBoletimItem).join('')}</div>`;
+    secao.appendChild(lista);
+  }
+
+  desenhar();
+  getMountEl().appendChild(secao);
+}
+
+// ── Controle de reprodução ativa ──────────────────────────────────
+let _ultimoPlayMs = 0;
+const _GRACE_MS = 15_000;
+
+function _videoAtivo() {
+  return Date.now() - _ultimoPlayMs < _GRACE_MS;
+}
+
+function _monitorarVideo(video) {
+  video.addEventListener('timeupdate', () => { _ultimoPlayMs = Date.now(); });
+  video.addEventListener('play',    () => { _ultimoPlayMs = Date.now(); });
+  video.addEventListener('seeking', () => { _ultimoPlayMs = Date.now(); });
+}
+
+async function carregarVideosPendentes() {
+  const videos = document.querySelectorAll('video[data-video-id]');
+  for (const video of videos) {
+    const id = video.dataset.videoId;
+    const aviso = document.querySelector(`.bol-video-carregando[data-for="${id}"]`);
+    try {
+      const blobUrl = await carregarVideoBoletim(id);
+      if (blobUrl) {
+        video.src = blobUrl;
+        video.load();
+        _monitorarVideo(video);
+        if (aviso) aviso.remove();
+      } else {
+        if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
+      }
+    } catch (_) {
+      if (aviso) aviso.textContent = '⚠ Vídeo indisponível';
+    }
+  }
+}
+
+// ── Página principal ──────────────────────────────────────────────
+async function renderComunicados() {
+  const app = document.getElementById('app');
+
+  // Estrutura fixa: header + barra de abas + área de conteúdo
+  app.innerHTML = `
+    <button class="lang-toggle-btn" onclick="alternarIdiomaCom()">
+      ${_langCom === 'pt' ? '🇺🇸 EN' : '🇧🇷 PT'}
+    </button>
+    <div class="com-header">
+      <img src="/torneio-sesi.jpg" alt="Torneio Infantil SESI" class="com-header-img">
+      <div class="com-logo">
+        <span class="com-logo-detalhe"></span>
+        SESI TORNEIO INFANTIL
+        <span class="com-logo-detalhe"></span>
+      </div>
+      <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
+      <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
+    </div>
+    ${renderTabBar()}
+    <div id="com-content" class="com-content-area"></div>`;
+
+  // Carrega reações e registra visita em paralelo com os dados
+  const [, recados, dicas, boletim] = await Promise.all([
+    carregarInsignias(),
+    carregarRecados(),
+    carregarDicas(),
+    carregarBoletim(),
+    carregarTodasReacoes().catch(() => {})
+  ]);
+  registrarVisita().catch(() => {});
+
+  _dadosCache = { recados, dicas, boletim };
+  renderConteudoAba(_dadosCache);
+
+  // Atualiza rodapé com visitantes únicos após carregar stats
+  carregarStats().then(stats => {
+    const el = document.getElementById('com-stats-visitors');
+    if (el && stats['visitantes-unicos']) {
+      el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
+    }
+  }).catch(() => {});
+}
+
+// ── Auto-refresh a cada 3 min ─────────────────────────────────────
+function agendarRefresh() {
+  setTimeout(async () => {
+    const videos   = Array.from(document.querySelectorAll('video'));
+    const domAtivo = videos.some(v => !v.paused && !v.ended);
+    const iniciado = videos.some(v => v.currentTime > 0 && !v.ended);
+    const ytAtivo  = !!document.querySelector('iframe[src*="youtube"]');
+    if (_videoAtivo() || domAtivo || iniciado || ytAtivo) {
+      agendarRefresh();
+      return;
+    }
+    _recadosCache    = null;
+    _dicasCache      = null;
+    _boletimCache    = null;
+    _estojoAtivoCom  = null;
+    await renderComunicados();
+    agendarRefresh();
+  }, 180_000);
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="modal-insignia-com" class="modal-overlay hidden" onclick="fecharModalCom()">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <button class="modal-fechar" onclick="fecharModalCom()">✕</button>
+        <div class="modal-img-wrap">
+          <img id="modal-img-com" src="" alt="" class="modal-img-grande">
+          <div class="badge-gloss"></div>
+        </div>
+        <div id="modal-nome-com" class="modal-nome"></div>
+        <div id="modal-equipe-com" class="modal-equipe-nome"></div>
+      </div>
+    </div>
+  `);
+  await renderComunicados();
+  agendarRefresh();
+});

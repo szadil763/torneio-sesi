@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Buzzer · Telão · SESI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0a0c12; }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body { height:100%; background:var(--bg); color:#fff; font-family:'Baloo 2',sans-serif; overflow:hidden; }
+
+    .tela { display:none; height:100vh; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:18px; text-align:center; }
+    .tela.visivel { display:flex; }
+
+    h1  { font-size:clamp(22px,4vw,34px); font-weight:900; }
+    p   { font-size:14px; color:#aaa; max-width:44ch; line-height:1.6; }
+    small { font-size:12px; color:#555; }
+
+    .btn-prim { background:#fff; color:#0a0c12; border:none; border-radius:14px; padding:14px 36px; font-size:17px; font-weight:900; font-family:inherit; cursor:pointer; transition:opacity .15s,transform .1s; }
+    .btn-prim:hover  { opacity:.88; }
+    .btn-prim:active { transform:scale(.97); }
+    .btn-sec  { font-size:13px; color:#aaa; background:none; border:1px solid #333; border-radius:8px; padding:7px 16px; cursor:pointer; font-family:inherit; }
+    .btn-sec:hover { color:#fff; border-color:#666; }
+
+    /* ── Setup ── */
+    .links-lista { display:flex; flex-direction:column; gap:10px; width:100%; max-width:560px; }
+    .link-row {
+      display:flex; align-items:center; gap:10px;
+      background:#14171f; border:1.5px solid #1e2230; border-radius:14px;
+      padding:12px 16px;
+    }
+    .link-row-cor { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+    .link-row-nome { font-size:13px; font-weight:800; width:90px; flex-shrink:0; }
+    .link-row-url  { flex:1; font-size:11px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .link-row-btn  { background:#1e2230; border:none; border-radius:8px; color:#aaa; font-size:12px; font-weight:700; padding:5px 12px; cursor:pointer; font-family:inherit; flex-shrink:0; }
+    .link-row-btn:hover { background:#2a2e3f; color:#fff; }
+    .link-row-btn.copiado { color:#4ade80; }
+
+    .conexao-status { font-size:11px; color:#555; display:flex; align-items:center; gap:6px; }
+    .conexao-dot { width:7px; height:7px; border-radius:50%; background:#4ade80; }
+    .conexao-dot.off { background:#555; }
+
+    /* ── Jogo ── */
+    #tela-jogo { padding:0; }
+    .jogo-grade {
+      flex:1; display:grid; grid-template-columns:1fr 1fr;
+      grid-template-rows:1fr 1fr; gap:5px; padding:5px; width:100%;
+    }
+    .equipe-zona {
+      border-radius:20px; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:10px;
+      transition:opacity .25s, transform .25s, filter .25s; position:relative; overflow:hidden;
+    }
+    .equipe-zona-nome { font-size:clamp(16px,3.2vw,30px); font-weight:900; text-align:center; text-shadow:0 2px 8px rgba(0,0,0,.5); line-height:1.25; }
+    .equipe-zona-badge {
+      font-size:12px; background:rgba(0,0,0,.35); border-radius:20px;
+      padding:4px 12px; font-weight:700; letter-spacing:.05em; opacity:0;
+      transition:opacity .2s;
+    }
+    .equipe-zona.pressionou .equipe-zona-badge { opacity:1; }
+    .winner-badge { position:absolute; top:12px; right:14px; font-size:28px; opacity:0; transition:opacity .3s; }
+    .equipe-zona.winner .winner-badge { opacity:1; }
+
+    .estado-pronto   .equipe-zona { opacity:1; }
+    .estado-vencedor .equipe-zona        { opacity:.12; filter:saturate(.1); transform:scale(.93); }
+    .estado-vencedor .equipe-zona.winner { opacity:1; filter:none; transform:scale(1.05); animation:winner-pop .5s ease-out; }
+    @keyframes winner-pop { 0%{transform:scale(1);} 45%{transform:scale(1.09);} 100%{transform:scale(1.05);} }
+
+    #flash { position:fixed; inset:0; pointer-events:none; z-index:50; opacity:0; }
+    #flash.ativo { animation:flash-anim .5s ease-out forwards; }
+    @keyframes flash-anim { 0%{opacity:.65;} 100%{opacity:0;} }
+
+    #status-bar { padding:10px 16px; display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.65); backdrop-filter:blur(10px); flex-shrink:0; width:100%; }
+    #status-msg { font-size:14px; font-weight:700; flex:1; }
+    .btn-reset { background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.25); border-radius:10px; color:#fff; font-size:13px; font-weight:700; padding:7px 18px; cursor:pointer; font-family:inherit; }
+    .btn-reset:hover { background:rgba(255,255,255,.2); }
+    .btn-sair { background:none; border:none; color:#444; font-size:12px; cursor:pointer; font-family:inherit; padding:6px 8px; }
+    .btn-sair:hover { color:#888; }
+
+    @media(max-width:480px) { .jogo-grade { grid-template-columns:1fr; grid-template-rows:repeat(4,1fr); } }
+  </style>
+</head>
+<body>
+
+<!-- TELA 1: Setup / Links -->
+<div id="tela-setup" class="tela visivel">
+  <h1>🎯 Buzzer · Telão</h1>
+  <p>Compartilhe o link de cada time com o celular correspondente. Quando todos estiverem prontos, inicie o jogo.</p>
+
+  <div class="links-lista" id="links-lista"></div>
+
+  <div class="conexao-status">
+    <div class="conexao-dot off" id="dot-setup"></div>
+    <span id="txt-conexao">Conectando ao servidor…</span>
+  </div>
+
+  <button class="btn-prim" id="btn-iniciar" onclick="iniciarJogo()">▶ Iniciar Telão</button>
+  <small>Você não precisa esperar todos os celulares para iniciar · Os celulares podem entrar a qualquer momento</small>
+
+  <div style="margin-top:4px;padding:16px 18px;background:#14171f;border:1.5px solid #1e2230;border-radius:14px;width:100%;max-width:560px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:22px">📳</div>
+      <div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">Calibração por acelerômetro</div>
+        <div style="font-size:11px;color:#555">Coloque a botoeira física encostada no celular · O celular detecta a vibração do botão</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px" id="accel-links"></div>
+    <div style="margin-top:10px;font-size:11px;color:#444;line-height:1.6">
+      1. Envie o link acima para cada celular<br>
+      2. O celular calibra automaticamente ao abrir (Android) ou no primeiro toque (iOS)<br>
+      3. Encoste a botoeira física no celular e pressione para testar
+    </div>
+  </div>
+</div>
+
+<!-- TELA 2: Jogo -->
+<div id="tela-jogo" class="tela" style="padding:0">
+  <div class="jogo-grade estado-pronto" id="jogo-grade"></div>
+  <div id="status-bar">
+    <span id="status-msg">🟢 Aguardando…</span>
+    <button class="btn-reset" onclick="resetarRodada()">↺ Nova rodada</button>
+    <button class="btn-sair" onclick="voltarSetup()">⚙ Links</button>
+  </div>
+</div>
+
+<div id="flash"></div>
+
+<script>
+const TIMES = [
+  { id:'vermelha', nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
+  { id:'azul',     nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
+  { id:'verde',    nome:'Turma C · Verde',     cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢' },
+  { id:'amarela',  nome:'Turma D · Amarela',   cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡' },
+];
+
+const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/buzzer';
+
+// ── Estado local ──────────────────────────────────────────────────
+let estado = { rodada: 0, winner: null, presses: {} };
+let sseConn = null;
+let declarando = false;
+
+// ── Áudio de feedback ─────────────────────────────────────────────
+const aC = new (window.AudioContext || window.webkitAudioContext)();
+function tocarSom(tid) {
+  if (aC.state === 'suspended') aC.resume();
+  const t = aC.currentTime;
+  const sons = {
+    vermelha: () => { const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='sawtooth'; o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(80,t+.5); g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.55); o.start(t);o.stop(t+.6); },
+    azul:     () => { [880,1320,1760].forEach((f,i)=>{ const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='sine';o.frequency.value=f; const t0=t+i*.04; g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.3-i*.08,t0+.02);g.gain.exponentialRampToValueAtTime(.001,t0+.6); o.start(t0);o.stop(t0+.65); }); },
+    verde:    () => { const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='triangle'; o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(700,t+.25); g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.4); o.start(t);o.stop(t+.45); },
+    amarela:  () => { [0,.18].forEach(d=>{ const o=aC.createOscillator(),g=aC.createGain(); o.connect(g);g.connect(aC.destination); o.type='square';o.frequency.value=660; const t0=t+d; g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.14); o.start(t0);o.stop(t0+.15); }); },
+  };
+  (sons[tid]||sons.vermelha)();
+}
+
+// ── Firebase SSE ──────────────────────────────────────────────────
+function conectarSSE() {
+  if (sseConn) { sseConn.close(); sseConn = null; }
+
+  sseConn = new EventSource(`${RTDB}.json`);
+
+  sseConn.addEventListener('put', e => {
+    const { path, data } = JSON.parse(e.data);
+    aplicarEvento(path, data, false);
+  });
+
+  sseConn.addEventListener('patch', e => {
+    const { path, data } = JSON.parse(e.data);
+    aplicarEvento(path, data, true);
+  });
+
+  sseConn.onopen = () => {
+    document.getElementById('dot-setup').classList.remove('off');
+    document.getElementById('txt-conexao').textContent = 'Conectado ao servidor';
+  };
+
+  sseConn.onerror = () => {
+    document.getElementById('dot-setup').classList.add('off');
+    document.getElementById('txt-conexao').textContent = 'Reconectando…';
+    // EventSource reconecta automaticamente, mas fechamos para forçar reconexão limpa
+    sseConn.close();
+    setTimeout(conectarSSE, 4000);
+  };
+}
+
+function aplicarEvento(path, data, isPatch) {
+  if (path === '/') {
+    if (isPatch) {
+      if (data && typeof data === 'object') Object.assign(estado, data);
+    } else {
+      estado = { rodada: 0, winner: null, presses: {}, ...(data || {}) };
+    }
+  } else if (path === '/winner') {
+    estado.winner = data;
+  } else if (path === '/rodada') {
+    estado.rodada = data || 0;
+  } else if (path === '/presses') {
+    estado.presses = data || {};
+  } else if (path.startsWith('/presses/')) {
+    const team = path.slice('/presses/'.length);
+    if (!estado.presses) estado.presses = {};
+    if (data === null) delete estado.presses[team];
+    else estado.presses[team] = data;
+  }
+
+  atualizarUI();
+
+  // Detecta vencedor se não existe ainda
+  if (!estado.winner && !declarando && estado.presses) {
+    const times = Object.keys(estado.presses);
+    if (times.length > 0) {
+      // Pega o de menor timestamp (chegou primeiro ao servidor)
+      const vencedor = times.reduce((a, b) =>
+        (estado.presses[a]?.ts || 0) < (estado.presses[b]?.ts || 0) ? a : b
+      );
+      declararVencedor(vencedor);
+    }
+  }
+}
+
+async function declararVencedor(teamId) {
+  if (estado.winner || declarando) return;
+  declarando = true;
+  try {
+    // Escrita atômica com ETag para evitar conflito se dois telões estiverem abertos
+    const res = await fetch(`${RTDB}/winner.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+    const etag = res.headers.get('ETag');
+    const atual = await res.json();
+    if (atual !== null) { declarando = false; return; }
+    await fetch(`${RTDB}/winner.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'if-match': etag },
+      body: JSON.stringify(teamId)
+    });
+  } catch (_) {}
+  declarando = false;
+}
+
+// ── UI ────────────────────────────────────────────────────────────
+function atualizarUI() {
+  const grade = document.getElementById('jogo-grade');
+  if (!grade) return;
+
+  // Atualiza badges de "pressionou"
+  TIMES.forEach(tm => {
+    const zona = document.getElementById('zona-' + tm.id);
+    if (!zona) return;
+    const badge = zona.querySelector('.equipe-zona-badge');
+
+    const pressionou = estado.presses && estado.presses[tm.id];
+    zona.classList.toggle('pressionou', !!pressionou);
+
+    if (estado.winner === tm.id) {
+      zona.classList.add('winner');
+      if (badge) badge.textContent = '🏆 PRIMEIRO!';
+    } else {
+      zona.classList.remove('winner');
+      if (badge) badge.textContent = pressionou ? '⏱ apertou' : '';
+    }
+  });
+
+  // Estado geral
+  if (estado.winner) {
+    grade.className = 'jogo-grade estado-vencedor';
+    const tm = TIMES.find(t => t.id === estado.winner);
+    document.getElementById('status-msg').textContent = tm ? `🏆 ${tm.nome} foi primeiro!` : '🏆 Vencedor!';
+    if (!grade.dataset.soundPlayed || grade.dataset.soundPlayed !== estado.winner) {
+      grade.dataset.soundPlayed = estado.winner;
+      tocarSom(estado.winner);
+      const fl = document.getElementById('flash');
+      fl.style.background = tm ? tm.cor : '#fff';
+      fl.classList.remove('ativo'); void fl.offsetWidth; fl.classList.add('ativo');
+    }
+  } else {
+    grade.className = 'jogo-grade estado-pronto';
+    delete grade.dataset.soundPlayed;
+    const pressionaram = estado.presses ? Object.keys(estado.presses).length : 0;
+    document.getElementById('status-msg').textContent = pressionaram > 0
+      ? `⏳ ${pressionaram} equipe(s) já apertaram…`
+      : '🟢 Aguardando…';
+  }
+}
+
+// ── Controles ─────────────────────────────────────────────────────
+function renderJogo() {
+  const grade = document.getElementById('jogo-grade');
+  grade.innerHTML = '';
+  TIMES.forEach(tm => {
+    const z = document.createElement('div');
+    z.className = 'equipe-zona'; z.id = 'zona-' + tm.id;
+    z.style.background = `linear-gradient(160deg,${tm.corEscura} 0%,${tm.cor} 100%)`;
+    z.innerHTML = `
+      <div class="winner-badge">🎤</div>
+      <div class="equipe-zona-nome">${tm.emoji}<br>${tm.nome}</div>
+      <div class="equipe-zona-badge"></div>`;
+    grade.appendChild(z);
+  });
+  atualizarUI();
+}
+
+async function resetarRodada() {
+  if (aC.state === 'suspended') aC.resume();
+  declarando = false;
+  const novaRodada = (estado.rodada || 0) + 1;
+  await fetch(`${RTDB}.json`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rodada: novaRodada, winner: null, presses: null })
+  });
+}
+
+function iniciarJogo() {
+  if (aC.state === 'suspended') aC.resume();
+  mostrarTela('tela-jogo');
+  renderJogo();
+}
+
+function voltarSetup() {
+  mostrarTela('tela-setup');
+}
+
+function mostrarTela(id) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('visivel'));
+  document.getElementById(id).classList.add('visivel');
+}
+
+// ── Setup: links ──────────────────────────────────────────────────
+function renderLinks() {
+  const base = window.location.origin;
+  const lista = document.getElementById('links-lista');
+  const accel = document.getElementById('accel-links');
+  lista.innerHTML = '';
+  accel.innerHTML = '';
+  TIMES.forEach(tm => {
+    const url = `${base}/buzzer-phone.html?t=${tm.id}`;
+    const row = document.createElement('div');
+    row.className = 'link-row';
+    row.innerHTML = `
+      <div class="link-row-cor" style="background:${tm.cor}"></div>
+      <div class="link-row-nome">${tm.emoji} ${tm.nome.split('·')[1].trim()}</div>
+      <div class="link-row-url" title="${url}">${url}</div>
+      <button class="link-row-btn" onclick="copiarLink(this,'${url}')">Copiar</button>`;
+    lista.appendChild(row);
+
+    const ar = document.createElement('div');
+    ar.style.cssText = 'display:flex;align-items:center;gap:8px;background:#0e1018;border-radius:10px;padding:8px 12px';
+    ar.innerHTML = `
+      <div style="width:8px;height:8px;border-radius:50%;background:${tm.cor};flex-shrink:0"></div>
+      <div style="font-size:12px;font-weight:800;width:80px;flex-shrink:0">${tm.emoji} ${tm.nome.split('·')[1].trim()}</div>
+      <div style="flex:1;font-size:10px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</div>
+      <button class="link-row-btn" onclick="copiarLink(this,'${url}')">Copiar</button>`;
+    accel.appendChild(ar);
+  });
+}
+
+function copiarLink(btn, url) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copiado');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copiado'); }, 2000);
+  });
+}
+
+// Reset via espaço
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); resetarRodada(); }
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+renderLinks();
+conectarSSE();
+</script>
+</body>
+</html>

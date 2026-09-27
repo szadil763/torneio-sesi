@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Buzzer · SESI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body {
+      height:100%; width:100%;
+      font-family:'Baloo 2',sans-serif;
+      overflow:hidden; user-select:none; -webkit-user-select:none;
+      touch-action:manipulation;
+    }
+
+    #bg {
+      position:fixed; inset:0;
+      background: linear-gradient(160deg, var(--cor-escura, #1a1d27) 0%, var(--cor, #2F8FE0) 100%);
+      transition: background .4s, filter .4s;
+    }
+    body.perdeu #bg { filter: grayscale(1) brightness(.35); }
+    body.ganhou #bg { filter: brightness(1.1); }
+
+    #app {
+      position:relative; z-index:1;
+      height:100vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:0; padding:24px 24px 80px;
+    }
+
+    .nome-time {
+      font-size:clamp(20px,5vw,34px); font-weight:900; color:#fff;
+      text-align:center; text-shadow:0 3px 12px rgba(0,0,0,.5);
+      line-height:1.2; margin-bottom:24px;
+    }
+
+    /* ── Botão principal ── */
+    #btn-apertar {
+      width: min(260px, 68vw);
+      height: min(260px, 68vw);
+      border-radius:50%;
+      background:rgba(255,255,255,.18);
+      border:4px solid rgba(255,255,255,.55);
+      color:#fff;
+      font-size:clamp(15px,4vw,20px); font-weight:900; font-family:inherit;
+      cursor:pointer;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+      transition:transform .12s, background .12s, border-color .12s, opacity .3s;
+      -webkit-tap-highlight-color:transparent;
+      box-shadow:0 8px 40px rgba(0,0,0,.35);
+    }
+    #btn-apertar:active:not(:disabled) { transform:scale(.95); background:rgba(255,255,255,.3); }
+    #btn-apertar:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-emoji { font-size:clamp(38px,11vw,58px); line-height:1; }
+
+    #msg-estado {
+      margin-top:24px;
+      font-size:clamp(15px,4vw,20px); font-weight:800; color:rgba(255,255,255,.9);
+      text-align:center; min-height:1.4em; letter-spacing:.02em;
+      text-shadow:0 2px 8px rgba(0,0,0,.4);
+    }
+
+    body.ganhou #btn-apertar {
+      background:rgba(255,255,255,.35);
+      border-color:rgba(255,255,255,.9);
+      animation:ganhou-pulse 1s ease-in-out infinite alternate;
+    }
+    @keyframes ganhou-pulse {
+      from { box-shadow: 0 0 0 0 rgba(255,255,255,.3), 0 8px 40px rgba(0,0,0,.35); }
+      to   { box-shadow: 0 0 0 22px rgba(255,255,255,0), 0 8px 40px rgba(0,0,0,.35); }
+    }
+
+    /* ── Painel do acelerômetro ── */
+    #accel-panel {
+      position:fixed; bottom:0; left:0; right:0; z-index:10;
+      background:rgba(0,0,0,.75); backdrop-filter:blur(10px);
+      padding:10px 16px 20px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+
+    #accel-top {
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    #accel-status {
+      font-size:12px; font-weight:800; color:rgba(255,255,255,.7);
+      display:flex; align-items:center; gap:5px;
+    }
+    #accel-dot {
+      width:7px; height:7px; border-radius:50%; background:#666;
+      transition:background .2s;
+    }
+    #accel-dot.cal   { background:#f97316; animation:piscar .5s infinite; }
+    #accel-dot.ativo { background:#4ade80; }
+    #accel-dot.hit   { background:#fff; }
+
+    #btn-modo {
+      font-size:11px; font-weight:800; color:rgba(255,255,255,.5);
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+      border-radius:8px; padding:4px 10px; cursor:pointer; font-family:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #btn-modo:hover { color:#fff; }
+
+    #accel-bar-wrap {
+      position:relative; width:100%; height:10px;
+      background:rgba(255,255,255,.1); border-radius:100px; overflow:hidden;
+    }
+    #accel-bar-fill {
+      height:100%; width:0%; border-radius:100px;
+      background:linear-gradient(90deg, #4ade80, #fff);
+      transition:width .04s;
+    }
+    #accel-bar-thresh {
+      position:absolute; top:0; bottom:0; width:2px;
+      background:rgba(255,255,255,.5); border-radius:2px;
+    }
+    #accel-val {
+      font-size:10px; color:rgba(255,255,255,.35); font-weight:700;
+      text-align:right;
+    }
+
+    /* Confetes */
+    .confete {
+      position:fixed; width:10px; height:10px; border-radius:2px;
+      animation:cair linear forwards; z-index:20; pointer-events:none;
+    }
+    @keyframes cair {
+      0%   { transform:translateY(-20px) rotate(0deg); opacity:1; }
+      100% { transform:translateY(110vh) rotate(720deg); opacity:0; }
+    }
+
+    /* Conexão */
+    #bar-conexao {
+      position:fixed; top:10px; right:12px; z-index:20;
+      display:flex; align-items:center; gap:5px;
+      font-size:10px; color:rgba(255,255,255,.3); font-weight:700;
+    }
+    .dot { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.3); }
+    .dot.on  { background:#4ade80; }
+    .dot.off { background:#ef4444; animation:piscar .8s infinite; }
+    @keyframes piscar { 50% { opacity:.3; } }
+
+    /* ── Tela de configuração offline ── */
+    #tela-config {
+      position:fixed; inset:0; z-index:200;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:flex-start;
+      overflow-y:auto; padding:24px 16px 40px;
+      background: linear-gradient(160deg, var(--cor-escura, #1a1d27) 0%, var(--cor, #2F8FE0) 100%);
+    }
+    #cfg-wrap {
+      width:100%; max-width:400px;
+      display:flex; flex-direction:column; gap:14px;
+    }
+    #cfg-header { text-align:center; margin-bottom:6px; }
+    #cfg-tag {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(0,0,0,.3); border:1.5px solid rgba(255,255,255,.2);
+      color:#fff; font-size:12px; font-weight:800; padding:4px 14px;
+      border-radius:99px; letter-spacing:.05em; margin-bottom:12px;
+    }
+    #cfg-titulo {
+      font-size:clamp(20px,5vw,28px); font-weight:900; color:#fff;
+      text-shadow:0 3px 12px rgba(0,0,0,.5); margin-bottom:4px;
+    }
+    #cfg-sub {
+      font-size:13px; color:rgba(255,255,255,.6); font-weight:600;
+    }
+    .cfg-card {
+      background:rgba(0,0,0,.35); border:1.5px solid rgba(255,255,255,.15);
+      border-radius:18px; padding:16px 18px; display:flex; flex-direction:column; gap:10px;
+    }
+    .cfg-card-label {
+      font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em;
+      color:rgba(255,255,255,.45);
+    }
+    .cfg-row { display:flex; align-items:center; gap:10px; }
+    .cfg-icon { font-size:20px; flex-shrink:0; }
+    .cfg-info { flex:1; }
+    .cfg-info-title { font-size:14px; font-weight:800; color:#fff; }
+    .cfg-info-sub   { font-size:11px; color:rgba(255,255,255,.5); margin-top:2px; }
+    .cfg-badge {
+      font-size:11px; font-weight:800; padding:3px 10px;
+      border-radius:99px; flex-shrink:0;
+    }
+    .cfg-badge-ok  { background:rgba(74,222,128,.2); color:#4ade80; border:1px solid rgba(74,222,128,.4); }
+    .cfg-badge-err { background:rgba(239,68,68,.2);  color:#f87171; border:1px solid rgba(239,68,68,.4); animation:piscar .8s infinite; }
+    .cfg-badge-wait{ background:rgba(255,255,255,.1); color:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.2); }
+
+    /* barra do acelerômetro (config) */
+    #cfg-accel-bar-wrap {
+      position:relative; width:100%; height:12px;
+      background:rgba(255,255,255,.1); border-radius:100px; overflow:hidden;
+    }
+    #cfg-accel-bar-fill {
+      height:100%; width:0%; border-radius:100px;
+      background:linear-gradient(90deg, #4ade80, #fff);
+      transition:width .05s;
+    }
+    #cfg-accel-bar-thresh {
+      position:absolute; top:0; bottom:0; width:2px;
+      background:rgba(255,255,255,.6); border-radius:2px;
+    }
+    #cfg-slider {
+      flex:1; accent-color:rgba(255,255,255,.7); height:4px; cursor:pointer;
+    }
+    #cfg-slider-val {
+      font-size:10px; color:rgba(255,255,255,.55); font-weight:700;
+      width:44px; text-align:right; flex-shrink:0;
+    }
+    .cfg-dica {
+      font-size:11px; color:rgba(255,255,255,.45); line-height:1.5;
+      padding:8px 10px; background:rgba(0,0,0,.2); border-radius:10px;
+    }
+    .cfg-btn-row { display:flex; gap:8px; }
+    .cfg-btn {
+      flex:1; padding:10px 8px; border-radius:12px; border:none;
+      font-family:inherit; font-size:12px; font-weight:800; cursor:pointer;
+      transition:opacity .15s, transform .1s; letter-spacing:.02em;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .cfg-btn:active:not(:disabled) { transform:scale(.96); }
+    .cfg-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .cfg-btn-sec { background:rgba(255,255,255,.12); color:#fff; }
+    .cfg-btn-cal { background:rgba(74,222,128,.25); color:#4ade80; border:1px solid rgba(74,222,128,.35); }
+    .cfg-btn-cal:disabled { background:rgba(255,255,255,.08); color:rgba(255,255,255,.35); border-color:transparent; }
+
+    #cfg-btn-entrar {
+      width:100%; padding:18px; border-radius:18px; border:none;
+      font-family:inherit; font-size:17px; font-weight:900; cursor:pointer;
+      background:rgba(255,255,255,.95); color:#1a1d27;
+      letter-spacing:.03em; transition:opacity .2s, transform .12s;
+      -webkit-tap-highlight-color:transparent;
+      box-shadow:0 6px 30px rgba(0,0,0,.3);
+    }
+    #cfg-btn-entrar:active:not(:disabled) { transform:scale(.97); }
+    #cfg-btn-entrar:disabled { opacity:.35; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+<div id="bg"></div>
+
+<!-- ── Tela de Configuração & Calibração (modo offline) ── -->
+<div id="tela-config" style="display:none">
+  <div id="cfg-wrap">
+
+    <!-- Cabeçalho -->
+    <div id="cfg-header">
+      <div id="cfg-tag">⚙️ Configuração Offline</div>
+      <div id="cfg-titulo">Botoeira</div>
+      <div id="cfg-sub">Calibre antes de entrar no jogo</div>
+    </div>
+
+    <!-- 1. Equipe -->
+    <div class="cfg-card">
+      <div class="cfg-card-label">Equipe</div>
+      <div class="cfg-row">
+        <span class="cfg-icon" id="cfg-team-emoji"></span>
+        <div class="cfg-info">
+          <div class="cfg-info-title" id="cfg-team-nome"></div>
+          <div class="cfg-info-sub">Kahoot English · Ginásio</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Conexão com o servidor -->
+    <div class="cfg-card">
+      <div class="cfg-card-label">Conexão com o servidor</div>
+      <div class="cfg-row">
+        <span class="cfg-icon">📡</span>
+        <div class="cfg-info">
+          <div class="cfg-info-title" id="cfg-srv-txt">Verificando…</div>
+          <div class="cfg-info-sub" id="cfg-srv-addr"></div>
+        </div>
+        <span class="cfg-badge cfg-badge-wait" id="cfg-srv-badge">aguarde</span>
+      </div>
+    </div>
+
+    <!-- 3. Acelerômetro -->
+    <div class="cfg-card">
+      <div class="cfg-card-label">Acelerômetro (modo físico)</div>
+      <div class="cfg-row">
+        <span class="cfg-icon">📳</span>
+        <div class="cfg-info">
+          <div class="cfg-info-title" id="cfg-accel-txt">Inativo</div>
+          <div class="cfg-info-sub" id="cfg-accel-sub">Ative para detectar toque por vibração</div>
+        </div>
+        <span class="cfg-badge cfg-badge-wait" id="cfg-accel-badge">inativo</span>
+      </div>
+
+      <div id="cfg-accel-bar-wrap" style="display:none">
+        <div id="cfg-accel-bar-fill"></div>
+        <div id="cfg-accel-bar-thresh"></div>
+      </div>
+
+      <div id="cfg-slider-row" style="display:none;align-items:center;gap:8px">
+        <span style="font-size:10px;color:rgba(255,255,255,.5);font-weight:700;width:50px;flex-shrink:0">Sensib.</span>
+        <input type="range" id="cfg-slider" min="0" max="30" step="0.1" value="4">
+        <span id="cfg-slider-val">4.0 m/s²</span>
+      </div>
+
+      <div class="cfg-dica" id="cfg-accel-dica">
+        Ative o acelerômetro e depois clique em <strong style="color:#fff">Calibrar</strong> — mantenha o celular imóvel por 2 s. Em seguida, agite para testar.
+      </div>
+
+      <div class="cfg-btn-row">
+        <button class="cfg-btn cfg-btn-sec" id="cfg-btn-accel" onclick="cfgAtivarAceel()">⚡ Ativar</button>
+        <button class="cfg-btn cfg-btn-cal" id="cfg-btn-calibrar" onclick="cfgCalibrar()" disabled>🎯 Calibrar</button>
+      </div>
+    </div>
+
+    <!-- Botão entrar -->
+    <button id="cfg-btn-entrar" onclick="cfgEntrar()" disabled>
+      Conectando ao servidor…
+    </button>
+
+  </div>
+</div>
+
+<!-- Banner Kahoot (aparece quando o mediador ativa uma pergunta) -->
+<div id="kahoot-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff"></div>
+
+<div id="app">
+  <div class="nome-time" id="nome-time">Carregando…</div>
+
+  <button id="btn-apertar" onclick="apertar()" disabled>
+    <div class="btn-emoji" id="btn-emoji">⏳</div>
+    <div id="btn-label">Aguarde…</div>
+  </button>
+
+  <div id="msg-estado"></div>
+</div>
+
+<!-- Painel acelerômetro (sempre visível) -->
+<div id="accel-panel">
+  <div id="accel-top">
+    <div id="accel-status">
+      <div id="accel-dot"></div>
+      <span id="accel-txt">Iniciando…</span>
+    </div>
+    <button id="btn-modo" onclick="alternarModo()">Carregando…</button>
+  </div>
+  <div id="accel-bar-wrap">
+    <div id="accel-bar-fill"></div>
+    <div id="accel-bar-thresh"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+    <span style="font-size:10px;color:rgba(255,255,255,.35);font-weight:700;flex-shrink:0;width:50px">Sensib.</span>
+    <input type="range" id="accel-slider" min="0" max="30" step="0.1" value="4"
+      style="flex:1;accent-color:rgba(255,255,255,.6);height:4px;cursor:pointer">
+    <span id="accel-slider-val" style="font-size:10px;color:rgba(255,255,255,.5);font-weight:700;width:44px;text-align:right">4.0 m/s²</span>
+  </div>
+  <div id="accel-val" style="display:none">0.0 m/s²</div>
+</div>
+
+<div id="bar-conexao">
+  <div class="dot off" id="dot-con"></div>
+  <span id="txt-con">Conectando…</span>
+</div>
+
+<script>
+// ── Times ─────────────────────────────────────────────────────────
+const TIMES = {
+  vermelha: { nome:'Turma A · Vermelha', cor:'#E5484D', corEscura:'#7A1F22', emoji:'🔴' },
+  azul:     { nome:'Turma B · Azul',     cor:'#2F8FE0', corEscura:'#164A72', emoji:'🔵' },
+  verde:    { nome:'Turma C · Verde',    cor:'#3C9A5F', corEscura:'#1E4E30', emoji:'🟢' },
+  amarela:  { nome:'Turma D · Amarela',  cor:'#E0B23C', corEscura:'#7A5D14', emoji:'🟡' },
+};
+
+const teamId = new URLSearchParams(location.search).get('t') || 'vermelha';
+const tm     = TIMES[teamId] || TIMES.vermelha;
+
+document.documentElement.style.setProperty('--cor', tm.cor);
+document.documentElement.style.setProperty('--cor-escura', tm.corEscura);
+document.getElementById('nome-time').textContent = `${tm.emoji} ${tm.nome}`;
+document.title = `Buzzer · ${tm.nome.split('·')[1].trim()} · SESI`;
+
+// ── Modo local vs. Firebase ──────────────────────────────────────
+// Se a página for servida pelo servidor local (porta 3000),
+// usa o servidor local em vez do Firebase — sem internet necessária.
+const IS_LOCAL  = location.port === '3000';
+const _BASE     = IS_LOCAL
+  ? `${location.protocol}//${location.hostname}:3000`
+  : 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
+const RTDB      = `${_BASE}/buzzer`;
+const RTDB_ROOT = _BASE;
+// Mapeamento: id do celular → id da equipe Kahoot (A/B/C/D)
+const KAHOOT_ID = ({ vermelha:'A', azul:'B', verde:'C', amarela:'D' })[teamId] || 'A';
+
+let estadoServidor = { rodada: 0, winner: null, presses: {} };
+let rodadaLocal    = -1;
+let jaApertou      = false;
+let sseConn        = null;
+
+// ── SSE ───────────────────────────────────────────────────────────
+function conectarSSE() {
+  if (IS_LOCAL) return; // modo local não usa SSE
+  if (sseConn) { sseConn.close(); sseConn = null; }
+  sseConn = new EventSource(`${RTDB}.json`);
+
+  sseConn.addEventListener('put',   e => aplicarEvento(...Object.values(JSON.parse(e.data)), false));
+  sseConn.addEventListener('patch', e => aplicarEvento(...Object.values(JSON.parse(e.data)), true));
+
+  sseConn.onopen = () => {
+    document.getElementById('dot-con').className = 'dot on';
+    document.getElementById('txt-con').textContent = 'Conectado';
+  };
+  sseConn.onerror = () => {
+    document.getElementById('dot-con').className = 'dot off';
+    document.getElementById('txt-con').textContent = 'Reconectando…';
+    sseConn.close(); setTimeout(conectarSSE, 4000);
+  };
+}
+
+function aplicarEvento(path, data, isPatch) {
+  if (path === '/') {
+    estadoServidor = isPatch
+      ? Object.assign(estadoServidor, data || {})
+      : { rodada:0, winner:null, presses:{}, ...(data||{}) };
+  } else if (path === '/winner')  { estadoServidor.winner = data; }
+  else if (path === '/rodada')    { estadoServidor.rodada = data || 0; }
+  else if (path === '/presses')   { estadoServidor.presses = data || {}; }
+  else if (path.startsWith('/presses/')) {
+    const t = path.slice('/presses/'.length);
+    if (!estadoServidor.presses) estadoServidor.presses = {};
+    data === null ? delete estadoServidor.presses[t] : (estadoServidor.presses[t] = data);
+  }
+
+  if (estadoServidor.rodada !== rodadaLocal) {
+    rodadaLocal = estadoServidor.rodada;
+    jaApertou   = false;
+    limparConfetes();
+    renderEstado('aguardando');
+    return;
+  }
+
+  if      (estadoServidor.winner === teamId)                      renderEstado('ganhou');
+  else if (estadoServidor.winner && estadoServidor.winner !== teamId) renderEstado('perdeu');
+  else if (estadoServidor.presses && estadoServidor.presses[teamId]) renderEstado('apertado');
+  else                                                             renderEstado('aguardando');
+}
+
+// ── Kahoot English — estado integrado ────────────────────────────
+let kahootAtivo = false;
+let kahootBuzz  = null;
+
+async function pollKahoot() {
+  try {
+    const [a, b] = await Promise.all([
+      fetch(`${RTDB_ROOT}/kahoot_active.json`).then(r => r.json()).catch(() => null),
+      fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json()).catch(() => null),
+    ]);
+    const novoAtivo = !!a;
+    const novoBuzz  = b || null;
+    const mudou = novoAtivo !== kahootAtivo
+               || JSON.stringify(novoBuzz) !== JSON.stringify(kahootBuzz);
+    if (mudou) {
+      const eraAtivo = kahootAtivo;
+      kahootAtivo = novoAtivo;
+      kahootBuzz  = novoBuzz;
+      if (novoAtivo && !eraAtivo) { jaApertou = false; limparConfetes(); }
+      renderEstado('aguardando'); // dispara re-render no estado atual
+    }
+  } catch (_) {}
+}
+
+function renderEstadoKahoot() {
+  const btn   = document.getElementById('btn-apertar');
+  const emoji = document.getElementById('btn-emoji');
+  const label = document.getElementById('btn-label');
+  const msg   = document.getElementById('msg-estado');
+  const ban   = document.getElementById('kahoot-banner');
+
+  if (kahootBuzz) {
+    const euFui = kahootBuzz.teamId === KAHOOT_ID;
+    btn.disabled = true;
+    if (euFui) {
+      document.body.className = 'ganhou';
+      emoji.textContent = '🏆'; label.textContent = 'PRIMEIRO!';
+      msg.textContent   = '🎉 Você foi primeiro!';
+      ban.textContent   = '🎓 KAHOOT — Você buzou!';
+      ban.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;background:#2E9E4F';
+      criarConfetes();
+    } else {
+      document.body.className = 'perdeu';
+      emoji.textContent = tm.emoji; label.textContent = 'Tarde…';
+      msg.textContent   = 'Outra equipe chegou primeiro';
+      ban.textContent   = '🎓 KAHOOT — Outra equipe buzou';
+      ban.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;background:#D92B2B';
+    }
+  } else {
+    // kahootAtivo=true mas ainda sem buzz
+    jaApertou = false;
+    document.body.className = '';
+    btn.disabled = false;
+    emoji.textContent = '⚡'; label.textContent = 'BUZZE AGORA!';
+    msg.textContent   = '';
+    ban.textContent   = '🎓 KAHOOT ENGLISH — Botoeira ativa!';
+    ban.style.cssText = 'display:block;position:fixed;top:0;left:0;right:0;z-index:30;padding:9px 16px;text-align:center;font-size:13px;font-weight:900;letter-spacing:.04em;color:#fff;background:#F5821F;animation:piscar .5s infinite';
+  }
+}
+
+// ── Renderização ──────────────────────────────────────────────────
+function renderEstado(estado) {
+  // Kahoot tem prioridade sobre o jogo normal de buzzer
+  if (kahootAtivo || kahootBuzz) { renderEstadoKahoot(); return; }
+
+  // Banner Kahoot sumiu — modo normal
+  const ban = document.getElementById('kahoot-banner');
+  if (ban) ban.style.display = 'none';
+
+  const btn   = document.getElementById('btn-apertar');
+  const emoji = document.getElementById('btn-emoji');
+  const label = document.getElementById('btn-label');
+  const msg   = document.getElementById('msg-estado');
+  document.body.className = estado;
+
+  switch (estado) {
+    case 'aguardando':
+      btn.disabled      = false;
+      emoji.textContent = modoFisicoAtivo ? '📳' : tm.emoji;
+      label.textContent = modoFisicoAtivo ? 'Aguardando vibração…' : 'APERTAR!';
+      msg.textContent   = '';
+      break;
+    case 'apertado':
+      btn.disabled      = true;
+      emoji.textContent = '⏳';
+      label.textContent = 'Aguardando…';
+      msg.textContent   = 'Sinal enviado!';
+      break;
+    case 'ganhou':
+      btn.disabled      = true;
+      emoji.textContent = '🏆';
+      label.textContent = 'PRIMEIRO!';
+      msg.textContent   = '🎉 Você foi primeiro!';
+      criarConfetes();
+      break;
+    case 'perdeu':
+      btn.disabled      = true;
+      emoji.textContent = tm.emoji;
+      label.textContent = 'Não foi…';
+      const v = TIMES[estadoServidor.winner];
+      msg.textContent = v
+        ? `${v.emoji} ${v.nome.split('·')[1].trim()} chegou primeiro`
+        : 'Outra equipe chegou primeiro';
+      break;
+  }
+}
+
+// ── Apertar (manual ou automático) ────────────────────────────────
+async function apertar() {
+  const btn = document.getElementById('btn-apertar');
+  if (btn.disabled || jaApertou) return;
+
+  // ── Modo Kahoot: escreve em kahoot_buzz ────────────────────────
+  if (kahootAtivo && !kahootBuzz) {
+    jaApertou = true;
+    btn.disabled = true;
+    try {
+      const atual = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json());
+      if (!atual) {
+        await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: KAHOOT_ID, ts: { '.sv': 'timestamp' } }),
+        });
+      }
+    } catch(err) { console.warn('Kahoot buzz erro:', err); }
+    return;
+  }
+
+  // ── Modo normal: escreve em buzzer/presses ─────────────────────
+  jaApertou = true;
+  btn.disabled = true;
+  renderEstado('apertado');
+
+  const rodadaAoApertar = rodadaLocal;
+  try {
+    await fetch(`${RTDB}/presses/${teamId}.json`, {
+      method:'PUT', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ ts:{ '.sv':'timestamp' } })
+    });
+    const res  = await fetch(`${RTDB}/winner.json`, { headers:{ 'X-Firebase-ETag':'true' } });
+    const etag = res.headers.get('ETag');
+    const win  = await res.json();
+    if (win === null && rodadaLocal === rodadaAoApertar) {
+      await fetch(`${RTDB}/winner.json`, {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json', 'if-match':etag },
+        body: JSON.stringify(teamId)
+      });
+    }
+  } catch(err) { console.warn('Erro ao apertar:', err); }
+}
+
+// ── Wake Lock (tela sempre ativa) ────────────────────────────────
+let wakeLock = null;
+
+async function ativarWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+        // re-adquire automaticamente se ainda estiver no modo físico
+        if (modoFisicoAtivo && document.visibilityState === 'visible') ativarWakeLock();
+      });
+    }
+  } catch (_) {}
+}
+
+function liberarWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch(_){} wakeLock = null; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && modoFisicoAtivo && !wakeLock) ativarWakeLock();
+});
+
+// ── Modo físico (acelerômetro) ────────────────────────────────────
+let modoFisicoAtivo = false;
+let accelThreshold  = 4.0;   // m/s² — ajustado na calibração ou slider
+let accelLock       = false;
+let accelHandler    = null;
+let calSamples      = [];
+let calibrando      = false;
+const ACCEL_BAR_MAX  = 30;   // m/s² = 100% da barra
+const LOCK_MS_ACCEL  = 800;  // bloqueio após detecção
+const SENS_KEY       = `torneio-buzzer-sens:${teamId}`;
+
+// Carrega sensibilidade salva
+try {
+  const saved = parseFloat(localStorage.getItem(SENS_KEY));
+  if (!isNaN(saved) && saved >= 0 && saved <= 30) accelThreshold = saved;
+} catch(_) {}
+
+function atualizarBarraThresh() {
+  const pct = Math.min(98, accelThreshold / ACCEL_BAR_MAX * 100);
+  document.getElementById('accel-bar-thresh').style.left = pct + '%';
+  document.getElementById('accel-slider').value          = accelThreshold;
+  document.getElementById('accel-slider-val').textContent = accelThreshold.toFixed(1) + ' m/s²';
+}
+
+// Slider de sensibilidade manual
+document.getElementById('accel-slider').addEventListener('input', e => {
+  accelThreshold = Math.round(parseFloat(e.target.value) * 10) / 10; // 1 casa decimal
+  atualizarBarraThresh();
+  try { localStorage.setItem(SENS_KEY, accelThreshold.toString()); } catch(_) {}
+  if (modoFisicoAtivo && !calibrando) {
+    setarStatusAceel('ativo', `Ativo — limite ${accelThreshold.toFixed(1)} m/s²`);
+  }
+});
+
+// Inicializa linha de threshold com valor carregado
+atualizarBarraThresh();
+
+function alternarModo() {
+  if (modoFisicoAtivo) {
+    desativarModoFisico();
+  } else {
+    ativarModoFisico();
+  }
+}
+
+function ativarModoFisico() {
+  if (typeof DeviceMotionEvent === 'undefined') {
+    alert('Este dispositivo não suporta acelerômetro.');
+    return;
+  }
+
+  // iOS 13+ exige permissão explícita
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(result => {
+      if (result === 'granted') iniciarAcelerometro();
+      else alert('Permissão negada para o acelerômetro.');
+    }).catch(() => alert('Erro ao solicitar permissão do acelerômetro.'));
+  } else {
+    iniciarAcelerometro();
+  }
+}
+
+function iniciarAcelerometro() {
+  modoFisicoAtivo = true;
+  document.getElementById('btn-modo').textContent = '✕ Desativar';
+
+  // Calibração: 2 segundos de silêncio para medir ruído de fundo
+  calibrando = true;
+  calSamples = [];
+  setarStatusAceel('cal', 'Calibrando — mantenha quieto…');
+
+  accelHandler = (e) => processarMotion(e);
+  window.addEventListener('devicemotion', accelHandler);
+
+  setTimeout(finalizarCalibracao, 2200);
+}
+
+function finalizarCalibracao() {
+  calibrando = false;
+  if (calSamples.length < 5) {
+    // Sensor não retornou dados — provavelmente não suportado
+    desativarModoFisico();
+    alert('Acelerômetro não retornou dados. Tente em outro navegador.');
+    return;
+  }
+
+  const media = calSamples.reduce((a,b) => a+b, 0) / calSamples.length;
+  const std   = Math.sqrt(calSamples.reduce((a,b) => a + (b-media)**2, 0) / calSamples.length);
+
+  // Threshold = média + 4 desvios padrão, mínimo 2.5 m/s²
+  accelThreshold = Math.max(2.5, media + 4 * std);
+  try { localStorage.setItem(SENS_KEY, accelThreshold.toString()); } catch(_) {}
+
+  // Sincroniza slider e linha de threshold
+  atualizarBarraThresh();
+
+  setarStatusAceel('ativo', `Pronto — limite ${accelThreshold.toFixed(1)} m/s²`);
+  renderEstado('aguardando');  // atualiza botão para mostrar "Aguardando vibração…"
+  ativarWakeLock();            // mantém tela ativa durante toda a prova
+}
+
+function processarMotion(e) {
+  const a = e.acceleration || e.accelerationIncludingGravity;
+  if (!a) return;
+
+  // Magnitude da aceleração (sem gravidade preferido)
+  const useGrav = !e.acceleration || (e.acceleration.x == null && e.acceleration.y == null);
+  const src     = useGrav ? e.accelerationIncludingGravity : e.acceleration;
+  const mag     = Math.sqrt((src.x||0)**2 + (src.y||0)**2 + (src.z||0)**2);
+
+  // Durante calibração: apenas coleta amostras
+  if (calibrando) {
+    calSamples.push(mag);
+    return;
+  }
+
+  // Atualiza barra visual
+  const pct  = Math.min(100, mag / ACCEL_BAR_MAX * 100);
+  document.getElementById('accel-bar-fill').style.width = pct + '%';
+  document.getElementById('accel-val').textContent = mag.toFixed(1) + ' m/s²';
+
+  // Cor da barra conforme proximidade do threshold
+  const fill = document.getElementById('accel-bar-fill');
+  fill.style.background = mag >= accelThreshold
+    ? '#fff'
+    : mag > accelThreshold * 0.6
+    ? 'linear-gradient(90deg,#f97316,#ffd700)'
+    : 'linear-gradient(90deg,#4ade80,#fff)';
+
+  // Detecção — threshold ultrapassado e não bloqueado
+  if (!accelLock && mag >= accelThreshold) {
+    accelLock = true;
+    setarStatusAceel('hit', '⚡ Detectado!');
+
+    const btn = document.getElementById('btn-apertar');
+    if (!btn.disabled && !jaApertou) apertar();
+
+    setTimeout(() => {
+      accelLock = false;
+      if (modoFisicoAtivo && !calibrando) setarStatusAceel('ativo', `Ativo — limite ${accelThreshold.toFixed(1)} m/s²`);
+    }, LOCK_MS_ACCEL);
+  }
+}
+
+function desativarModoFisico() {
+  modoFisicoAtivo = false;
+  calibrando      = false;
+  liberarWakeLock();
+  if (accelHandler) {
+    window.removeEventListener('devicemotion', accelHandler);
+    accelHandler = null;
+  }
+  document.getElementById('accel-bar-fill').style.width = '0%';
+  document.getElementById('accel-val').textContent      = '0.0 m/s²';
+  document.getElementById('btn-modo').textContent       = '⚡ Ativar modo físico';
+  setarStatusAceel('', 'Modo físico desligado');
+  renderEstado(document.body.className || 'aguardando');
+}
+
+function setarStatusAceel(cls, txt) {
+  document.getElementById('accel-dot').className = 'dot' + (cls ? ' '+cls : ' off');
+  document.getElementById('accel-dot').className = cls ? cls : '';
+  document.getElementById('accel-dot').style.background =
+    cls === 'cal'  ? '#f97316' :
+    cls === 'ativo'? '#4ade80' :
+    cls === 'hit'  ? '#fff' : '#444';
+  document.getElementById('accel-txt').textContent = txt;
+}
+
+// ── Confetes ──────────────────────────────────────────────────────
+function criarConfetes() {
+  const cores = [tm.cor, '#fff', '#F5821F', '#ffd700'];
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('div');
+    c.className = 'confete';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = cores[Math.floor(Math.random() * cores.length)];
+    c.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    c.style.animationDelay    = (Math.random() * .8) + 's';
+    c.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(c);
+    c.addEventListener('animationend', () => c.remove());
+  }
+}
+function limparConfetes() {
+  document.querySelectorAll('.confete').forEach(c => c.remove());
+}
+
+// ── Tela de Configuração Offline ─────────────────────────────────
+let cfgAceclHandler = null;
+let cfgCalibSamples = [];
+let cfgCalibrating  = false;
+let cfgAceclAtivo   = false;
+let cfgConectado    = false;
+let cfgThreshold    = accelThreshold;
+
+function cfgMostrar() {
+  // Preenche dados da equipe
+  document.getElementById('cfg-team-emoji').textContent = tm.emoji;
+  document.getElementById('cfg-team-nome').textContent  = tm.nome;
+  document.getElementById('cfg-srv-addr').textContent   =
+    `${location.protocol}//${location.hostname}:3000`;
+
+  // Atualiza slider com threshold carregado do localStorage
+  document.getElementById('cfg-slider').value = cfgThreshold;
+  document.getElementById('cfg-slider-val').textContent = cfgThreshold.toFixed(1) + ' m/s²';
+
+  document.getElementById('tela-config').style.display = 'flex';
+
+  // Verifica conexão com o servidor
+  cfgVerificarConexao();
+}
+
+async function cfgVerificarConexao() {
+  try {
+    const r = await fetch(`${location.protocol}//${location.hostname}:3000/kahoot_active.json`,
+      { signal: AbortSignal.timeout(3000) });
+    if (r.ok || r.status < 500) {
+      cfgConectado = true;
+      document.getElementById('cfg-srv-txt').textContent = 'Servidor conectado';
+      document.getElementById('cfg-srv-badge').textContent = '✓ online';
+      document.getElementById('cfg-srv-badge').className = 'cfg-badge cfg-badge-ok';
+      cfgAtualizarBotaoEntrar();
+    } else { cfgErroConexao(); }
+  } catch(_) { cfgErroConexao(); }
+}
+
+function cfgErroConexao() {
+  document.getElementById('cfg-srv-txt').textContent = 'Servidor não encontrado';
+  document.getElementById('cfg-srv-badge').textContent = '✗ offline';
+  document.getElementById('cfg-srv-badge').className = 'cfg-badge cfg-badge-err';
+  document.getElementById('cfg-btn-entrar').textContent = 'Servidor offline — verifique o notebook';
+  setTimeout(cfgVerificarConexao, 4000);
+}
+
+function cfgAtualizarBotaoEntrar() {
+  const btn = document.getElementById('cfg-btn-entrar');
+  if (cfgConectado) {
+    btn.disabled = false;
+    btn.textContent = cfgAceclAtivo
+      ? `✓ Entrar no Buzzer  (sensib. ${cfgThreshold.toFixed(1)} m/s²)`
+      : '✓ Entrar no Buzzer';
+  }
+}
+
+function cfgAtivarAceel() {
+  if (typeof DeviceMotionEvent === 'undefined') {
+    document.getElementById('cfg-accel-txt').textContent = 'Acelerômetro não suportado neste dispositivo';
+    return;
+  }
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(r => {
+      if (r === 'granted') cfgIniciarAceel();
+      else {
+        document.getElementById('cfg-accel-txt').textContent = 'Permissão negada';
+        document.getElementById('cfg-accel-badge').textContent = '✗ negado';
+        document.getElementById('cfg-accel-badge').className = 'cfg-badge cfg-badge-err';
+      }
+    }).catch(() => {});
+  } else {
+    cfgIniciarAceel();
+  }
+}
+
+function cfgIniciarAceel() {
+  cfgAceclAtivo = true;
+  document.getElementById('cfg-btn-accel').textContent    = '✓ Ativo';
+  document.getElementById('cfg-btn-accel').disabled        = true;
+  document.getElementById('cfg-btn-calibrar').disabled     = false;
+  document.getElementById('cfg-accel-bar-wrap').style.display = 'block';
+  document.getElementById('cfg-slider-row').style.display     = 'flex';
+  document.getElementById('cfg-accel-badge').textContent   = '● ativo';
+  document.getElementById('cfg-accel-badge').className     = 'cfg-badge cfg-badge-ok';
+  document.getElementById('cfg-accel-txt').textContent     = 'Acelerômetro ativo';
+  document.getElementById('cfg-accel-sub').textContent     = 'Agite o celular para testar';
+
+  cfgAceclHandler = (e) => cfgProcessarMotion(e);
+  window.addEventListener('devicemotion', cfgAceclHandler);
+  cfgAtualizarBotaoEntrar();
+}
+
+function cfgProcessarMotion(e) {
+  const src = e.acceleration || e.accelerationIncludingGravity;
+  if (!src) return;
+  const mag = Math.sqrt((src.x||0)**2 + (src.y||0)**2 + (src.z||0)**2);
+
+  if (cfgCalibrating) { cfgCalibSamples.push(mag); return; }
+
+  // Atualiza barra ao vivo
+  const pct = Math.min(100, mag / 30 * 100);
+  document.getElementById('cfg-accel-bar-fill').style.width = pct + '%';
+  document.getElementById('cfg-accel-bar-fill').style.background =
+    mag >= cfgThreshold ? '#fff' :
+    mag > cfgThreshold * 0.6 ? 'linear-gradient(90deg,#f97316,#ffd700)' :
+    'linear-gradient(90deg,#4ade80,#fff)';
+
+  if (mag >= cfgThreshold) {
+    document.getElementById('cfg-accel-txt').textContent = '⚡ Detectado!';
+    document.getElementById('cfg-accel-sub').textContent = `Magnitude: ${mag.toFixed(1)} m/s²`;
+    document.getElementById('cfg-accel-badge').textContent = '⚡ hit!';
+    setTimeout(() => {
+      if (cfgAceclAtivo) {
+        document.getElementById('cfg-accel-txt').textContent = 'Acelerômetro ativo';
+        document.getElementById('cfg-accel-sub').textContent = 'Agite o celular para testar';
+        document.getElementById('cfg-accel-badge').textContent = '● ativo';
+      }
+    }, 800);
+  }
+}
+
+function cfgCalibrar() {
+  if (!cfgAceclAtivo) return;
+  const btnCal = document.getElementById('cfg-btn-calibrar');
+  btnCal.disabled = true;
+  btnCal.textContent = '⏳ Calibrando…';
+  document.getElementById('cfg-accel-txt').textContent = 'Mantenha o celular IMÓVEL…';
+  document.getElementById('cfg-accel-sub').textContent = 'Medindo ruído de fundo por 2 s';
+  document.getElementById('cfg-accel-dica').innerHTML =
+    '⏳ Mantenha o celular parado na mesa ou na mão sem mover…';
+  cfgCalibSamples = [];
+  cfgCalibrating  = true;
+
+  setTimeout(() => {
+    cfgCalibrating = false;
+    if (cfgCalibSamples.length < 5) {
+      document.getElementById('cfg-accel-txt').textContent = 'Sensor sem dados — tente outro navegador';
+      btnCal.textContent = '🎯 Calibrar'; btnCal.disabled = false;
+      return;
+    }
+    const media = cfgCalibSamples.reduce((a,b) => a+b, 0) / cfgCalibSamples.length;
+    const std   = Math.sqrt(cfgCalibSamples.reduce((a,b) => a+(b-media)**2, 0) / cfgCalibSamples.length);
+    cfgThreshold = Math.max(2.5, media + 4 * std);
+    try { localStorage.setItem(SENS_KEY, cfgThreshold.toString()); } catch(_) {}
+
+    // Atualiza UI
+    document.getElementById('cfg-slider').value = cfgThreshold;
+    document.getElementById('cfg-slider-val').textContent = cfgThreshold.toFixed(1) + ' m/s²';
+    const threshPct = Math.min(98, cfgThreshold / 30 * 100);
+    document.getElementById('cfg-accel-bar-thresh').style.left = threshPct + '%';
+
+    document.getElementById('cfg-accel-txt').textContent = `Calibrado ✓ — limite ${cfgThreshold.toFixed(1)} m/s²`;
+    document.getElementById('cfg-accel-sub').textContent = 'Agite o celular para testar a detecção';
+    document.getElementById('cfg-accel-dica').innerHTML =
+      '✅ Calibração concluída! Agite o celular para ver a detecção em ação. Ajuste a sensibilidade com o slider se necessário.';
+    document.getElementById('cfg-accel-badge').textContent = '✓ calibrado';
+    btnCal.textContent = '🎯 Recalibrar'; btnCal.disabled = false;
+
+    cfgAtualizarBotaoEntrar();
+  }, 2200);
+}
+
+// Slider de sensibilidade na tela de config
+document.getElementById('cfg-slider').addEventListener('input', e => {
+  cfgThreshold = Math.round(parseFloat(e.target.value) * 10) / 10;
+  document.getElementById('cfg-slider-val').textContent = cfgThreshold.toFixed(1) + ' m/s²';
+  const pct = Math.min(98, cfgThreshold / 30 * 100);
+  document.getElementById('cfg-accel-bar-thresh').style.left = pct + '%';
+  try { localStorage.setItem(SENS_KEY, cfgThreshold.toString()); } catch(_) {}
+  cfgAtualizarBotaoEntrar();
+});
+
+function cfgEntrar() {
+  // Para o listener de calibração; o buzzer principal usará o threshold ajustado
+  if (cfgAceclHandler) {
+    window.removeEventListener('devicemotion', cfgAceclHandler);
+    cfgAceclHandler = null;
+  }
+  // Aplica o threshold calibrado no buzzer principal
+  accelThreshold = cfgThreshold;
+  atualizarBarraThresh();
+
+  // Fecha tela de config e inicializa o buzzer
+  document.getElementById('tela-config').style.display = 'none';
+  iniciarBuzzer();
+
+  // Se o acelerômetro foi ativado na config, ativa direto no buzzer
+  if (cfgAceclAtivo) {
+    setTimeout(() => {
+      // Ativa sem pedir permissão de novo (já concedida)
+      iniciarAcelerometro();
+    }, 200);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+function iniciarBuzzer() {
+  renderEstado('aguardando');
+  conectarSSE();
+
+  // Kahoot: verifica estado a cada 600ms
+  pollKahoot();
+  setInterval(pollKahoot, 600);
+}
+
+if (IS_LOCAL) {
+  // Modo offline: mostra tela de configuração primeiro
+  cfgMostrar();
+} else {
+  // Modo online: vai direto ao buzzer
+  iniciarBuzzer();
+
+  // Auto-inicia modo físico
+  if (typeof DeviceMotionEvent !== 'undefined') {
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      setarStatusAceel('', 'Toque uma vez na tela para ativar o modo físico');
+      document.getElementById('btn-modo').textContent = '⚡ Ativar modo físico';
+      document.body.addEventListener('touchend', function iosInit() {
+        document.body.removeEventListener('touchend', iosInit);
+        ativarModoFisico();
+      }, { once: true });
+    } else {
+      setTimeout(ativarModoFisico, 300);
+    }
+  }
+}
+</script>
+</body>
+</html>

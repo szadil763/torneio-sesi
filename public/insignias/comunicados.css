@@ -1,0 +1,427 @@
+/* ── Comunicados — página pública pais/alunos ──────────────────── */
+
+.com-secao-estojos {
+  background: linear-gradient(180deg, rgba(0,75,141,.08) 0%, transparent 100%);
+  border-color: rgba(0,75,141,.3);
+}
+.com-estojos-sub {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin: -8px 0 18px;
+}
+/* equipes-grade já vem de alunos.css */
+
+.com-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.com-header-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 14px;
+}
+.com-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #004B8D;
+  color: #fff;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 900;
+  font-size: 15px;
+  padding: 8px 18px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+  letter-spacing: .03em;
+}
+.com-logo-detalhe {
+  background: #F5821F;
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.com-titulo {
+  font-size: 22px;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 900;
+  margin: 0 0 4px;
+}
+.com-subtitulo {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Seção genérica */
+.com-secao {
+  margin-bottom: 36px;
+}
+.com-secao-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.com-secao-titulo::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--card-line);
+}
+
+/* Cards de recado */
+.com-recado {
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-left: 4px solid #004B8D;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.com-recado-titulo {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: 'Baloo 2', sans-serif;
+  margin-bottom: 6px;
+}
+.com-recado-texto {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-line;
+}
+.com-recado-data {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.com-recado-destaque {
+  border-left-color: #F5821F;
+  background: color-mix(in srgb, #F5821F 6%, var(--card));
+}
+
+/* Cards de dica */
+.com-dicas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.com-dica {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 12px;
+  padding: 13px 15px;
+}
+.com-dica-icone {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.com-dica-texto {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* Vazio */
+.com-vazio {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--muted);
+  font-size: 14px;
+  background: var(--card);
+  border: 1.5px dashed var(--card-line);
+  border-radius: 14px;
+}
+
+/* Rodapé */
+.com-rodape {
+  text-align: center;
+  padding: 24px 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Tab bar ──────────────────────────────────────────────── */
+.com-tabs-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg, #F8F9FA);
+  border-bottom: 1px solid var(--card-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0 8px;
+  margin: 0 -16px 20px;
+}
+.com-tabs-bar::-webkit-scrollbar { display: none; }
+.com-tabs-inner {
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 0;
+  min-width: max-content;
+}
+.com-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 16px 10px;
+  border-radius: 12px 12px 0 0;
+  border: 1.5px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .03em;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.com-tab-btn:hover:not(.ativo) {
+  background: color-mix(in srgb, #004B8D 8%, transparent);
+  color: #004B8D;
+}
+.com-tab-btn.ativo {
+  background: #004B8D;
+  color: #fff;
+  border-color: rgba(0,75,141,.25);
+}
+.com-tab-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+.com-tab-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Content area fade-in */
+.com-content-area {
+  animation: com-fade-in .2s ease;
+}
+@keyframes com-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Início cards 2×2 ─────────────────────────────────────── */
+.com-inicio-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.com-inicio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px 14px;
+  background: var(--card);
+  border: 2px solid var(--cc, #004B8D);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform .12s, box-shadow .12s;
+}
+.com-inicio-card:active {
+  transform: scale(.97);
+}
+.com-inicio-card-emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+.com-inicio-card-label {
+  font-size: 12px;
+  font-weight: 800;
+  font-family: 'Baloo 2', sans-serif;
+  color: var(--cc, #004B8D);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.com-inicio-card-count {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Boletim preview button */
+.com-inicio-boletim-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1.5px solid var(--card-line);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  margin-bottom: 12px;
+  transition: background .12s;
+}
+.com-inicio-boletim-btn:hover {
+  background: color-mix(in srgb, #004B8D 5%, var(--card));
+}
+.com-inicio-boletim-emoji {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.com-inicio-boletim-info { flex: 1; }
+.com-inicio-boletim-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  font-family: 'Baloo 2', sans-serif;
+  margin-bottom: 2px;
+}
+.com-inicio-boletim-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+.com-inicio-boletim-arrow {
+  font-size: 18px;
+  color: var(--muted);
+}
+
+/* Recado clicável (prévia no Início) */
+.com-recado-clicavel {
+  cursor: pointer;
+  transition: opacity .12s;
+}
+.com-recado-clicavel:active { opacity: .8; }
+
+/* ── Chips de filtro por área ─────────────────────────────────── */
+.com-area-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.com-area-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 13px;
+  border-radius: 100px;
+  border: 1.5px solid color-mix(in srgb, var(--chip-cor, #004B8D) 40%, transparent);
+  background: transparent;
+  color: var(--chip-cor, #004B8D);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .13s, color .13s, border-color .13s;
+  white-space: nowrap;
+}
+.com-area-chip:hover:not(.ativo) {
+  background: color-mix(in srgb, var(--chip-cor, #004B8D) 10%, transparent);
+}
+.com-area-chip.ativo {
+  background: var(--chip-cor, #004B8D);
+  color: #fff;
+  border-color: var(--chip-cor, #004B8D);
+}
+
+/* Badge de área nos cards */
+.com-area-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+/* Badge dentro de .com-dica (precisa de layout flexível) */
+.com-dica {
+  flex-wrap: wrap;
+}
+.com-dica .com-area-badge {
+  order: -1;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+/* ── Barra de reações emoji ───────────────────────────────────── */
+.com-reacoes-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--card-line);
+}
+.com-reacao-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1.5px solid var(--card-line);
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .13s, border-color .13s, transform .1s;
+  line-height: 1;
+}
+.com-reacao-btn:hover {
+  background: color-mix(in srgb, #004B8D 8%, transparent);
+  border-color: color-mix(in srgb, #004B8D 30%, transparent);
+}
+.com-reacao-btn.ativo {
+  background: color-mix(in srgb, #F5821F 12%, transparent);
+  border-color: #F5821F;
+}
+.com-reacao-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 10px;
+}
+.com-reacao-btn.ativo .com-reacao-count {
+  color: #d9620a;
+}
+@keyframes com-reacao-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+.com-reacao-btn.com-reacao-animando {
+  animation: com-reacao-pop .35s ease;
+}
+
+/* Dentro de .com-dica — a barra ocupa linha inteira */
+.com-dica .com-reacoes-bar {
+  width: 100%;
+  margin-left: 0;
+}
+
+/* Ver mais link */
+.com-inicio-ver-mais {
+  display: block;
+  text-align: center;
+  color: #004B8D;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px;
+  cursor: pointer;
+  margin-top: 8px;
+}
