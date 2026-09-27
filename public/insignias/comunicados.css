@@ -37,15 +37,65 @@
 
 /* ── Botão de notificações push (Opção A) ───────────────────────── */
 #com-push-wrap {
-  display: flex;
-  justify-content: center;
   margin: 0 0 16px;
 }
+/* Convite para ativar notificações */
+.com-push-convite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #004B8D 0%, #0066cc 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(0,75,141,.3);
+}
+.com-push-convite-icone {
+  font-size: 28px;
+  flex-shrink: 0;
+  animation: balancear 2s ease-in-out infinite;
+}
+@keyframes balancear {
+  0%,100% { transform: rotate(-10deg); }
+  50%      { transform: rotate(10deg); }
+}
+.com-push-convite-texto {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.com-push-convite-texto strong { font-size: 14px; }
+.com-push-convite-texto span   { opacity: .88; }
+.com-push-convite-btn {
+  flex-shrink: 0;
+  background: #fff;
+  color: #004B8D;
+  border: none;
+  border-radius: 100px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform .1s, box-shadow .1s;
+  white-space: nowrap;
+}
+.com-push-convite-btn:hover  { transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.com-push-convite-btn:active { transform: scale(.97); }
+@media (max-width: 480px) {
+  .com-push-convite { flex-wrap: wrap; }
+  .com-push-convite-btn { width: 100%; text-align: center; }
+}
+
+/* Botão simples (estado ativo / fallback) */
 .com-push-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
+  background: transparent;
   color: #004B8D;
   border: 2px solid #004B8D;
   border-radius: 100px;
@@ -53,20 +103,11 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: background .15s, color .15s, box-shadow .15s;
+  transition: background .15s, color .15s;
   font-family: inherit;
 }
-.com-push-btn:hover:not(:disabled) {
-  background: #004B8D;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0,75,141,.3);
-}
-.com-push-btn.ativo {
-  background: #e8f4ff;
-  color: #004B8D;
-  border-color: #004B8D;
-  cursor: default;
-}
+.com-push-btn:hover:not(:disabled) { background: #004B8D; color: #fff; }
+.com-push-btn.ativo { background: #e8f4ff; cursor: default; }
 .com-push-btn:disabled { opacity: .6; cursor: not-allowed; }
 
 .com-push-bloqueado-card {
@@ -122,16 +163,9 @@
   font-family: inherit;
 }
 @media (prefers-color-scheme: dark) {
-  .com-push-btn {
-    background: transparent;
-    color: #60a5fa;
-    border-color: #60a5fa;
-  }
-  .com-push-btn:hover:not(:disabled) {
-    background: #1d4ed8;
-    color: #fff;
-    border-color: #1d4ed8;
-  }
+  .com-push-convite { box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+  .com-push-btn { color: #60a5fa; border-color: #60a5fa; }
+  .com-push-btn:hover:not(:disabled) { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
   .com-push-btn.ativo { background: rgba(96,165,250,.15); }
 }
 

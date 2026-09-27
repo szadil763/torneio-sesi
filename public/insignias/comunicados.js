@@ -1078,12 +1078,29 @@ function _renderBotaoPush(container) {
     return;
   }
 
-  const btn = document.createElement('button');
-  btn.className = 'com-push-btn' + (jaAtivo ? ' ativo' : '');
-  btn.textContent = jaAtivo ? '🔔 Notificações ativas' : '🔔 Receber novidades';
-  btn.onclick = ativarNotificacoes;
-  _pushBtnEl = btn;
-  container.appendChild(btn);
+  if (jaAtivo) {
+    const btn = document.createElement('button');
+    btn.className = 'com-push-btn ativo';
+    btn.textContent = '🔔 Notificações ativas';
+    btn.onclick = ativarNotificacoes;
+    _pushBtnEl = btn;
+    container.appendChild(btn);
+    return;
+  }
+
+  // Convite para ativar notificações
+  const card = document.createElement('div');
+  card.className = 'com-push-convite';
+  card.innerHTML = `
+    <span class="com-push-convite-icone">🔔</span>
+    <div class="com-push-convite-texto">
+      <strong>Quer ficar por dentro de tudo que rola no torneio?</strong>
+      <span>Ative as notificações e receba recados, fotos e novidades na hora!</span>
+    </div>
+    <button class="com-push-convite-btn" id="btn-push-ativar">Ativar</button>`;
+  card.querySelector('#btn-push-ativar').onclick = ativarNotificacoes;
+  _pushBtnEl = card.querySelector('#btn-push-ativar');
+  container.appendChild(card);
 }
 
 // ── Página principal ──────────────────────────────────────────────
