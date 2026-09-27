@@ -976,34 +976,64 @@ function _renderBotaoPush(container) {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     const isFF     = navigator.userAgent.includes('Firefox');
 
-    const passos = isIOS
-      ? ['Abra os <strong>Ajustes</strong> do iPhone/iPad',
-         'Role até <strong>Safari</strong> (ou seu navegador) e toque',
-         'Toque em <strong>Notificações</strong> → ative para este site',
-         'Volte aqui e toque em "Já desbloqueei"']
-      : isSafari
-      ? ['Na barra de endereço, clique em <strong>Safari</strong> (menu superior)',
-         'Clique em <strong>Preferências para este site…</strong>',
-         'Mude <strong>Notificações</strong> para <strong>Permitir</strong>',
-         'Clique em "Já desbloqueei" abaixo']
-      : isFF
-      ? ['Clique no <strong>ícone de escudo 🛡</strong> ou no <strong>cadeado 🔒</strong> à esquerda do endereço',
-         'Clique em <strong>Permissões</strong>',
-         'Ao lado de <strong>Receber notificações</strong>, clique em ✕ para remover o bloqueio',
-         'Clique em "Já desbloqueei" abaixo']
-      : ['Clique no <strong>cadeado 🔒</strong> à esquerda do endereço',
-         'Clique em <strong>Permissões do site</strong>',
-         'Mude <strong>Notificações</strong> de "Bloqueado" para <strong>"Permitir"</strong>',
-         'Clique em "Já desbloqueei" abaixo'];
+    // Gera instruções e ação principal por browser
+    let instrucoes, acaoExtra = '';
+
+    if (isIOS) {
+      instrucoes = [
+        'Abra os <strong>Ajustes</strong> do iPhone/iPad',
+        'Role até <strong>Safari</strong> e toque nele',
+        'Toque em <strong>Notificações</strong> → ative para este site',
+        'Volte aqui e toque em "Já desbloqueei"',
+      ];
+    } else if (isSafari) {
+      instrucoes = [
+        'No menu superior, clique em <strong>Safari → Preferências para este site…</strong>',
+        'Mude <strong>Notificações</strong> para <strong>Permitir</strong>',
+        'Clique em "Já desbloqueei" abaixo',
+      ];
+    } else if (isFF) {
+      instrucoes = [
+        'Clique no <strong>escudo 🛡 ou cadeado 🔒</strong> à esquerda do endereço',
+        'Clique em <strong>Permissões</strong>',
+        'Em <strong>Receber notificações</strong>, clique em ✕ para remover o bloqueio',
+        'Clique em "Já desbloqueei" abaixo',
+      ];
+    } else {
+      // Chrome / Edge / outros — rota mais confiável: configurações do browser
+      const settingsUrl = 'chrome://settings/content/notifications';
+      instrucoes = [
+        'Copie o endereço abaixo, abra uma <strong>nova aba</strong> e cole:',
+        'Encontre <strong>torneio-sesi-20de0.web.app</strong> em "Bloqueado"',
+        'Clique em <strong>⋮ → Permitir</strong> ao lado do site',
+        'Volte aqui e clique em "Já desbloqueei"',
+      ];
+      acaoExtra = `
+        <div class="com-push-bloq-copiar">
+          <code id="push-settings-url">${settingsUrl}</code>
+          <button class="com-push-bloq-copiar-btn" onclick="
+            navigator.clipboard.writeText('${settingsUrl}').then(() => {
+              this.textContent = '✓ Copiado!';
+              setTimeout(() => this.textContent = '📋 Copiar', 2000);
+            }).catch(() => {
+              const el = document.getElementById('push-settings-url');
+              const r = document.createRange(); r.selectNode(el);
+              window.getSelection().removeAllRanges();
+              window.getSelection().addRange(r);
+            })
+          ">📋 Copiar</button>
+        </div>`;
+    }
 
     const div = document.createElement('div');
     div.className = 'com-push-bloqueado-card';
     div.innerHTML = `
       <div class="com-push-bloq-titulo">🔕 Notificações bloqueadas</div>
       <ol class="com-push-bloq-passos">
-        ${passos.map(p => `<li>${p}</li>`).join('')}
+        ${instrucoes.map(p => `<li>${p}</li>`).join('')}
       </ol>
-      <button class="com-push-btn" onclick="location.reload()" style="margin-top:4px;width:100%">
+      ${acaoExtra}
+      <button class="com-push-btn" onclick="location.reload()" style="margin-top:10px;width:100%">
         ✅ Já desbloqueei — Recarregar
       </button>`;
     container.appendChild(div);

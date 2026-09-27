@@ -91,6 +91,36 @@
   color: var(--text, #333);
 }
 .com-push-bloq-passos li + li { margin-top: 4px; }
+
+.com-push-bloq-copiar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 4px 0 4px;
+  flex-wrap: wrap;
+}
+.com-push-bloq-copiar code {
+  flex: 1;
+  font-size: 11px;
+  word-break: break-all;
+  color: #60a5fa;
+  font-family: monospace;
+}
+.com-push-bloq-copiar-btn {
+  flex-shrink: 0;
+  background: #004B8D;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
 @media (prefers-color-scheme: dark) {
   .com-push-btn {
     background: transparent;
