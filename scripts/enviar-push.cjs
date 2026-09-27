@@ -22,7 +22,7 @@ const webpush = require('web-push');
 const https   = require('https');
 
 // ── CONFIGURE AQUI ────────────────────────────────────────────────
-const VAPID_PUBLIC_KEY  = 'COLE_A_VAPID_KEY_PUBLICA_AQUI';
+const VAPID_PUBLIC_KEY  = 'BOLK-rUbBqUG2BHeCStWaqW9ypJN-r0JIUPA4FvXqEjWJX-4G5ccF8bbf05OjOR_iS6eszp_ZVc5Mr22_3ImXrY';
 const VAPID_PRIVATE_KEY = 'COLE_A_VAPID_KEY_PRIVADA_AQUI';
 const VAPID_EMAIL       = 'mailto:szadil763@gmail.com';
 const RTDB_URL          = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';

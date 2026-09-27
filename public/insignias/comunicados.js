@@ -867,7 +867,7 @@ function _verificarNovosConteudos(dados) {
 }
 
 // ── Opção A: notificações Web Push (FCM) ─────────────────────────
-const FCM_VAPID_KEY = 'COLE_A_VAPID_KEY_PUBLICA_AQUI';
+const FCM_VAPID_KEY = 'BOLK-rUbBqUG2BHeCStWaqW9ypJN-r0JIUPA4FvXqEjWJX-4G5ccF8bbf05OjOR_iS6eszp_ZVc5Mr22_3ImXrY';
 const FCM_SENDER_ID  = 'COLE_O_SENDER_ID_AQUI'; // número, ex: 123456789012
 const RTDB_FCM_TOKENS = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens';
 
