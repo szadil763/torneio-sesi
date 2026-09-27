@@ -64,20 +64,9 @@ function renderPainelCom() {
       </button>
     </div>
 
-    <div style="background:var(--card);border:1.5px solid var(--card-line);border-radius:12px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🔔 Notificações push</div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">Envia uma notificação para todos os pais/alunos que ativaram as notificações.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
-        <div style="flex:1;min-width:180px">
-          <input id="push-titulo" type="text" placeholder="Título (ex: Novo recado!)" class="boletim-input" style="margin-bottom:6px">
-          <input id="push-corpo"  type="text" placeholder="Mensagem (ex: Veja o boletim de hoje)" class="boletim-input">
-        </div>
-        <button onclick="enviarPushAdmin()" id="btn-push-admin"
-          style="flex-shrink:0;background:#004B8D;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer">
-          🚀 Enviar
-        </button>
-      </div>
-      <div id="push-admin-status" style="font-size:12px;margin-top:8px;color:var(--muted)"></div>
+    <div id="push-admin-card" style="background:var(--card);border:1.5px solid var(--card-line);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">🔔 Notificações push</div>
+      <div id="push-admin-inner">⏳ Verificando inscrições…</div>
     </div>
 
     <div class="admin-abas">
@@ -91,6 +80,7 @@ function renderPainelCom() {
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
     </p>
   `;
+  _agendarCarregarPush();
 }
 
 function _carregarStatsAdmin() {
@@ -107,67 +97,40 @@ function _carregarStatsAdmin() {
   }).catch(() => {});
 }
 
-// ── Enviar push (Opção A) ─────────────────────────────────────────
-// Lê tokens do RTDB e dispara via FCM HTTP v1 API (via servidor ou RTDB trigger).
-// Implementação simplificada: salva uma entrada em /push-queue no RTDB para
-// o administrador processar via Firebase Functions ou manualmente.
-// (Para envio direto precisaria de server-side auth — salvar na fila é suficiente
-// para um torneio pequeno com Cloud Functions simples.)
+// ── Painel de notificações push (Opção A) ────────────────────────
+const RTDB_FCM_TOKENS_ADMIN = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens';
 
-const RTDB_PUSH_QUEUE = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/push-queue';
-
-async function enviarPushAdmin() {
-  const titulo = (document.getElementById('push-titulo')?.value || '').trim();
-  const corpo  = (document.getElementById('push-corpo')?.value  || '').trim();
-  const status = document.getElementById('push-admin-status');
-  const btn    = document.getElementById('btn-push-admin');
-
-  if (!titulo || !corpo) {
-    if (status) status.textContent = '⚠ Preencha o título e a mensagem.';
-    return;
-  }
-
-  if (btn) btn.disabled = true;
-  if (status) { status.style.color = 'var(--muted)'; status.textContent = '⏳ Enviando…'; }
-
+async function _carregarPainelPush() {
+  const inner = document.getElementById('push-admin-inner');
+  if (!inner) return;
   try {
-    // Conta tokens ativos
-    const tokRes  = await fetch(`https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens.json`);
-    const tokData = tokRes.ok ? await tokRes.json() : {};
-    const total   = tokData ? Object.keys(tokData).length : 0;
+    const res   = await fetch(`${RTDB_FCM_TOKENS_ADMIN}.json`);
+    const dados = res.ok ? await res.json() : null;
+    const total = dados && typeof dados === 'object' ? Object.keys(dados).length : 0;
 
-    if (total === 0) {
-      if (status) { status.style.color = '#F5821F'; status.textContent = '⚠ Nenhum dispositivo inscrito ainda.'; }
-      if (btn) btn.disabled = false;
-      return;
-    }
-
-    // Salva na fila de push (processada por Cloud Function ou manualmente)
-    const payload = {
-      titulo,
-      corpo,
-      url:   '/insignias/comunicados.html',
-      ts:    Date.now(),
-      total,
-    };
-    const res = await fetch(`${RTDB_PUSH_QUEUE}.json`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (res.ok) {
-      if (status) { status.style.color = '#2E9E4F'; status.textContent = `✅ Notificação enfileirada para ${total} dispositivo${total !== 1 ? 's' : ''}.`; }
-      if (document.getElementById('push-titulo')) document.getElementById('push-titulo').value = '';
-      if (document.getElementById('push-corpo'))  document.getElementById('push-corpo').value  = '';
-    } else {
-      throw new Error(`HTTP ${res.status}`);
-    }
-  } catch (e) {
-    if (status) { status.style.color = '#dc2626'; status.textContent = `⚠ Falha: ${e.message}`; }
-  } finally {
-    if (btn) btn.disabled = false;
+    inner.innerHTML = total === 0
+      ? `<p style="font-size:12px;color:var(--muted);margin:0">
+           Nenhum dispositivo inscrito ainda. Os pais precisam abrir a página de comunicados
+           e clicar em <strong>"🔔 Receber novidades"</strong>.
+         </p>`
+      : `<p style="font-size:12px;color:var(--muted);margin:0 0 12px">
+           <strong style="color:var(--text)">${total} dispositivo${total !== 1 ? 's' : ''}</strong> inscrito${total !== 1 ? 's' : ''}.
+           Para enviar uma notificação, rode o script abaixo no seu computador:
+         </p>
+         <div style="background:rgba(0,0,0,.18);border-radius:9px;padding:12px 14px;font-size:11px;font-family:monospace;white-space:pre-wrap;color:#7dd3fc;overflow-x:auto">node scripts/enviar-push.cjs "Título" "Mensagem"</div>
+         <p style="font-size:11px;color:var(--muted);margin:8px 0 0">
+           📌 Instale uma vez: <code style="font-size:10px">npm install web-push</code> na pasta do projeto.
+           Preencha as chaves VAPID em <code style="font-size:10px">scripts/enviar-push.cjs</code>.<br>
+           💡 Para envio automático pelo Firebase, faça upgrade para o Plano Blaze (gratuito para este volume).
+         </p>`;
+  } catch (_) {
+    if (inner) inner.textContent = '⚠ Não foi possível carregar inscrições.';
   }
+}
+
+// Carrega contagem de tokens quando o painel renderiza
+function _agendarCarregarPush() {
+  setTimeout(_carregarPainelPush, 0);
 }
 
 function copiarLinkComunicados() {
