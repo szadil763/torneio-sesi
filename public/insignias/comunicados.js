@@ -940,8 +940,19 @@ async function ativarNotificacoes() {
     perm = await Notification.requestPermission();
   }
 
+  if (perm === 'default') {
+    // Chrome "Reduzir pedidos" silenciou o pedido — mostra dica do ícone na barra
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔔 Receber novidades';
+    }
+    _mostrarDicaChromeQuiet();
+    return;
+  }
+
   if (perm !== 'granted') {
-    if (btn) { btn.textContent = '🔕 Bloqueado — libere nas configs'; btn.disabled = false; }
+    if (btn) { btn.textContent = '🔕 Bloqueado'; btn.disabled = false; }
+    location.reload(); // recarrega para mostrar instruções de desbloqueio
     return;
   }
 
@@ -962,6 +973,33 @@ async function ativarNotificacoes() {
   } else {
     if (btn) { btn.textContent = '⚠ Falhou — tente de novo'; btn.disabled = false; }
   }
+}
+
+function _mostrarDicaChromeQuiet() {
+  // Remove aviso anterior se houver
+  document.getElementById('push-quiet-dica')?.remove();
+  const wrap = document.getElementById('com-push-wrap');
+  if (!wrap) return;
+  const div = document.createElement('div');
+  div.id = 'push-quiet-dica';
+  div.className = 'com-push-bloqueado-card';
+  div.style.marginTop = '8px';
+  div.innerHTML = `
+    <div class="com-push-bloq-titulo">🔔 Quase lá! O Chrome ocultou o pedido</div>
+    <p style="font-size:13px;margin:0 0 10px;line-height:1.5">
+      O Chrome está configurado para reduzir popups de notificação.
+      Procure um <strong>ícone de sino 🔔 ou campainha</strong> no lado direito da barra de endereço
+      e clique em <strong>"Permitir"</strong>.
+    </p>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+      Se não aparecer nenhum ícone, mude temporariamente nas configurações:<br>
+      Cole na barra de endereço: <code style="font-size:11px;color:#60a5fa">chrome://settings/content/notifications</code>
+      → escolha <strong>"Expandir todos os pedidos"</strong> → volte aqui e tente de novo.
+    </p>
+    <button class="com-push-btn" onclick="this.closest('#push-quiet-dica').remove();ativarNotificacoes()" style="width:100%">
+      🔔 Tentar novamente
+    </button>`;
+  wrap.appendChild(div);
 }
 
 function _renderBotaoPush(container) {
