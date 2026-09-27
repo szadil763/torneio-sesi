@@ -984,18 +984,20 @@ function _mostrarDicaChromeQuiet() {
   div.id = 'push-quiet-dica';
   div.className = 'com-push-bloqueado-card';
   div.style.marginTop = '8px';
+  const isMobileQuiet = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
   div.innerHTML = `
     <div class="com-push-bloq-titulo">🔔 Quase lá! O Chrome ocultou o pedido</div>
     <p style="font-size:13px;margin:0 0 10px;line-height:1.5">
       O Chrome está configurado para reduzir popups de notificação.
-      Procure um <strong>ícone de sino 🔔 ou campainha</strong> no lado direito da barra de endereço
-      e clique em <strong>"Permitir"</strong>.
+      ${isMobileQuiet
+        ? 'Toque no ícone <strong>ⓘ</strong> na barra de endereço → <strong>Permissões</strong> → <strong>Notificações → Permitir</strong> e tente novamente.'
+        : 'Procure um <strong>ícone de sino 🔔</strong> no lado direito da barra de endereço e clique em <strong>"Permitir"</strong>.'}
     </p>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
-      Se não aparecer nenhum ícone, mude temporariamente nas configurações:<br>
-      Cole na barra de endereço: <code style="font-size:11px;color:#60a5fa">chrome://settings/content/notifications</code>
+    ${isMobileQuiet ? '' : `<p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+      Se não aparecer nenhum ícone, cole na barra de endereço:
+      <code style="font-size:11px;color:#60a5fa">chrome://settings/content/notifications</code>
       → escolha <strong>"Expandir todos os pedidos"</strong> → volte aqui e tente de novo.
-    </p>
+    </p>`}
     <button class="com-push-btn" onclick="this.closest('#push-quiet-dica').remove();ativarNotificacoes()" style="width:100%">
       🔔 Tentar novamente
     </button>`;
@@ -1010,9 +1012,12 @@ function _renderBotaoPush(container) {
   const permBloqueado = 'Notification' in window && Notification.permission === 'denied';
 
   if (permBloqueado) {
-    const isIOS    = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isFF     = navigator.userAgent.includes('Firefox');
+    const ua      = navigator.userAgent;
+    const isIOS   = /iphone|ipad|ipod/i.test(ua);
+    const isAndroid = /android/i.test(ua);
+    const isMobile  = isIOS || isAndroid || ('ontouchstart' in window && screen.width < 768);
+    const isSafari  = /^((?!chrome|android).)*safari/i.test(ua);
+    const isFF      = ua.includes('Firefox');
 
     // Gera instruções e ação principal por browser
     let instrucoes, acaoExtra = '';
@@ -1022,6 +1027,13 @@ function _renderBotaoPush(container) {
         'Abra os <strong>Ajustes</strong> do iPhone/iPad',
         'Role até <strong>Safari</strong> e toque nele',
         'Toque em <strong>Notificações</strong> → ative para este site',
+        'Volte aqui e toque em "Já desbloqueei"',
+      ];
+    } else if (isAndroid) {
+      instrucoes = [
+        'Toque no ícone <strong>ⓘ</strong> ou <strong>🔒</strong> na barra de endereço',
+        'Toque em <strong>Permissões</strong>',
+        'Em <strong>Notificações</strong>, escolha <strong>Permitir</strong>',
         'Volte aqui e toque em "Já desbloqueei"',
       ];
     } else if (isSafari) {
@@ -1038,7 +1050,7 @@ function _renderBotaoPush(container) {
         'Clique em "Já desbloqueei" abaixo',
       ];
     } else {
-      // Chrome / Edge / outros — rota mais confiável: configurações do browser
+      // Chrome / Edge desktop
       const settingsUrl = 'chrome://settings/content/notifications';
       instrucoes = [
         'Copie o endereço abaixo, abra uma <strong>nova aba</strong> e cole:',
