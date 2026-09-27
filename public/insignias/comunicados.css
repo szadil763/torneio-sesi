@@ -113,12 +113,12 @@
 .com-push-bloq-convite {
   font-size: 14px;
   font-weight: 600;
-  color: #004B8D;
+  color: #F5821F;
   margin: 0 0 12px;
   line-height: 1.5;
 }
 @media (prefers-color-scheme: dark) {
-  .com-push-bloq-convite { color: #60a5fa; }
+  .com-push-bloq-convite { color: #fb923c; }
 }
 .com-push-bloqueado-card {
   background: var(--card, #f8f8f8);
