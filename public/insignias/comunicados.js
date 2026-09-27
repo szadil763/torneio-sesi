@@ -1078,6 +1078,7 @@ function _renderBotaoPush(container) {
     const div = document.createElement('div');
     div.className = 'com-push-bloqueado-card';
     div.innerHTML = `
+      <p class="com-push-bloq-convite">Quer ficar atualizado com tudo que rola no torneio? Siga o passo a passo e desbloqueie as notificações 👇</p>
       <div class="com-push-bloq-titulo">🔕 Notificações bloqueadas</div>
       <ol class="com-push-bloq-passos">
         ${instrucoes.map(p => `<li>${p}</li>`).join('')}

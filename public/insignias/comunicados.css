@@ -110,6 +110,16 @@
 .com-push-btn.ativo { background: #e8f4ff; cursor: default; }
 .com-push-btn:disabled { opacity: .6; cursor: not-allowed; }
 
+.com-push-bloq-convite {
+  font-size: 14px;
+  font-weight: 600;
+  color: #004B8D;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  .com-push-bloq-convite { color: #60a5fa; }
+}
 .com-push-bloqueado-card {
   background: var(--card, #f8f8f8);
   border: 1.5px solid var(--card-line, #e0e0e0);
