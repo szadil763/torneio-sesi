@@ -64,6 +64,22 @@ function renderPainelCom() {
       </button>
     </div>
 
+    <div style="background:var(--card);border:1.5px solid var(--card-line);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🔔 Notificações push</div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">Envia uma notificação para todos os pais/alunos que ativaram as notificações.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1;min-width:180px">
+          <input id="push-titulo" type="text" placeholder="Título (ex: Novo recado!)" class="boletim-input" style="margin-bottom:6px">
+          <input id="push-corpo"  type="text" placeholder="Mensagem (ex: Veja o boletim de hoje)" class="boletim-input">
+        </div>
+        <button onclick="enviarPushAdmin()" id="btn-push-admin"
+          style="flex-shrink:0;background:#004B8D;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer">
+          🚀 Enviar
+        </button>
+      </div>
+      <div id="push-admin-status" style="font-size:12px;margin-top:8px;color:var(--muted)"></div>
+    </div>
+
     <div class="admin-abas">
       <button class="admin-aba ${abaComAtiva === 'boletim'      ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
       <button class="admin-aba ${abaComAtiva === 'comunicados'  ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
@@ -89,6 +105,69 @@ function _carregarStatsAdmin() {
     if (su) su.textContent = `${unicos} família${unicos !== 1 ? 's' : ''} única${unicos !== 1 ? 's' : ''}`;
     if (so) so.innerHTML   = `<span style="color:${online > 0 ? '#2E9E4F' : 'var(--muted)'}">● ${online} online agora</span>`;
   }).catch(() => {});
+}
+
+// ── Enviar push (Opção A) ─────────────────────────────────────────
+// Lê tokens do RTDB e dispara via FCM HTTP v1 API (via servidor ou RTDB trigger).
+// Implementação simplificada: salva uma entrada em /push-queue no RTDB para
+// o administrador processar via Firebase Functions ou manualmente.
+// (Para envio direto precisaria de server-side auth — salvar na fila é suficiente
+// para um torneio pequeno com Cloud Functions simples.)
+
+const RTDB_PUSH_QUEUE = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/push-queue';
+
+async function enviarPushAdmin() {
+  const titulo = (document.getElementById('push-titulo')?.value || '').trim();
+  const corpo  = (document.getElementById('push-corpo')?.value  || '').trim();
+  const status = document.getElementById('push-admin-status');
+  const btn    = document.getElementById('btn-push-admin');
+
+  if (!titulo || !corpo) {
+    if (status) status.textContent = '⚠ Preencha o título e a mensagem.';
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (status) { status.style.color = 'var(--muted)'; status.textContent = '⏳ Enviando…'; }
+
+  try {
+    // Conta tokens ativos
+    const tokRes  = await fetch(`https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens.json`);
+    const tokData = tokRes.ok ? await tokRes.json() : {};
+    const total   = tokData ? Object.keys(tokData).length : 0;
+
+    if (total === 0) {
+      if (status) { status.style.color = '#F5821F'; status.textContent = '⚠ Nenhum dispositivo inscrito ainda.'; }
+      if (btn) btn.disabled = false;
+      return;
+    }
+
+    // Salva na fila de push (processada por Cloud Function ou manualmente)
+    const payload = {
+      titulo,
+      corpo,
+      url:   '/insignias/comunicados.html',
+      ts:    Date.now(),
+      total,
+    };
+    const res = await fetch(`${RTDB_PUSH_QUEUE}.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      if (status) { status.style.color = '#2E9E4F'; status.textContent = `✅ Notificação enfileirada para ${total} dispositivo${total !== 1 ? 's' : ''}.`; }
+      if (document.getElementById('push-titulo')) document.getElementById('push-titulo').value = '';
+      if (document.getElementById('push-corpo'))  document.getElementById('push-corpo').value  = '';
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch (e) {
+    if (status) { status.style.color = '#dc2626'; status.textContent = `⚠ Falha: ${e.message}`; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function copiarLinkComunicados() {

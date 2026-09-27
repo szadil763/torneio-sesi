@@ -829,6 +829,159 @@ async function carregarVideosPendentes() {
   }
 }
 
+// ── Opção B: banner de novo conteúdo ─────────────────────────────
+const _ULTIMA_VISITA_KEY = 'torneio-com-ultima-visita';
+
+function _maxTs(dados) {
+  const ts = [];
+  const recados = (dados.recados && dados.recados.itens) || [];
+  const dicas   = (dados.dicas   && dados.dicas.itens)   || [];
+  const boletim = (dados.boletim && dados.boletim.itens) || [];
+  recados.forEach(r => r.ts && ts.push(r.ts));
+  dicas.forEach(d => d.ts && ts.push(d.ts));
+  boletim.forEach(b => b.ts && ts.push(b.ts));
+  return ts.length ? Math.max(...ts) : 0;
+}
+
+function _verificarNovosConteudos(dados) {
+  let ultimaVisita = 0;
+  try { ultimaVisita = parseInt(localStorage.getItem(_ULTIMA_VISITA_KEY) || '0', 10); } catch (_) {}
+
+  const maxTs = _maxTs(dados);
+
+  // Atualiza timestamp de última visita sempre que a página é carregada
+  try { localStorage.setItem(_ULTIMA_VISITA_KEY, String(Date.now())); } catch (_) {}
+
+  // Só mostra banner se há conteúdo mais novo que a última visita registrada
+  // e se o usuário já visitou antes (ultimaVisita > 0)
+  if (!maxTs || !ultimaVisita || maxTs <= ultimaVisita) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'com-novo-banner';
+  banner.className = 'com-novo-banner';
+  banner.innerHTML = `
+    <span class="com-novo-banner-icone">📢</span>
+    <span class="com-novo-banner-texto">Novo conteúdo desde sua última visita!</span>
+    <button class="com-novo-banner-fechar" onclick="this.closest('#com-novo-banner').remove()" aria-label="Fechar">✕</button>`;
+  document.getElementById('app').insertBefore(banner, document.getElementById('app').firstChild);
+}
+
+// ── Opção A: notificações Web Push (FCM) ─────────────────────────
+const FCM_VAPID_KEY = 'COLE_A_VAPID_KEY_PUBLICA_AQUI';
+const FCM_SENDER_ID  = 'COLE_O_SENDER_ID_AQUI'; // número, ex: 123456789012
+const RTDB_FCM_TOKENS = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens';
+
+async function _registrarServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    return reg;
+  } catch (e) {
+    console.warn('[push] SW falhou:', e);
+    return null;
+  }
+}
+
+function _urlBase64ToUint8(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function _obterTokenFCM(reg) {
+  try {
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8(FCM_VAPID_KEY),
+      });
+    }
+    // Salva no RTDB para o admin enviar notificações
+    const uuid = (() => {
+      try {
+        let u = localStorage.getItem('torneio-visitor-uuid');
+        if (!u) { u = crypto.randomUUID(); localStorage.setItem('torneio-visitor-uuid', u); }
+        return u;
+      } catch (_) { return 'anon'; }
+    })();
+    const payload = JSON.stringify({
+      endpoint:   sub.endpoint,
+      p256dh:     btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
+      auth:       btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
+      ts:         Date.now(),
+    });
+    await fetch(`${RTDB_FCM_TOKENS}/${uuid}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+    return sub;
+  } catch (e) {
+    console.warn('[push] token falhou:', e);
+    return null;
+  }
+}
+
+let _pushBtnEl = null;
+
+async function ativarNotificacoes() {
+  const btn = _pushBtnEl;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Ativando…'; }
+
+  if (!('Notification' in window)) {
+    if (btn) { btn.textContent = '⚠ Não suportado'; btn.disabled = false; }
+    return;
+  }
+
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    perm = await Notification.requestPermission();
+  }
+
+  if (perm !== 'granted') {
+    if (btn) { btn.textContent = '🔕 Bloqueado — libere nas configs'; btn.disabled = false; }
+    return;
+  }
+
+  const reg = await _registrarServiceWorker();
+  if (!reg) {
+    if (btn) { btn.textContent = '⚠ Erro ao registrar SW'; btn.disabled = false; }
+    return;
+  }
+
+  const sub = await _obterTokenFCM(reg);
+  if (sub) {
+    try { localStorage.setItem('torneio-push-ativo', '1'); } catch (_) {}
+    if (btn) {
+      btn.textContent = '🔔 Notificações ativas';
+      btn.classList.add('ativo');
+      btn.disabled = false;
+    }
+  } else {
+    if (btn) { btn.textContent = '⚠ Falhou — tente de novo'; btn.disabled = false; }
+  }
+}
+
+function _renderBotaoPush(container) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (FCM_VAPID_KEY === 'COLE_A_VAPID_KEY_PUBLICA_AQUI') return; // não configurado ainda
+
+  const jaAtivo = (() => { try { return localStorage.getItem('torneio-push-ativo') === '1'; } catch(_) { return false; }})();
+  const permBloqueado = 'Notification' in window && Notification.permission === 'denied';
+
+  const btn = document.createElement('button');
+  btn.className = 'com-push-btn' + (jaAtivo ? ' ativo' : '');
+  btn.textContent = permBloqueado ? '🔕 Notificações bloqueadas'
+                  : jaAtivo        ? '🔔 Notificações ativas'
+                  :                  '🔔 Receber novidades';
+  btn.disabled = permBloqueado;
+  btn.onclick = ativarNotificacoes;
+  _pushBtnEl = btn;
+  container.appendChild(btn);
+}
+
 // ── Página principal ──────────────────────────────────────────────
 async function renderComunicados() {
   const app = document.getElementById('app');
@@ -848,8 +1001,11 @@ async function renderComunicados() {
       <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
       <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
     </div>
+    <div id="com-push-wrap"></div>
     ${renderTabBar()}
     <div id="com-content" class="com-content-area"></div>`;
+
+  _renderBotaoPush(document.getElementById('com-push-wrap'));
 
   // Carrega reações e registra visita em paralelo com os dados
   const [, recados, dicas, boletim] = await Promise.all([
@@ -862,6 +1018,7 @@ async function renderComunicados() {
   registrarVisita().catch(() => {});
 
   _dadosCache = { recados, dicas, boletim };
+  _verificarNovosConteudos(_dadosCache);
   renderConteudoAba(_dadosCache);
 
   // Atualiza rodapé com visitantes únicos após carregar stats
