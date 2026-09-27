@@ -64,11 +64,6 @@ function renderPainelCom() {
       </button>
     </div>
 
-    <div id="push-admin-card" style="background:var(--card);border:1.5px solid var(--card-line);border-radius:12px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">🔔 Notificações push</div>
-      <div id="push-admin-inner">⏳ Verificando inscrições…</div>
-    </div>
-
     <div class="admin-abas">
       <button class="admin-aba ${abaComAtiva === 'boletim'      ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
       <button class="admin-aba ${abaComAtiva === 'comunicados'  ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
@@ -80,7 +75,6 @@ function renderPainelCom() {
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
     </p>
   `;
-  _agendarCarregarPush();
 }
 
 function _carregarStatsAdmin() {
