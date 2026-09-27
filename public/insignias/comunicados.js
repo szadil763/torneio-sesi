@@ -971,12 +971,22 @@ function _renderBotaoPush(container) {
   const jaAtivo = (() => { try { return localStorage.getItem('torneio-push-ativo') === '1'; } catch(_) { return false; }})();
   const permBloqueado = 'Notification' in window && Notification.permission === 'denied';
 
+  if (permBloqueado) {
+    // Mostra dica de como desbloquear em vez de botão desabilitado
+    const div = document.createElement('div');
+    div.className = 'com-push-bloqueado';
+    div.innerHTML = `
+      <span>🔕</span>
+      <span>Notificações bloqueadas neste navegador.
+        Para ativar: clique no <strong>cadeado 🔒</strong> na barra de endereço
+        → <strong>Notificações</strong> → <strong>Permitir</strong> → recarregue a página.</span>`;
+    container.appendChild(div);
+    return;
+  }
+
   const btn = document.createElement('button');
   btn.className = 'com-push-btn' + (jaAtivo ? ' ativo' : '');
-  btn.textContent = permBloqueado ? '🔕 Notificações bloqueadas'
-                  : jaAtivo        ? '🔔 Notificações ativas'
-                  :                  '🔔 Receber novidades';
-  btn.disabled = permBloqueado;
+  btn.textContent = jaAtivo ? '🔔 Notificações ativas' : '🔔 Receber novidades';
   btn.onclick = ativarNotificacoes;
   _pushBtnEl = btn;
   container.appendChild(btn);

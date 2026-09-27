@@ -26,8 +26,10 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
       }
     ],
+    "redirects": [
+      { "source": "/", "destination": "/hub.html", "type": 302 }
+    ],
     "rewrites": [
-      { "source": "/", "destination": "/hub.html" },
       { "source": "**", "destination": "/index.html" }
     ]
   }
