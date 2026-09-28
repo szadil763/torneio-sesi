@@ -558,13 +558,18 @@ async function apertar() {
     jaApertou = true;
     btn.disabled = true;
     try {
-      // PUT direto — o servidor só aceita o primeiro (ignora se buzz já foi definido)
-      await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
+      // GET com ETag → PUT condicional (if-match) → Firebase aceita só o primeiro, rejeita 412 os demais
+      const getRes = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+      const etag   = getRes.headers.get('ETag');
+      const atual  = await getRes.json();
+      if (atual !== null) { jaApertou = false; return; } // outro chegou antes do GET
+      const putRes = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'if-match': etag },
         body: JSON.stringify({ teamId: KAHOOT_ID, ts: Date.now() }),
       });
-    } catch(err) { console.warn('Kahoot buzz erro:', err); }
+      if (putRes.status === 412) { jaApertou = false; } // outro venceu entre o GET e o PUT
+    } catch(err) { console.warn('Kahoot buzz erro:', err); jaApertou = false; }
     return;
   }
 
