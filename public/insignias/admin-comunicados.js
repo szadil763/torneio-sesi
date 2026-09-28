@@ -235,8 +235,8 @@ function renderAbaBoletimCom(boletim) {
                     <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando item do boletim</div>
                     <input id="bol-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${tituloEdit.replace(/"/g,'&quot;')}" placeholder="Título">
                     <input id="bol-edit-legenda" type="text" class="boletim-input" style="margin:0" value="${legendaEdit.replace(/"/g,'&quot;')}" placeholder="Legenda">
-                    ${_seletorInicio('bol-edit-inicio')}
-                    ${_seletorArea('bol-edit-area', '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?')}
+                    ${_seletorInicio('bol-edit-inicio', item.inicioAte)}
+                    ${_seletorArea('bol-edit-area', '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?', item.area)}
                     <div style="display:flex;gap:8px;margin-top:4px">
                       <button class="boletim-btn-add" style="flex:1;margin:0" onclick="boletimSalvarEdicao(${i})">💾 Salvar</button>
                       <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editBolIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -335,8 +335,8 @@ function renderSubRecadosCom(recados) {
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
                 <input type="checkbox" id="rec-edit-destaque" ${item.destaque?'checked':''}> Destacar (laranja)
               </label>
-              ${_seletorInicio('rec-edit-inicio')}
-              ${_seletorArea('rec-edit-area')}
+              ${_seletorInicio('rec-edit-inicio', item.inicioAte)}
+              ${_seletorArea('rec-edit-area', undefined, item.area)}
               <div style="display:flex;gap:8px;margin-top:4px">
                 <button class="boletim-btn-add" style="flex:1;margin:0" onclick="recadoSalvarEdicao(${i})">💾 Salvar</button>
                 <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editRecadoIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -388,8 +388,8 @@ function renderSubDicasCom(dicas) {
                 <input id="dic-edit-icone" type="text" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0;margin:0" value="${item.icone||'💡'}">
                 <input id="dic-edit-texto" type="text" class="boletim-input" style="flex:1;margin:0" value="${(item.texto||'').replace(/"/g,'&quot;')}">
               </div>
-              ${_seletorInicio('dic-edit-inicio')}
-              ${_seletorArea('dic-edit-area')}
+              ${_seletorInicio('dic-edit-inicio', item.inicioAte)}
+              ${_seletorArea('dic-edit-area', undefined, item.area)}
               <div style="display:flex;gap:8px;margin-top:4px">
                 <button class="boletim-btn-add" style="flex:1;margin:0" onclick="dicaSalvarEdicao(${i})">💾 Salvar</button>
                 <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editDicaIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -413,28 +413,41 @@ function renderSubDicasCom(dicas) {
 function comTrocarSubAba(sub) { comSubAba = sub; _editRecadoIdx = null; _editDicaIdx = null; renderPainelCom(); }
 
 // ── Helpers de formulário ─────────────────────────────────────────
-function _seletorArea(id, label) {
+function _seletorArea(id, label, valorAtual) {
+  const v = valorAtual || '';
   return `
     <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">${label || '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?'}</label>
     <select id="${id}" class="boletim-input" style="margin-top:0">
-      <option value="">— Todas as áreas (visível para todos) —</option>
-      <option value="robotica">🤖 Robótica</option>
-      <option value="ingles">🌎 Inglês</option>
-      <option value="artes">🎨 Artes</option>
-      <option value="educacao-fisica">⚽ Ed. Física</option>
+      <option value=""        ${v === ''               ? 'selected' : ''}>— Todas as áreas (visível para todos) —</option>
+      <option value="robotica"       ${v === 'robotica'       ? 'selected' : ''}>🤖 Robótica</option>
+      <option value="ingles"         ${v === 'ingles'         ? 'selected' : ''}>🌎 Inglês</option>
+      <option value="artes"          ${v === 'artes'          ? 'selected' : ''}>🎨 Artes</option>
+      <option value="educacao-fisica"${v === 'educacao-fisica'? 'selected' : ''}>⚽ Ed. Física</option>
     </select>`;
 }
 
-function _seletorInicio(id) {
+function _inicioAteParaDias(inicioAte) {
+  if (inicioAte == null) return '0';
+  if (inicioAte === -1) return '-1';
+  const diasRestantes = Math.round((inicioAte - Date.now()) / 86_400_000);
+  const opcoes = [1, 3, 7, 14];
+  const closest = opcoes.reduce((prev, curr) =>
+    Math.abs(curr - diasRestantes) < Math.abs(prev - diasRestantes) ? curr : prev
+  );
+  return String(closest);
+}
+
+function _seletorInicio(id, inicioAteAtual) {
+  const v = inicioAteAtual !== undefined ? _inicioAteParaDias(inicioAteAtual) : '0';
   return `
     <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">🏠 POR QUANTO TEMPO APARECE NA PÁGINA INÍCIO?</label>
     <select id="${id}" class="boletim-input" style="margin-top:0">
-      <option value="0">✅ Sempre visível na Início</option>
-      <option value="1">⏱ Por 1 dia, depois vai para a área escolhida</option>
-      <option value="3">⏱ Por 3 dias, depois vai para a área escolhida</option>
-      <option value="7">⏱ Por 7 dias, depois vai para a área escolhida</option>
-      <option value="14">⏱ Por 14 dias, depois vai para a área escolhida</option>
-      <option value="-1">🚫 Não exibir na Início (só na área escolhida)</option>
+      <option value="0"  ${v === '0'  ? 'selected' : ''}>✅ Sempre visível na Início</option>
+      <option value="1"  ${v === '1'  ? 'selected' : ''}>⏱ Por 1 dia, depois vai para a área escolhida</option>
+      <option value="3"  ${v === '3'  ? 'selected' : ''}>⏱ Por 3 dias, depois vai para a área escolhida</option>
+      <option value="7"  ${v === '7'  ? 'selected' : ''}>⏱ Por 7 dias, depois vai para a área escolhida</option>
+      <option value="14" ${v === '14' ? 'selected' : ''}>⏱ Por 14 dias, depois vai para a área escolhida</option>
+      <option value="-1" ${v === '-1' ? 'selected' : ''}>🚫 Não exibir na Início (só na área escolhida)</option>
     </select>`;
 }
 
