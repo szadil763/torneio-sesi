@@ -558,14 +558,12 @@ async function apertar() {
     jaApertou = true;
     btn.disabled = true;
     try {
-      const atual = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json());
-      if (!atual) {
-        await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId: KAHOOT_ID, ts: { '.sv': 'timestamp' } }),
-        });
-      }
+      // PUT direto — o servidor só aceita o primeiro (ignora se buzz já foi definido)
+      await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: KAHOOT_ID, ts: Date.now() }),
+      });
     } catch(err) { console.warn('Kahoot buzz erro:', err); }
     return;
   }
