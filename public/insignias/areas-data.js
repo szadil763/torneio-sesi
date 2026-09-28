@@ -257,10 +257,9 @@ async function carregarRecados() {
 
 async function salvarRecados(dados) {
   _recadosCache = dados;
-  localStorage.setItem(STORAGE_KEY_RECADOS, JSON.stringify(dados));
-  try {
-    await fetch(RTDB_RECADOS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
-  } catch (_) {}
+  try { localStorage.setItem(STORAGE_KEY_RECADOS, JSON.stringify(dados)); } catch (_) {}
+  const resp = await fetch(RTDB_RECADOS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+  if (!resp.ok) throw new Error('RTDB recados: ' + resp.status);
 }
 
 // ── Dicas ─────────────────────────────────────────────────────────
@@ -290,10 +289,9 @@ async function carregarDicas() {
 
 async function salvarDicas(dados) {
   _dicasCache = dados;
-  localStorage.setItem(STORAGE_KEY_DICAS, JSON.stringify(dados));
-  try {
-    await fetch(RTDB_DICAS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
-  } catch (_) {}
+  try { localStorage.setItem(STORAGE_KEY_DICAS, JSON.stringify(dados)); } catch (_) {}
+  const resp = await fetch(RTDB_DICAS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+  if (!resp.ok) throw new Error('RTDB dicas: ' + resp.status);
 }
 
 // ── Reações com emoji ─────────────────────────────────────────────

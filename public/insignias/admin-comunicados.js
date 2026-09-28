@@ -938,8 +938,8 @@ async function boletimSalvarEdicao(idx) {
   const legenda    = (document.getElementById('bol-edit-legenda')?.value || '').trim();
   const area       = document.getElementById('bol-edit-area')?.value || '';
   const inicioDias = document.getElementById('bol-edit-inicio')?.value ?? '0';
-  if (item.tipo === 'noticia') { if (titulo) item.manchete  = titulo; if (legenda) item.subtitulo = legenda; }
-  else                         { if (titulo) item.titulo    = titulo; if (legenda) item.legenda   = legenda; }
+  if (item.tipo === 'noticia') { item.manchete  = titulo; item.subtitulo = legenda; }
+  else                         { item.titulo    = titulo; item.legenda   = legenda; }
   item.area     = area || undefined;
   item.inicioAte = _calcInicioAte(inicioDias);
   await salvarBoletim(dados);
@@ -1098,7 +1098,7 @@ async function recadoSalvarEdicao(idx) {
   const item  = dados.itens[idx];
   if (!item) return;
   item.titulo    = (document.getElementById('rec-edit-titulo')?.value || '').trim();
-  item.texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim() || item.texto;
+  item.texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim();
   item.destaque  = document.getElementById('rec-edit-destaque')?.checked || false;
   const area     = document.getElementById('rec-edit-area')?.value || '';
   item.area      = area || undefined;
@@ -1147,7 +1147,7 @@ async function dicaSalvarEdicao(idx) {
   const item  = dados.itens[idx];
   if (!item) return;
   item.icone   = (document.getElementById('dic-edit-icone')?.value || '').trim() || item.icone || '💡';
-  item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim() || item.texto;
+  item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim();
   const area   = document.getElementById('dic-edit-area')?.value || '';
   item.area    = area || undefined;
   const inicioDias = document.getElementById('dic-edit-inicio')?.value ?? '0';
