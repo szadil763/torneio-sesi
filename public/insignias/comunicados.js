@@ -30,12 +30,17 @@ const STRINGS_COM = {
     aba_recados:   'Recados',
     aba_boletim:   'Boletim',
     aba_dicas:     'Dicas',
+    aba_noticias:  'Notícias',
+    noticias_titulo: '📰 Notícias do torneio',
+    noticias_vazio:  'Nenhuma notícia por enquanto.',
     inicio_boas_vindas: 'Bem-vindo ao Torneio!',
     inicio_nav:         'Navegue pelas abas para ver tudo',
     inicio_ultimo_recado: 'Último recado',
     inicio_ver_recados:   'Ver todos os recados →',
     inicio_no_boletim:    'No boletim',
     inicio_ver_boletim:   'Ver boletim →',
+    inicio_noticias:      'Últimas notícias',
+    inicio_ver_noticias:  'Ver todas as notícias →',
   },
   en: {
     titulo_pagina:    'Updates',
@@ -61,12 +66,17 @@ const STRINGS_COM = {
     aba_recados:   'Messages',
     aba_boletim:   'Bulletin',
     aba_dicas:     'Tips',
+    aba_noticias:  'News',
+    noticias_titulo: '📰 Tournament News',
+    noticias_vazio:  'No news yet.',
     inicio_boas_vindas: 'Welcome to the Tournament!',
     inicio_nav:         'Use the tabs to explore',
     inicio_ultimo_recado: 'Latest message',
     inicio_ver_recados:   'See all messages →',
     inicio_no_boletim:    'In the bulletin',
     inicio_ver_boletim:   'View bulletin →',
+    inicio_noticias:      'Latest news',
+    inicio_ver_noticias:  'See all news →',
   }
 };
 
@@ -97,6 +107,7 @@ let _dadosCache = null; // { recados, dicas, boletim }
 
 const ABAS_CONFIG = [
   { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
+  { id: 'noticias',  emoji: '📰', labelKey: 'aba_noticias'  },
   { id: 'insignias', emoji: '🏅', labelKey: 'aba_insignias' },
   { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
   { id: 'boletim',   emoji: '🎬', labelKey: 'aba_boletim'   },
@@ -157,6 +168,7 @@ function trocarAba(id) {
 function renderConteudoAba(dados) {
   switch (_abaAtiva) {
     case 'inicio':    renderInicio(dados);             break;
+    case 'noticias':  renderNoticias(dados);           break;
     case 'insignias': renderEstojosSection();           break;
     case 'recados':   renderRecados(dados.recados);    break;
     case 'boletim':
@@ -187,7 +199,9 @@ function renderInicio(dados) {
     } catch (_) { return 0; }
   })();
 
+  const noticias = _coletarNoticias(dados);
   const cards = [
+    { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
     { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
     { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
     { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} item${boletim.length !== 1 ? 's' : ''}`,  cor: '#2E9E4F' },
@@ -226,6 +240,28 @@ function renderInicio(dados) {
         <div class="com-recado-texto">${preview}</div>
         <div class="com-recado-data">${formatarDataCom(ultimo.ts)}</div>
         <div class="com-inicio-ver-mais">${tc('inicio_ver_recados')}</div>
+      </div>`;
+    getMountEl().appendChild(div);
+  }
+
+  // Notícias — preview da mais recente
+  const agora2 = Date.now();
+  const noticiaPreview = noticias.find(n =>
+    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora2 <= n.inicioAte)
+  );
+  if (noticiaPreview) {
+    const titulo  = noticiaPreview.titulo || noticiaPreview.manchete || '';
+    const sub     = noticiaPreview.subtitulo || noticiaPreview.texto || '';
+    const preview = sub.length > 100 ? sub.substring(0, 100) + '…' : sub;
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_noticias')}</div>
+      <div class="com-noticia-card com-recado-clicavel" onclick="trocarAba('noticias')" role="button" tabindex="0">
+        ${noticiaPreview.imagem ? `<img src="${noticiaPreview.imagem}" class="com-noticia-img">` : ''}
+        ${titulo ? `<div class="com-noticia-titulo">${titulo}</div>` : ''}
+        ${preview ? `<div class="com-noticia-sub">${preview}</div>` : ''}
+        <div class="com-inicio-ver-mais">${tc('inicio_ver_noticias')}</div>
       </div>`;
     getMountEl().appendChild(div);
   }
@@ -693,6 +729,53 @@ function renderRecados(recados) {
   }
 
   desenhar();
+  getMountEl().appendChild(secao);
+}
+
+// ── Notícias (dicas com titulo + boletim tipo:noticia) ────────────
+function _coletarNoticias(dados) {
+  const agora = Date.now();
+  const dicasItens = ((dados.dicas && dados.dicas.itens) || [])
+    .filter(d => d.titulo)
+    .map(d => ({ _fonte: 'dica', titulo: d.titulo, texto: d.texto, imagem: d.imagem, icone: d.icone, area: d.area, inicioAte: d.inicioAte, ts: d.ts || d.id || 0 }));
+  const bolItens = ((dados.boletim && dados.boletim.itens) || [])
+    .filter(b => b.tipo === 'noticia')
+    .map(b => ({ _fonte: 'boletim', titulo: b.manchete, texto: b.subtitulo, imagem: undefined, icone: '📰', area: b.area, inicioAte: b.inicioAte, ts: b.ts || b.id || 0 }));
+  return [...dicasItens, ...bolItens].sort((a, b) => (b.ts > a.ts ? 1 : b.ts < a.ts ? -1 : 0));
+}
+
+function renderNoticias(dados) {
+  const todos = _coletarNoticias(dados);
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  const agora = Date.now();
+  const visiveis = todos.filter(n =>
+    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora <= n.inicioAte)
+  );
+
+  secao.innerHTML = `<div class="com-secao-titulo">${tc('noticias_titulo')}</div>`;
+  if (visiveis.length === 0) {
+    secao.innerHTML += `<div class="com-vazio">${tc('noticias_vazio')}</div>`;
+  } else {
+    const lista = document.createElement('div');
+    lista.className = 'com-noticias-lista';
+    lista.innerHTML = visiveis.map((n, i) => {
+      const id = `not-${i}`;
+      return `
+      <article class="com-noticia-card">
+        ${n.imagem ? `<img src="${n.imagem}" class="com-noticia-img">` : ''}
+        <div class="com-noticia-body">
+          <span class="com-noticia-icone">${n.icone || '📰'}</span>
+          ${n.titulo ? `<h3 class="com-noticia-titulo">${n.titulo}</h3>` : ''}
+          ${n.texto  ? `<p class="com-noticia-sub">${n.texto}</p>`     : ''}
+          ${_reacoesBar(id)}
+        </div>
+      </article>`;
+    }).join('');
+    secao.appendChild(lista);
+  }
+
   getMountEl().appendChild(secao);
 }
 
