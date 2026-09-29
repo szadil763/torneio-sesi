@@ -972,9 +972,12 @@ async function _mudarModalidade(deMod, idx, paraMod) {
   const id = Date.now().toString(36);
   const ts = Date.now();
 
-  // Remove da coleção de origem
+  // Remove da coleção de origem (boletim com mídia permanece — apenas cria cópia na nova modalidade)
   if (deMod === 'boletim') {
-    const d = lerBoletim(); d.itens.splice(idx, 1); await salvarBoletim(d); _editBolIdx = null;
+    const itemOrig = lerBoletim().itens[idx];
+    const temMidia = !!(itemOrig?.url || itemOrig?.videoId || itemOrig?.imagem);
+    if (!temMidia) { const d = lerBoletim(); d.itens.splice(idx, 1); await salvarBoletim(d); }
+    _editBolIdx = null;
   } else if (deMod === 'recado') {
     const d = lerRecados(); d.itens.splice(idx, 1); await salvarRecados(d); _editRecadoIdx = null;
   } else if (deMod === 'dica') {
