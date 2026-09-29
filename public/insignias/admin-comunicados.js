@@ -371,9 +371,10 @@ function renderSubDicasCom(dicas) {
       <div id="dic-ia-resultado" style="display:none;font-size:12px;background:color-mix(in srgb,#2F8FE0 10%,var(--card));border:1px solid #2F8FE0;border-radius:10px;padding:10px 12px;margin-bottom:8px;color:var(--text)"></div>
 
       <div class="bol-separador"><span>ou escreva diretamente</span></div>
-      <div style="display:flex;gap:8px">
+      <input id="dic-titulo" type="text" placeholder="Título / manchete (opcional)" class="boletim-input">
+      <div style="display:flex;gap:8px;margin-top:8px">
         <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
-        <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
+        <textarea id="dic-texto" rows="2" placeholder="Texto da dica" class="boletim-input boletim-textarea" style="flex:1;margin:0"></textarea>
       </div>
       ${_inputMidiaDica('dic-midia', 'dic-midia-url', '')}
       ${_seletorInicio('dic-inicio')}
@@ -388,9 +389,10 @@ function renderSubDicasCom(dicas) {
             <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
               <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando dica</div>
               ${_seletorModalidade('dic-edit-modalidade', 'dica')}
-              <div style="display:flex;gap:8px">
+              <input id="dic-edit-titulo" type="text" class="boletim-input" placeholder="Título / manchete (opcional)" value="${(item.titulo||'').replace(/"/g,'&quot;')}">
+              <div style="display:flex;gap:8px;margin-top:8px">
                 <input id="dic-edit-icone" type="text" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0;margin:0" value="${item.icone||'💡'}">
-                <input id="dic-edit-texto" type="text" class="boletim-input" style="flex:1;margin:0" value="${(item.texto||'').replace(/"/g,'&quot;')}">
+                <textarea id="dic-edit-texto" rows="2" class="boletim-input boletim-textarea" style="flex:1;margin:0">${(item.texto||'').replace(/</g,'&lt;')}</textarea>
               </div>
               ${_inputMidiaDica('dic-edit-midia', 'dic-edit-midia-url', item.imagem||'')}
               ${_seletorInicio('dic-edit-inicio', item.inicioAte)}
@@ -1267,6 +1269,7 @@ function _lerMidiaDica(prefixo, idUrl) {
 
 // ── Dicas ─────────────────────────────────────────────────────────
 async function dicaAdicionar() {
+  const titulo     = (document.getElementById('dic-titulo')?.value  || '').trim();
   const icone      = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
   const texto      = (document.getElementById('dic-texto')?.value  || '').trim();
   const area       = document.getElementById('dic-area')?.value || '';
@@ -1278,7 +1281,7 @@ async function dicaAdicionar() {
   if(erro) erro.textContent = '';
   delete _dicaMidiaCache['dic-midia'];
   const dados = lerDicas();
-  dados.itens.push({ id: Date.now().toString(36), icone, texto, imagem, area: area || undefined, inicioAte });
+  dados.itens.push({ id: Date.now().toString(36), titulo: titulo || undefined, icone, texto, imagem, area: area || undefined, inicioAte });
   await salvarDicas(dados);
   renderPainelCom();
 }
@@ -1289,6 +1292,7 @@ async function dicaSalvarEdicao(idx) {
   const dados = lerDicas();
   const item  = dados.itens[idx];
   if (!item) return;
+  item.titulo  = (document.getElementById('dic-edit-titulo')?.value || '').trim() || undefined;
   item.icone   = (document.getElementById('dic-edit-icone')?.value || '').trim() || item.icone || '💡';
   item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim();
   // Atualiza imagem: novo upload > URL digitada > mantém existente (preview vazio = removeu)

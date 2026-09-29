@@ -719,6 +719,7 @@ function renderDicas(dicas) {
             <div class="com-dica">
               ${_badgeArea(d)}
               <span class="com-dica-icone">${d.icone || '💡'}</span>
+              ${d.titulo ? `<strong style="display:block;font-size:15px;line-height:1.3;margin-bottom:4px">${d.titulo}</strong>` : ''}
               <span class="com-dica-texto">${d.texto}</span>
               ${d.imagem ? `<img src="${d.imagem}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;margin-top:8px;display:block">` : ''}
               ${_reacoesBar(id)}
