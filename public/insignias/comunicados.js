@@ -720,6 +720,7 @@ function renderDicas(dicas) {
               ${_badgeArea(d)}
               <span class="com-dica-icone">${d.icone || '💡'}</span>
               <span class="com-dica-texto">${d.texto}</span>
+              ${d.imagem ? `<img src="${d.imagem}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;margin-top:8px;display:block">` : ''}
               ${_reacoesBar(id)}
             </div>`;
           }).join('')}

@@ -375,6 +375,7 @@ function renderSubDicasCom(dicas) {
         <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
         <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
       </div>
+      ${_inputMidiaDica('dic-midia', 'dic-midia-url', '')}
       ${_seletorInicio('dic-inicio')}
       ${_seletorArea('dic-area')}
       <button class="boletim-btn-add" style="margin-top:12px" onclick="dicaAdicionar()">+ Adicionar dica</button>
@@ -391,6 +392,7 @@ function renderSubDicasCom(dicas) {
                 <input id="dic-edit-icone" type="text" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0;margin:0" value="${item.icone||'💡'}">
                 <input id="dic-edit-texto" type="text" class="boletim-input" style="flex:1;margin:0" value="${(item.texto||'').replace(/"/g,'&quot;')}">
               </div>
+              ${_inputMidiaDica('dic-edit-midia', 'dic-edit-midia-url', item.imagem||'')}
               ${_seletorInicio('dic-edit-inicio', item.inicioAte)}
               ${_seletorArea('dic-edit-area', undefined, item.area)}
               <div style="display:flex;gap:8px;margin-top:4px">
@@ -440,6 +442,32 @@ function _seletorModalidade(id, modalidadeAtual) {
     <select id="${id}" class="boletim-input" style="margin-top:0">
       ${opts.map(o => `<option value="${o.v}" ${modalidadeAtual === o.v ? 'selected' : ''}>${o.label}</option>`).join('')}
     </select>`;
+}
+
+function _inputMidiaDica(idFile, idUrl, imagemAtual) {
+  const preview = imagemAtual
+    ? `<div style="margin-top:6px;position:relative;display:inline-block">
+         <img src="${imagemAtual}" style="max-width:100%;max-height:140px;border-radius:10px;display:block">
+         <button type="button" onclick="dicaRemoverImagem('${idFile}','${idUrl}')"
+           style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:14px;cursor:pointer;line-height:1">✕</button>
+       </div>`
+    : '';
+  return `
+    <div style="margin-top:6px">
+      <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.04em">🖼️ IMAGEM (opcional)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label class="boletim-btn-noticia" style="cursor:pointer;padding:8px 12px;font-size:13px;margin:0" title="Câmera">
+          📸 Câmera
+          <input id="${idFile}-cam" type="file" accept="image/*" capture="environment" style="display:none" onchange="dicaHandleImagem(this,'${idFile}','${idUrl}')">
+        </label>
+        <label class="boletim-btn-noticia" style="cursor:pointer;padding:8px 12px;font-size:13px;margin:0" title="Galeria">
+          🖼️ Galeria
+          <input id="${idFile}-gal" type="file" accept="image/*" style="display:none" onchange="dicaHandleImagem(this,'${idFile}','${idUrl}')">
+        </label>
+      </div>
+      <input id="${idUrl}" type="url" class="boletim-input" style="margin-top:6px" placeholder="Ou cole link de uma imagem (https://…)" value="">
+      <div id="${idFile}-preview">${preview}</div>
+    </div>`;
 }
 
 function _inicioAteParaDias(inicioAte) {
@@ -1205,6 +1233,38 @@ async function recadoMover(idx, delta) {
   renderPainelCom();
 }
 
+// ── Dicas — mídia ────────────────────────────────────────────────
+let _dicaMidiaCache = {};  // { [prefixo]: dataUrl }
+
+async function dicaHandleImagem(input, prefixo, idUrl) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const dataUrl = await comprimirImagem(file, 1200, 0.82);
+  _dicaMidiaCache[prefixo] = dataUrl;
+  const preview = document.getElementById(`${prefixo}-preview`);
+  if (preview) {
+    preview.innerHTML = `<div style="margin-top:6px;position:relative;display:inline-block">
+      <img src="${dataUrl}" style="max-width:100%;max-height:140px;border-radius:10px;display:block">
+      <button type="button" onclick="dicaRemoverImagem('${prefixo}','${idUrl}')"
+        style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:14px;cursor:pointer;line-height:1">✕</button>
+    </div>`;
+  }
+  const urlInput = document.getElementById(idUrl);
+  if (urlInput) urlInput.value = '';
+}
+
+function dicaRemoverImagem(prefixo, idUrl) {
+  delete _dicaMidiaCache[prefixo];
+  const preview = document.getElementById(`${prefixo}-preview`);
+  if (preview) preview.innerHTML = '';
+  const urlInput = document.getElementById(idUrl);
+  if (urlInput) urlInput.value = '';
+}
+
+function _lerMidiaDica(prefixo, idUrl) {
+  return _dicaMidiaCache[prefixo] || (document.getElementById(idUrl)?.value || '').trim() || undefined;
+}
+
 // ── Dicas ─────────────────────────────────────────────────────────
 async function dicaAdicionar() {
   const icone      = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
@@ -1212,11 +1272,13 @@ async function dicaAdicionar() {
   const area       = document.getElementById('dic-area')?.value || '';
   const inicioDias = document.getElementById('dic-inicio')?.value ?? '0';
   const inicioAte  = _calcInicioAte(inicioDias);
+  const imagem     = _lerMidiaDica('dic-midia', 'dic-midia-url');
   const erro  = document.getElementById('dic-erro');
   if (!texto) { if(erro) erro.textContent = 'Escreva o texto da dica.'; return; }
   if(erro) erro.textContent = '';
+  delete _dicaMidiaCache['dic-midia'];
   const dados = lerDicas();
-  dados.itens.push({ id: Date.now().toString(36), icone, texto, area: area || undefined, inicioAte });
+  dados.itens.push({ id: Date.now().toString(36), icone, texto, imagem, area: area || undefined, inicioAte });
   await salvarDicas(dados);
   renderPainelCom();
 }
@@ -1229,6 +1291,17 @@ async function dicaSalvarEdicao(idx) {
   if (!item) return;
   item.icone   = (document.getElementById('dic-edit-icone')?.value || '').trim() || item.icone || '💡';
   item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim();
+  // Atualiza imagem: novo upload > URL digitada > mantém existente (preview vazio = removeu)
+  const urlEditVal = (document.getElementById('dic-edit-midia-url')?.value || '').trim();
+  const previewVazio = !(document.getElementById('dic-edit-midia-preview')?.firstElementChild);
+  if (_dicaMidiaCache['dic-edit-midia']) {
+    item.imagem = _dicaMidiaCache['dic-edit-midia'];
+  } else if (urlEditVal) {
+    item.imagem = urlEditVal;
+  } else if (previewVazio) {
+    item.imagem = undefined;
+  }
+  delete _dicaMidiaCache['dic-edit-midia'];
   const area   = document.getElementById('dic-edit-area')?.value || '';
   item.area    = area || undefined;
   const inicioDias = document.getElementById('dic-edit-inicio')?.value ?? '0';
