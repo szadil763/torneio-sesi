@@ -233,6 +233,7 @@ function renderAbaBoletimCom(boletim) {
                 return `
                   <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
                     <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando item do boletim</div>
+                    ${_seletorModalidade('bol-edit-modalidade', 'boletim')}
                     <input id="bol-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${tituloEdit.replace(/"/g,'&quot;')}" placeholder="Título">
                     <input id="bol-edit-legenda" type="text" class="boletim-input" style="margin:0" value="${legendaEdit.replace(/"/g,'&quot;')}" placeholder="Legenda">
                     ${_seletorInicio('bol-edit-inicio', item.inicioAte)}
@@ -330,6 +331,7 @@ function renderSubRecadosCom(recados) {
           ${itens.map((item, i) => _editRecadoIdx === i ? `
             <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
               <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando recado</div>
+              ${_seletorModalidade('rec-edit-modalidade', 'recado')}
               <input id="rec-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${(item.titulo||'').replace(/"/g,'&quot;')}" placeholder="Título (opcional)">
               <textarea id="rec-edit-texto" class="boletim-input boletim-textarea" rows="3" style="margin:0">${item.texto||''}</textarea>
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
@@ -384,6 +386,7 @@ function renderSubDicasCom(dicas) {
           ${itens.map((item, i) => _editDicaIdx === i ? `
             <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
               <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando dica</div>
+              ${_seletorModalidade('dic-edit-modalidade', 'dica')}
               <div style="display:flex;gap:8px">
                 <input id="dic-edit-icone" type="text" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0;margin:0" value="${item.icone||'💡'}">
                 <input id="dic-edit-texto" type="text" class="boletim-input" style="flex:1;margin:0" value="${(item.texto||'').replace(/"/g,'&quot;')}">
@@ -423,6 +426,19 @@ function _seletorArea(id, label, valorAtual) {
       <option value="ingles"         ${v === 'ingles'         ? 'selected' : ''}>🌎 Inglês</option>
       <option value="artes"          ${v === 'artes'          ? 'selected' : ''}>🎨 Artes</option>
       <option value="educacao-fisica"${v === 'educacao-fisica'? 'selected' : ''}>⚽ Ed. Física</option>
+    </select>`;
+}
+
+function _seletorModalidade(id, modalidadeAtual) {
+  const opts = [
+    { v: 'boletim', label: '📸 Boletim' },
+    { v: 'recado',  label: '📢 Recado'  },
+    { v: 'dica',    label: '💡 Dica'    },
+  ];
+  return `
+    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:0 0 4px;letter-spacing:.04em">🔄 MODALIDADE</label>
+    <select id="${id}" class="boletim-input" style="margin-top:0">
+      ${opts.map(o => `<option value="${o.v}" ${modalidadeAtual === o.v ? 'selected' : ''}>${o.label}</option>`).join('')}
     </select>`;
 }
 
@@ -930,7 +946,65 @@ async function boletimAdicionar() {
   renderPainelCom();
 }
 
+async function _mudarModalidade(deMod, idx, paraMod) {
+  // Lê os valores do formulário de edição atual
+  let titulo = '', legenda = '', texto = '', icone = '💡', area = '', inicioAte;
+  if (deMod === 'boletim') {
+    titulo    = (document.getElementById('bol-edit-titulo')?.value  || '').trim();
+    legenda   = (document.getElementById('bol-edit-legenda')?.value || '').trim();
+    area      = document.getElementById('bol-edit-area')?.value  || '';
+    inicioAte = _calcInicioAte(document.getElementById('bol-edit-inicio')?.value ?? '0');
+    texto     = legenda || titulo;
+  } else if (deMod === 'recado') {
+    titulo    = (document.getElementById('rec-edit-titulo')?.value || '').trim();
+    texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim();
+    legenda   = texto;
+    area      = document.getElementById('rec-edit-area')?.value  || '';
+    inicioAte = _calcInicioAte(document.getElementById('rec-edit-inicio')?.value ?? '0');
+  } else if (deMod === 'dica') {
+    icone     = (document.getElementById('dic-edit-icone')?.value || '').trim() || '💡';
+    texto     = (document.getElementById('dic-edit-texto')?.value || '').trim();
+    titulo    = texto.slice(0, 60);
+    legenda   = texto;
+    area      = document.getElementById('dic-edit-area')?.value  || '';
+    inicioAte = _calcInicioAte(document.getElementById('dic-edit-inicio')?.value ?? '0');
+  }
+  const id = Date.now().toString(36);
+  const ts = Date.now();
+
+  // Remove da coleção de origem
+  if (deMod === 'boletim') {
+    const d = lerBoletim(); d.itens.splice(idx, 1); await salvarBoletim(d); _editBolIdx = null;
+  } else if (deMod === 'recado') {
+    const d = lerRecados(); d.itens.splice(idx, 1); await salvarRecados(d); _editRecadoIdx = null;
+  } else if (deMod === 'dica') {
+    const d = lerDicas(); d.itens.splice(idx, 1); await salvarDicas(d); _editDicaIdx = null;
+  }
+
+  // Adiciona na coleção de destino e navega até ela
+  if (paraMod === 'boletim') {
+    const d = lerBoletim();
+    d.itens.unshift({ id, tipo: 'link', url: '', titulo, legenda, area: area || undefined, inicioAte, ts });
+    await salvarBoletim(d);
+    abaComAtiva = 'boletim';
+  } else if (paraMod === 'recado') {
+    const d = lerRecados();
+    d.itens.unshift({ id, titulo, texto: texto || legenda, destaque: false, area: area || undefined, inicioAte, ts });
+    await salvarRecados(d);
+    abaComAtiva = 'comunicados'; comSubAba = 'recados';
+  } else if (paraMod === 'dica') {
+    const d = lerDicas();
+    d.itens.push({ id, icone, texto: texto || titulo, area: area || undefined, inicioAte });
+    await salvarDicas(d);
+    abaComAtiva = 'comunicados'; comSubAba = 'dicas';
+  }
+
+  renderPainelCom();
+}
+
 async function boletimSalvarEdicao(idx) {
+  const novaMod = document.getElementById('bol-edit-modalidade')?.value || 'boletim';
+  if (novaMod !== 'boletim') { await _mudarModalidade('boletim', idx, novaMod); return; }
   const dados = lerBoletim();
   const item  = dados.itens[idx];
   if (!item) return;
@@ -1094,6 +1168,8 @@ async function recadoAdicionar() {
 }
 
 async function recadoSalvarEdicao(idx) {
+  const novaMod = document.getElementById('rec-edit-modalidade')?.value || 'recado';
+  if (novaMod !== 'recado') { await _mudarModalidade('recado', idx, novaMod); return; }
   const dados = lerRecados();
   const item  = dados.itens[idx];
   if (!item) return;
@@ -1143,6 +1219,8 @@ async function dicaAdicionar() {
 }
 
 async function dicaSalvarEdicao(idx) {
+  const novaMod = document.getElementById('dic-edit-modalidade')?.value || 'dica';
+  if (novaMod !== 'dica') { await _mudarModalidade('dica', idx, novaMod); return; }
   const dados = lerDicas();
   const item  = dados.itens[idx];
   if (!item) return;
