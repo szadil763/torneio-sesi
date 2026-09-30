@@ -361,25 +361,39 @@ async function _tocarBipContagem() {
 }
 
 async function _tocarSinalFim(onFim) {
-  try {
-    const ctx = await _getAudioCtx();
-    if (!ctx) { setTimeout(onFim, 8100); return; }
-    // Sinal contínuo de 8 s — sweep de 880→1047 Hz com fade out no final
-    const osc = ctx.createOscillator(), g = ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
-    osc.type = 'sine';
-    const t = ctx.currentTime;
-    osc.frequency.setValueAtTime(880, t);
-    osc.frequency.linearRampToValueAtTime(1047, t + 7.0);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.35, t + 0.3);
-    g.gain.setValueAtTime(0.35, t + 7.0);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 8.0);
-    osc.start(t); osc.stop(t + 8.1);
-    setTimeout(onFim, 8100);
-  } catch(_) {
-    setTimeout(onFim, 8100); // garante que a abertura aparece mesmo sem áudio
+  // Sirene intermitente: 8 pulsos de ~1 s cada (grave→agudo), totalizando ~8 s
+  const DURACAO_TOTAL = 8200;
+  const NUM_PULSOS = 8;
+  const DURACAO_PULSO = DURACAO_TOTAL / NUM_PULSOS; // ~1025 ms por pulso
+
+  let pulsoAtual = 0;
+
+  async function _pulso() {
+    if (pulsoAtual >= NUM_PULSOS) { setTimeout(onFim, 100); return; }
+    try {
+      const ctx = await _getAudioCtx();
+      if (!ctx) { setTimeout(onFim, DURACAO_TOTAL - pulsoAtual * DURACAO_PULSO); return; }
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      const t = ctx.currentTime;
+      const duracaoS = DURACAO_PULSO / 1000;
+      // sweep grave→agudo em cada pulso (660 Hz → 1320 Hz)
+      osc.frequency.setValueAtTime(660, t);
+      osc.frequency.linearRampToValueAtTime(1320, t + duracaoS * 0.75);
+      // envelope: ataque rápido, sustain, decay
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.40, t + 0.04);
+      g.gain.setValueAtTime(0.40, t + duracaoS * 0.70);
+      g.gain.linearRampToValueAtTime(0, t + duracaoS * 0.92);
+      osc.start(t); osc.stop(t + duracaoS);
+    } catch(_) {}
+    pulsoAtual++;
+    setTimeout(_pulso, DURACAO_PULSO);
   }
+
+  _pulso();
+  setTimeout(onFim, DURACAO_TOTAL + 200);
 }
 
 function _youtubeId(url) {
@@ -428,9 +442,7 @@ function _mostrarAberturaVideo() {
                🔊 Toque para ativar o som
              </button>
            </div>`
-        : temLink
-          ? `<a href="${MEET_LINK}" target="_blank" rel="noopener" class="contador-abertura-btn">📺 Assistir ao vivo</a>`
-          : `<div class="contador-abertura-link-pendente">📺 Link de transmissão em breve</div>`}
+        : `<div class="contador-abertura-link-pendente">📺 Transmissão em breve</div>`}
     </div>`;
 
   // Confete
@@ -509,10 +521,7 @@ function renderContadorCom() {
           <span class="contador-label">${tc('seg')}</span>
         </div>
       </div>
-      <div class="contador-data">${tc('data_evento')}</div>
-      ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-        ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#004B8D">${tc('ao_vivo_btn')}</a>`
-        : ''}`;
+      <div class="contador-data">${tc('data_evento')}</div>`;
   }
 
   atualizar();
