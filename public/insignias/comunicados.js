@@ -2,7 +2,7 @@
 // Sem token, acessível a todos. Dados do Firebase RTDB.
 
 const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
-const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
+const MEET_LINK = 'https://youtu.be/_1NVzpI8ZzI?si=cTbeAmXn5Yg9HAQn';
 
 // Modo de teste: ?teste=65  → contador termina em 65 s a partir de agora
 const _testeSecs = (() => { try { return parseInt(new URLSearchParams(location.search).get('teste')) || 0; } catch(_) { return 0; } })();
@@ -28,7 +28,7 @@ const STRINGS_COM = {
     data_evento:      '📅 02 de outubro de 2026 · 14h50',
     dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
     ao_vivo:          '📺 Assistir abertura ao vivo',
-    ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
+    ao_vivo_btn:      '📺 Abertura ao vivo — YouTube',
     aba_inicio:    'Início',
     aba_insignias: 'Insígnias',
     aba_recados:   'Recados',
@@ -64,7 +64,7 @@ const STRINGS_COM = {
     data_evento:      '📅 October 2, 2026 · 2:50 PM',
     dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
     ao_vivo:          '📺 Watch opening ceremony live',
-    ao_vivo_btn:      '📺 Live opening — Teams',
+    ao_vivo_btn:      '📺 Live opening — YouTube',
     aba_inicio:    'Home',
     aba_insignias: 'Badges',
     aba_recados:   'Messages',
@@ -312,17 +312,24 @@ let _bipLastSeg   = -1;
 let _fimIniciado  = false;
 let _audioCtxCom  = null;
 
+// Pré-cria AudioContext na primeira interação do usuário (exigência dos browsers)
+function _initAudioCtxCom() {
+  if (_audioCtxCom) return;
+  try { _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) {}
+}
+document.addEventListener('touchstart', _initAudioCtxCom, { once: true, passive: true });
+document.addEventListener('click',      _initAudioCtxCom, { once: true });
+
 function _getAudioCtx() {
-  if (!_audioCtxCom || _audioCtxCom.state === 'closed') {
-    _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (_audioCtxCom.state === 'suspended') _audioCtxCom.resume();
+  if (!_audioCtxCom) _initAudioCtxCom();
+  if (_audioCtxCom && _audioCtxCom.state === 'suspended') _audioCtxCom.resume();
   return _audioCtxCom;
 }
 
 function _tocarBipContagem() {
   try {
     const ctx = _getAudioCtx();
+    if (!ctx) return;
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.connect(g); g.connect(ctx.destination);
     osc.type = 'sine'; osc.frequency.value = 880;
@@ -336,6 +343,7 @@ function _tocarBipContagem() {
 function _tocarSinalFim(onFim) {
   try {
     const ctx = _getAudioCtx();
+    if (!ctx) { setTimeout(onFim, 5100); return; }
     // Sinal contínuo de 5 s — sweep de 880→1047 Hz com fade out no final
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.connect(g); g.connect(ctx.destination);
