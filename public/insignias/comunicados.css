@@ -767,3 +767,18 @@
   line-height: 1;
   align-self: center;
 }
+
+/* ── Player de vídeo embutido na abertura ────────────────────────── */
+.contador-video-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.contador-video-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
