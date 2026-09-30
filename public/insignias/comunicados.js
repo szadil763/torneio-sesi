@@ -316,6 +316,9 @@ let _audioCtxCom  = null;
 function _initAudioCtxCom() {
   if (_audioCtxCom) return;
   try { _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) {}
+  // Esconde o aviso assim que o usuário tocar
+  const aviso = document.getElementById('aviso-toque-audio');
+  if (aviso) aviso.style.display = 'none';
 }
 document.addEventListener('touchstart', _initAudioCtxCom, { once: true, passive: true });
 document.addEventListener('click',      _initAudioCtxCom, { once: true });
@@ -1318,6 +1321,13 @@ async function renderComunicados() {
     </div>
     <div id="com-push-wrap"></div>
     ${renderTabBar()}
+    <div id="aviso-toque-audio" class="aviso-toque-audio" onclick="this.style.display='none'">
+      <span class="aviso-toque-icone">📱</span>
+      <span class="aviso-toque-texto">
+        <strong>Toque na tela uma vez</strong> para ativar o som e a abertura automática do vídeo ao final da contagem.
+      </span>
+      <button class="aviso-toque-fechar" aria-label="Fechar">✕</button>
+    </div>
     <div id="com-content" class="com-content-area"></div>`;
 
   _renderBotaoPush(document.getElementById('com-push-wrap'));
