@@ -390,24 +390,43 @@ function _youtubeId(url) {
   } catch(_) { return ''; }
 }
 
+function _ativarSomYoutube() {
+  const iframe = document.getElementById('yt-iframe-abertura');
+  if (!iframe) return;
+  // postMessage para o player do YouTube: desmutar e volume máximo
+  const cmd = JSON.stringify({ event: 'command', func: 'unMute',      args: [] });
+  const vol  = JSON.stringify({ event: 'command', func: 'setVolume',  args: [100] });
+  try { iframe.contentWindow.postMessage(cmd, '*'); } catch(_) {}
+  try { iframe.contentWindow.postMessage(vol, '*'); } catch(_) {}
+  const btn = document.getElementById('btn-ativar-som');
+  if (btn) btn.style.display = 'none';
+}
+
 function _mostrarAberturaVideo() {
   const secao = document.getElementById('contador-torneio');
   if (!secao) return;
   const temLink = MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI';
   const videoId = temLink ? _youtubeId(MEET_LINK) : '';
 
+  // autoplay=1 + mute=1 → vídeo inicia automaticamente sem som (browsers sempre permitem)
+  // enablejsapi=1 → habilita postMessage para desmutar via botão
   secao.innerHTML = `
     <div class="contador-abertura-overlay">
       <div class="contador-abertura-titulo">🏆 ABERTURA DO TORNEIO!</div>
       <div class="contador-abertura-sub">SESI TORNEIO INFANTIL 2026</div>
       ${videoId
-        ? `<div class="contador-video-wrap">
-             <iframe
-               src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1"
-               class="contador-video-iframe"
-               frameborder="0"
-               allow="autoplay; fullscreen; picture-in-picture"
-               allowfullscreen></iframe>
+        ? `<div style="position:relative">
+             <div class="contador-video-wrap">
+               <iframe id="yt-iframe-abertura"
+                 src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&playsinline=1&enablejsapi=1"
+                 class="contador-video-iframe"
+                 frameborder="0"
+                 allow="autoplay; fullscreen; picture-in-picture"
+                 allowfullscreen></iframe>
+             </div>
+             <button id="btn-ativar-som" class="btn-ativar-som" onclick="_ativarSomYoutube()">
+               🔊 Toque para ativar o som
+             </button>
            </div>`
         : temLink
           ? `<a href="${MEET_LINK}" target="_blank" rel="noopener" class="contador-abertura-btn">📺 Assistir ao vivo</a>`

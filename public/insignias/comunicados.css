@@ -782,3 +782,21 @@
   border: none;
   display: block;
 }
+
+/* ── Botão ativar som do vídeo ───────────────────────────────────── */
+.btn-ativar-som {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 10px 16px 0;
+  padding: 16px;
+  background: #F5821F;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  letter-spacing: .02em;
+  animation: contador-pulsar 1s ease infinite;
+  -webkit-tap-highlight-color: transparent;
+}
