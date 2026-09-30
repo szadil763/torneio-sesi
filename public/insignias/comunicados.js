@@ -343,27 +343,37 @@ function _tocarBipContagem() {
 function _tocarSinalFim(onFim) {
   try {
     const ctx = _getAudioCtx();
-    if (!ctx) { setTimeout(onFim, 5100); return; }
-    // Sinal contínuo de 5 s — sweep de 880→1047 Hz com fade out no final
+    if (!ctx) { setTimeout(onFim, 8100); return; }
+    // Sinal contínuo de 8 s — sweep de 880→1047 Hz com fade out no final
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.connect(g); g.connect(ctx.destination);
     osc.type = 'sine';
     const t = ctx.currentTime;
     osc.frequency.setValueAtTime(880, t);
-    osc.frequency.linearRampToValueAtTime(1047, t + 4.5);
+    osc.frequency.linearRampToValueAtTime(1047, t + 7.0);
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(0.35, t + 0.3);
-    g.gain.setValueAtTime(0.35, t + 4.0);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 5.0);
-    osc.start(t); osc.stop(t + 5.1);
+    g.gain.setValueAtTime(0.35, t + 7.0);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 8.0);
+    osc.start(t); osc.stop(t + 8.1);
   } catch(_) {}
-  setTimeout(onFim, 5100);
+  setTimeout(onFim, 8100);
 }
 
 function _mostrarAberturaVideo() {
   const secao = document.getElementById('contador-torneio');
   if (!secao) return;
   const temLink = MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI';
+
+  // Abre o vídeo automaticamente
+  if (temLink) {
+    try {
+      const a = document.createElement('a');
+      a.href = MEET_LINK; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } catch(_) {}
+  }
+
   secao.innerHTML = `
     <div class="contador-abertura-overlay">
       <div class="contador-abertura-titulo">🏆 ABERTURA DO TORNEIO!</div>
