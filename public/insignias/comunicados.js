@@ -4,6 +4,10 @@
 const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
 const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
 
+// Modo de teste: ?teste=65  → contador termina em 65 s a partir de agora
+const _testeSecs = (() => { try { return parseInt(new URLSearchParams(location.search).get('teste')) || 0; } catch(_) { return 0; } })();
+const _CONTADOR_TARGET = _testeSecs > 0 ? new Date(Date.now() + _testeSecs * 1000) : TORNEIO_INICIO;
+
 // ── Idioma ────────────────────────────────────────────────────────
 const STRINGS_COM = {
   pt: {
@@ -303,16 +307,83 @@ function renderInicio(dados) {
   }
 }
 
+// ── Áudio do contador ─────────────────────────────────────────────
+let _bipLastSeg   = -1;
+let _fimIniciado  = false;
+let _audioCtxCom  = null;
+
+function _getAudioCtx() {
+  if (!_audioCtxCom || _audioCtxCom.state === 'closed') {
+    _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtxCom.state === 'suspended') _audioCtxCom.resume();
+  return _audioCtxCom;
+}
+
+function _tocarBipContagem() {
+  try {
+    const ctx = _getAudioCtx();
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = 880;
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.22, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.start(t); osc.stop(t + 0.1);
+  } catch(_) {}
+}
+
+function _tocarSinalFim(onFim) {
+  try {
+    const ctx = _getAudioCtx();
+    // Sinal contínuo de 5 s — sweep de 880→1047 Hz com fade out no final
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = 'sine';
+    const t = ctx.currentTime;
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.linearRampToValueAtTime(1047, t + 4.5);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.35, t + 0.3);
+    g.gain.setValueAtTime(0.35, t + 4.0);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 5.0);
+    osc.start(t); osc.stop(t + 5.1);
+  } catch(_) {}
+  setTimeout(onFim, 5100);
+}
+
+function _mostrarAberturaVideo() {
+  const secao = document.getElementById('contador-torneio');
+  if (!secao) return;
+  const temLink = MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI';
+  secao.innerHTML = `
+    <div class="contador-abertura-overlay">
+      <div class="contador-abertura-titulo">🏆 ABERTURA DO TORNEIO!</div>
+      <div class="contador-abertura-sub">SESI TORNEIO INFANTIL 2026</div>
+      ${temLink
+        ? `<a href="${MEET_LINK}" target="_blank" rel="noopener" class="contador-abertura-btn">
+             📺 Assistir ao vivo agora
+           </a>`
+        : `<div class="contador-abertura-link-pendente">📺 Link de transmissão em breve</div>`}
+    </div>`;
+  // Confete
+  try { dispararConfeteCom('#F5821F'); } catch(_) {}
+  try { setTimeout(() => dispararConfeteCom('#004B8D'), 600); } catch(_) {}
+}
+
 // ── Contador regressivo ───────────────────────────────────────────
 function renderContadorCom() {
   function calcular() {
-    const diff = TORNEIO_INICIO.getTime() - Date.now();
+    const diff = _CONTADOR_TARGET.getTime() - Date.now();
     if (diff <= 0) return null;
+    const totalSegs = Math.floor(diff / 1000);
     return {
       dias:    Math.floor(diff / 86400000),
       horas:   Math.floor((diff % 86400000) / 3600000),
       minutos: Math.floor((diff % 3600000)  / 60000),
-      segs:    Math.floor((diff % 60000)     / 1000)
+      segs:    Math.floor((diff % 60000)     / 1000),
+      totalSegs,
+      ultimoMinuto: totalSegs <= 60,
     };
   }
 
@@ -328,21 +399,28 @@ function renderContadorCom() {
     if (!inner) return;
 
     if (!tempo) {
-      inner.innerHTML = `
-        <div class="contador-ao-vivo" style="--c:#F5821F">
-          🏆 <span>${tc('andamento')}</span>
-        </div>
-        ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-          ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">${tc('ao_vivo')}</a>`
-          : ''}`;
+      if (_fimIniciado) return;
+      _fimIniciado = true;
       clearInterval(_countdownInterval);
       _countdownInterval = null;
+      inner.innerHTML = `<div class="contador-sinal-fim">🔔 Iniciando abertura…</div>`;
+      _tocarSinalFim(_mostrarAberturaVideo);
       return;
     }
+
+    // Bip a cada segundo no último minuto
+    if (tempo.ultimoMinuto && tempo.segs !== _bipLastSeg) {
+      _bipLastSeg = tempo.segs;
+      _tocarBipContagem();
+    }
+
+    const corSegs = tempo.ultimoMinuto ? '#D32F2F' : '#F5821F';
+    const pulsarClass = tempo.ultimoMinuto ? ' contador-bloco-alerta' : '';
 
     inner.innerHTML = `
       <div class="contador-titulo">🏆 SESI TORNEIO INFANTIL</div>
       <div class="contador-subtitulo">${tc('comeca_em')}</div>
+      ${tempo.ultimoMinuto ? `<div class="contador-alerta-faixa">⚠️ Último minuto!</div>` : ''}
       <div class="contador-numeros">
         <div class="contador-bloco" style="--c:#004B8D">
           <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
@@ -359,7 +437,7 @@ function renderContadorCom() {
           <span class="contador-label">${tc('min')}</span>
         </div>
         <span class="contador-sep">:</span>
-        <div class="contador-bloco" style="--c:#F5821F">
+        <div class="contador-bloco${pulsarClass}" style="--c:${corSegs}">
           <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
           <span class="contador-label">${tc('seg')}</span>
         </div>

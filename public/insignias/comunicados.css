@@ -650,3 +650,80 @@
   line-height: 1.5;
   margin: 0 0 8px;
 }
+
+/* ── Contador — último minuto e abertura ─────────────────────────── */
+.contador-alerta-faixa {
+  font-size: 13px;
+  font-weight: 700;
+  color: #D32F2F;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  animation: contador-pisca 0.8s ease infinite;
+}
+@keyframes contador-pisca {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.contador-bloco-alerta {
+  animation: contador-pulsar 0.9s ease infinite;
+}
+@keyframes contador-pulsar {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.07); }
+}
+.contador-sinal-fim {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  padding: 24px 0;
+  letter-spacing: .02em;
+  animation: contador-pisca 0.5s ease infinite;
+}
+.contador-abertura-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 16px 24px;
+  background: linear-gradient(135deg, #004B8D 0%, #0066c0 100%);
+  border-radius: 20px;
+  animation: contador-abre 0.6s ease;
+}
+@keyframes contador-abre {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.contador-abertura-titulo {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  letter-spacing: .03em;
+  text-wrap: balance;
+}
+.contador-abertura-sub {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,.75);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.contador-abertura-btn {
+  display: inline-block;
+  background: #F5821F;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 14px 28px;
+  border-radius: 50px;
+  text-decoration: none;
+  letter-spacing: .02em;
+  animation: contador-pulsar 1.2s ease infinite;
+}
+.contador-abertura-link-pendente {
+  font-size: 14px;
+  color: rgba(255,255,255,.8);
+  font-style: italic;
+}
