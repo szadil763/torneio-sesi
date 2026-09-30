@@ -368,13 +368,11 @@ function _mostrarAberturaVideo() {
   if (!secao) return;
   const temLink = MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI';
 
-  // Abre o vídeo automaticamente
-  if (temLink) {
-    try {
-      const a = document.createElement('a');
-      a.href = MEET_LINK; a.target = '_blank'; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    } catch(_) {}
+  // Mostra a tela de abertura com contagem regressiva até o redirect
+  let segsParaVideo = 3;
+  function _atualizarBtn() {
+    const btn = document.getElementById('btn-abrir-video');
+    if (btn) btn.textContent = `📺 Abrindo vídeo em ${segsParaVideo}s…`;
   }
 
   secao.innerHTML = `
@@ -382,11 +380,25 @@ function _mostrarAberturaVideo() {
       <div class="contador-abertura-titulo">🏆 ABERTURA DO TORNEIO!</div>
       <div class="contador-abertura-sub">SESI TORNEIO INFANTIL 2026</div>
       ${temLink
-        ? `<a href="${MEET_LINK}" target="_blank" rel="noopener" class="contador-abertura-btn">
-             📺 Assistir ao vivo agora
-           </a>`
+        ? `<button id="btn-abrir-video" class="contador-abertura-btn"
+                   onclick="window.location.href='${MEET_LINK}'">
+             📺 Abrindo vídeo em ${segsParaVideo}s…
+           </button>`
         : `<div class="contador-abertura-link-pendente">📺 Link de transmissão em breve</div>`}
     </div>`;
+
+  // Redireciona a página atual para o vídeo (única forma confiável em mobile)
+  if (temLink) {
+    const tick = setInterval(() => {
+      segsParaVideo--;
+      if (segsParaVideo <= 0) {
+        clearInterval(tick);
+        window.location.href = MEET_LINK;
+      } else {
+        _atualizarBtn();
+      }
+    }, 1000);
+  }
   // Confete
   try { dispararConfeteCom('#F5821F'); } catch(_) {}
   try { setTimeout(() => dispararConfeteCom('#004B8D'), 600); } catch(_) {}
