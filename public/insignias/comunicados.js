@@ -314,24 +314,41 @@ let _audioCtxCom  = null;
 
 // Pré-cria AudioContext na primeira interação do usuário (exigência dos browsers)
 function _initAudioCtxCom() {
-  if (_audioCtxCom) return;
-  try { _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) {}
+  if (_audioCtxCom && _audioCtxCom.state !== 'closed') {
+    // Já existe — apenas retoma se suspenso
+    if (_audioCtxCom.state === 'suspended') _audioCtxCom.resume().catch(() => {});
+    return;
+  }
+  try {
+    _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)();
+    // Retoma automaticamente se o browser suspender por inatividade
+    _audioCtxCom.addEventListener('statechange', () => {
+      if (_audioCtxCom.state === 'suspended') _audioCtxCom.resume().catch(() => {});
+    });
+  } catch(_) {}
   // Esconde o aviso assim que o usuário tocar
   const aviso = document.getElementById('aviso-toque-audio');
   if (aviso) aviso.style.display = 'none';
 }
-document.addEventListener('touchstart', _initAudioCtxCom, { once: true, passive: true });
-document.addEventListener('click',      _initAudioCtxCom, { once: true });
+// Re-ativa em qualquer toque para cobrir o caso em que a tela foi desligada
+document.addEventListener('touchstart', _initAudioCtxCom, { passive: true });
+document.addEventListener('click',      _initAudioCtxCom);
 
-function _getAudioCtx() {
-  if (!_audioCtxCom) _initAudioCtxCom();
-  if (_audioCtxCom && _audioCtxCom.state === 'suspended') _audioCtxCom.resume();
-  return _audioCtxCom;
+// Retorna o AudioContext garantidamente em estado "running", aguardando resume() se necessário
+async function _getAudioCtx() {
+  if (!_audioCtxCom || _audioCtxCom.state === 'closed') {
+    // Fora de gesto do usuário isso pode falhar — tudo bem, retorna null
+    try { _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) { return null; }
+  }
+  if (_audioCtxCom.state === 'suspended') {
+    try { await _audioCtxCom.resume(); } catch(_) { return null; }
+  }
+  return _audioCtxCom.state === 'running' ? _audioCtxCom : null;
 }
 
-function _tocarBipContagem() {
+async function _tocarBipContagem() {
   try {
-    const ctx = _getAudioCtx();
+    const ctx = await _getAudioCtx();
     if (!ctx) return;
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.connect(g); g.connect(ctx.destination);
@@ -343,9 +360,9 @@ function _tocarBipContagem() {
   } catch(_) {}
 }
 
-function _tocarSinalFim(onFim) {
+async function _tocarSinalFim(onFim) {
   try {
-    const ctx = _getAudioCtx();
+    const ctx = await _getAudioCtx();
     if (!ctx) { setTimeout(onFim, 8100); return; }
     // Sinal contínuo de 8 s — sweep de 880→1047 Hz com fade out no final
     const osc = ctx.createOscillator(), g = ctx.createGain();
@@ -359,8 +376,10 @@ function _tocarSinalFim(onFim) {
     g.gain.setValueAtTime(0.35, t + 7.0);
     g.gain.exponentialRampToValueAtTime(0.001, t + 8.0);
     osc.start(t); osc.stop(t + 8.1);
-  } catch(_) {}
-  setTimeout(onFim, 8100);
+    setTimeout(onFim, 8100);
+  } catch(_) {
+    setTimeout(onFim, 8100); // garante que a abertura aparece mesmo sem áudio
+  }
 }
 
 function _youtubeId(url) {
