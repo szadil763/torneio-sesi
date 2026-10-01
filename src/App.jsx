@@ -1497,6 +1497,29 @@ const ALT_LABELS = { a: 'A', b: 'B', c: 'C', d: 'D' };
 const FORM_VAZIO = { texto: '', a: '', b: '', c: '', d: '', correta: 'a' };
 const TIMER_MS   = 10000;
 
+const QUESTOES_DEFAULT = [
+  { texto: '1º ANO — HOW MANY LETTERS ARE THERE IN THE WORD "DUCKLING"?', a: '6', b: '7', c: '8', d: '9', correta: 'b' },
+  { texto: '1º ANO — WHICH WORD RHYMES WITH "DUCK"?', a: 'Tree', b: 'Truck', c: 'Bird', d: 'Swan', correta: 'b' },
+  { texto: '1º ANO — WHICH LETTER COMES FIRST IN THE WORD "SWAN"?', a: 'S', b: 'W', c: 'A', d: 'N', correta: 'a' },
+  { texto: '1º ANO — WHICH WORD STARTS WITH THE SAME SOUND AS "DUCK"?', a: 'Dog', b: 'Swan', c: 'Nest', d: 'Egg', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD BEGINS WITH THE SAME SOUND AS "SWAN"?', a: 'Swim', b: 'Tree', c: 'Cat', d: 'Pond', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD IS HIDDEN INSIDE "DUCKLING"?', a: 'Duck', b: 'Lake', c: 'Wing', d: 'Nest', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD ENDS WITH THE SAME SOUND AS "NEST"?', a: 'Best', b: 'Duck', c: 'Swan', d: 'Pond', correta: 'a' },
+  { texto: '2º ANO — HOW MANY LETTERS ARE THERE IN THE WORD "SWAN"?', a: '3', b: '4', c: '5', d: '6', correta: 'b' },
+  { texto: '3º ANO — UNSCRAMBLE THE LETTERS: K - C - U - D', a: 'Duck', b: 'Luck', c: 'Desk', d: 'Swan', correta: 'a' },
+  { texto: '3º ANO — WHICH WORD DOES NOT BELONG TO THE GROUP?', a: 'Duck', b: 'Swan', c: 'Goose', d: 'Carrot', correta: 'd' },
+  { texto: '3º ANO — WHICH WORD BELONGS TO THE GROUP "ANIMALS"?', a: 'Flower', b: 'Swan', c: 'Winter', d: 'Water', correta: 'b' },
+  { texto: '3º ANO — UNSCRAMBLE THE LETTERS: N - A - W - S', a: 'Swan', b: 'Snow', c: 'Wans', d: 'Wing', correta: 'a' },
+  { texto: '4º ANO — WHICH WORD MEANS THE OPPOSITE OF "BIG"?', a: 'Tall', b: 'Fast', c: 'Small', d: 'Strong', correta: 'c' },
+  { texto: '4º ANO — WHICH WORD HAS THREE VOWELS?', a: 'Duck', b: 'Swan', c: 'Nest', d: 'Animal', correta: 'd' },
+  { texto: '4º ANO — WHICH WORD MEANS THE OPPOSITE OF "COLD"?', a: 'Hot', b: 'Slow', c: 'Small', d: 'Dark', correta: 'a' },
+  { texto: '4º ANO — WHICH WORD HAS THREE SYLLABLES?', a: 'Swan', b: 'Winter', c: 'Animal', d: 'Pond', correta: 'c' },
+  { texto: '5º ANO — PUT IN ORDER: BEAUTIFUL • BECOMES • THE • SWAN • DUCKLING • A', a: 'THE BEAUTIFUL DUCKLING BECOMES A SWAN.', b: 'THE DUCKLING BECOMES A BEAUTIFUL SWAN.', c: 'A SWAN BECOMES THE BEAUTIFUL DUCKLING.', d: 'THE DUCKLING A BEAUTIFUL SWAN BECOMES.', correta: 'b' },
+  { texto: '5º ANO — COMPLETE: B E A U T I _ U L — WHICH LETTER IS MISSING?', a: 'P', b: 'F', c: 'V', d: 'T', correta: 'b' },
+  { texto: '5º ANO — PUT IN ORDER: IS • THE • WATER • LOOKING • DUCKLING • INTO • THE', a: 'THE DUCKLING IS LOOKING INTO THE WATER.', b: 'THE WATER IS LOOKING INTO THE DUCKLING.', c: 'THE DUCKLING LOOKING IS INTO THE WATER.', d: 'IS THE DUCKLING THE WATER LOOKING INTO.', correta: 'a' },
+  { texto: '5º ANO — COMPLETE: R E F L E C T I _ N — WHICH LETTER IS MISSING?', a: 'A', b: 'E', c: 'O', d: 'U', correta: 'c' },
+];
+
 function KahootMonitorView({ forceLocal = false }) {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz]   = useState(null);
@@ -1937,10 +1960,21 @@ function KahootMonitorView({ forceLocal = false }) {
         <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
           <div className="px-4 py-3 flex items-center justify-between" style={{ background: AZUL }}>
             <span className="font-bold text-white text-sm">Banco de Questões</span>
-            <button onClick={() => abrirEdicao(null)}
-              className="px-3 py-1 rounded-xl text-xs font-bold bg-white" style={{ color: AZUL }}>
-              + Nova
-            </button>
+            <div className="flex gap-2">
+              {questoes.length === 0 && (
+                <button onClick={async () => {
+                  await kSet("kahoot_questoes", QUESTOES_DEFAULT);
+                  setQuestoes(QUESTOES_DEFAULT);
+                }}
+                  className="px-3 py-1 rounded-xl text-xs font-bold bg-yellow-400" style={{ color: '#1e3a5f' }}>
+                  ⬇ Importar 20 questões
+                </button>
+              )}
+              <button onClick={() => abrirEdicao(null)}
+                className="px-3 py-1 rounded-xl text-xs font-bold bg-white" style={{ color: AZUL }}>
+                + Nova
+              </button>
+            </div>
           </div>
 
           {/* Formulário de edição */}
