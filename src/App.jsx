@@ -1769,13 +1769,20 @@ function KahootMonitorView({ forceLocal = false }) {
         <div className="px-5 py-5">
           {/* Contando */}
           {contando && (
-            <div>
-              <div className="font-black text-white" style={{ fontSize: 56, lineHeight: 1, textShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
-                {secsLeft}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="font-black text-white" style={{ fontSize: 56, lineHeight: 1, textShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
+                  {secsLeft}
+                </div>
+                <div className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">
+                  Leia a questão…
+                </div>
               </div>
-              <div className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">
-                Leia a questão…
-              </div>
+              <button onClick={activarBotoeiras}
+                className="px-4 py-2 rounded-xl text-xs font-bold"
+                style={{ background: "rgba(255,255,255,0.18)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.4)" }}>
+                ⚡ Ativar já
+              </button>
             </div>
           )}
           {/* Botoeiras ativas */}
@@ -2091,133 +2098,240 @@ function KahootTelaoView({ forceLocal = false }) {
   const secsLeftT = Math.ceil(timeLeft / 1000);
   const pctT      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
 
+  // Fase atual do telão
+  const fase = buzz ? 'buzz'
+    : answer ? 'resposta'
+    : contandoT ? 'countdown'
+    : active ? 'ativo'
+    : 'idle';
+
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-6">
-      <div>
-        <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
-          SESI — TORNEIO INFANTIL
+    <div className="min-h-screen flex flex-col" style={{ background: AZUL_ESCURO }}>
+
+      {/* ── Cabeçalho fixo ── */}
+      <div className="flex items-center justify-between px-6 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div>
+          <div className="text-xs font-bold tracking-widest" style={{ color: LARANJA }}>SESI — TORNEIO INFANTIL</div>
+          <div className="font-extrabold text-white text-lg">🎓 Kahoot English</div>
         </div>
-        <h1 className="text-center text-3xl md:text-4xl font-extrabold" style={{ color: AZUL }}>
-          🎓 Kahoot English
-        </h1>
-        {active && !buzz && (
-          <div className="text-center font-bold text-lg mt-2 animate-pulse" style={{ color: LARANJA }}>
-            ⚡ Primeira equipe a apertar a botoeira ganha!
-          </div>
-        )}
-        {buzz && winner && (
-          <div className="text-center font-extrabold text-2xl mt-2" style={{ color: winner.color }}>
-            🔔 {winner.label} foi primeiro!
-          </div>
-        )}
-        {answer && !buzz && (
-          <div className="text-center font-extrabold text-2xl mt-2"
-            style={{ color: answer.correto ? "#15803d" : "#dc2626" }}>
-            {answer.correto ? "✅ Correto! +1 pt" : `❌ Errado — correto era ${ALT_LABELS[answer.alt === answer.alt ? questaoAtual?.correta ?? answer.alt : answer.alt]}`}
+        {questoes.length > 0 && questaoIdx >= 0 && (
+          <div className="flex items-center gap-2">
+            {questoes.map((_, i) => (
+              <div key={i} className="rounded-full transition-all"
+                style={{
+                  width: i === questaoIdx ? 18 : 8,
+                  height: 8,
+                  background: i === questaoIdx ? LARANJA : i < questaoIdx ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)",
+                  transition: "all 0.3s",
+                }} />
+            ))}
           </div>
         )}
       </div>
 
-      {/* ── Cronômetro ── */}
-      {contandoT && (
-        <div className="rounded-3xl overflow-hidden shadow-xl" style={{ background: AZUL_ESCURO }}>
-          <div className="h-3" style={{ background: "rgba(255,255,255,0.12)" }}>
-            <div className="h-full transition-all" style={{
-              width: `${pctT}%`,
-              background: pctT > 70 ? "#ef4444" : pctT > 40 ? "#f59e0b" : "#22c55e",
-              transition: "width 0.1s linear, background 0.3s",
-            }} />
-          </div>
-          <div className="flex items-center justify-center py-6 gap-6">
-            <div className="font-black text-white" style={{ fontSize: 80, lineHeight: 1, textShadow: "0 6px 30px rgba(0,0,0,0.5)" }}>
-              {secsLeftT}
-            </div>
-            <div className="text-white/60 font-bold text-sm uppercase tracking-widest">
-              Leia a<br/>questão
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Conteúdo principal ── */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-4 gap-5 max-w-3xl mx-auto w-full">
 
-      {/* ── Questão atual ── */}
-      {questaoAtual && (
-        <div className="rounded-3xl shadow-lg overflow-hidden" style={{ border: `2px solid ${AZUL}22` }}>
-          <div className="px-6 py-3 flex items-center justify-between"
-            style={{ background: AZUL }}>
-            <span className="font-extrabold text-white text-sm tracking-wide">
-              QUESTÃO {questaoIdx + 1} / {questoes.length}
-            </span>
-            {active && !buzz && (
-              <span className="text-xs font-bold text-white animate-pulse">⚡ RESPONDENDO…</span>
-            )}
-          </div>
-          <div className="px-6 pt-5 pb-4 bg-white">
-            <div className="font-extrabold text-xl md:text-2xl leading-snug mb-5" style={{ color: AZUL }}>
-              {questaoAtual.texto}
+        {/* FASE: idle */}
+        {fase === 'idle' && (
+          <div className="text-center py-12">
+            <div className="font-black text-white text-opacity-30 text-4xl" style={{ color: "rgba(255,255,255,0.2)" }}>
+              🎓
             </div>
+            <div className="text-white/40 font-semibold mt-3">Aguardando próxima pergunta…</div>
+          </div>
+        )}
+
+        {/* FASE: countdown — questão + botões travados */}
+        {fase === 'countdown' && questaoAtual && (
+          <>
+            {/* Cronômetro */}
+            <div className="flex items-center gap-4">
+              <div className="font-black text-white shrink-0"
+                style={{ fontSize: 72, lineHeight: 1, textShadow: "0 6px 30px rgba(0,0,0,0.5)",
+                  animation: secsLeftT <= 3 ? "pulseScale 0.5s ease-in-out infinite" : "none" }}>
+                {secsLeftT}
+              </div>
+              <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
+                <div className="h-full rounded-full" style={{
+                  width: `${pctT}%`,
+                  background: pctT > 70 ? "#ef4444" : pctT > 40 ? "#f59e0b" : "#22c55e",
+                  transition: "width 0.1s linear, background 0.3s",
+                }} />
+              </div>
+            </div>
+            {/* Texto da questão (sem alternativas) */}
+            <div className="rounded-3xl px-7 py-6" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: LARANJA }}>
+                Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.3rem, 3vw, 2rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Botões das equipes — travados */}
             <div className="grid grid-cols-2 gap-3">
-              {(['a','b','c','d']).map((alt) => {
-                const isResposta = answer?.alt === alt;
+              {TEAMS_KAHOOT.map(t => (
+                <div key={t.id}
+                  className="rounded-2xl flex items-center justify-center gap-3 font-extrabold"
+                  style={{
+                    background: t.color,
+                    height: 72,
+                    fontSize: 18,
+                    color: t.dark ? "#1a1a1a" : "#fff",
+                    opacity: 0.45,
+                    filter: "grayscale(30%)",
+                  }}>
+                  🔒 {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: ativo — questão + alternativas + botões pulsando */}
+        {fase === 'ativo' && questaoAtual && (
+          <>
+            {/* Texto da questão */}
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: LARANJA }}>
+                Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Alternativas */}
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => (
+                <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4"
+                  style={{ background: ALT_CORES[alt] }}>
+                  <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                  <span className="font-bold text-white text-base leading-tight">{questaoAtual[alt]}</span>
+                </div>
+              ))}
+            </div>
+            {/* Botões equipes — pulsando */}
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => (
+                <div key={t.id}
+                  className="rounded-2xl flex items-center justify-center gap-3 font-extrabold"
+                  style={{
+                    background: t.color,
+                    height: 68,
+                    fontSize: 18,
+                    color: t.dark ? "#1a1a1a" : "#fff",
+                    animation: "pulseScale 1s ease-in-out infinite",
+                    boxShadow: `0 0 28px ${t.color}99`,
+                  }}>
+                  🔔 {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: buzz — vencedor em destaque + questão grande */}
+        {fase === 'buzz' && winner && questaoAtual && (
+          <>
+            {/* Vencedor em destaque */}
+            <div className="rounded-3xl flex flex-col items-center justify-center py-8"
+              style={{ background: winner.color, boxShadow: `0 0 60px ${winner.color}88` }}>
+              <div className="font-black" style={{ fontSize: 56, color: winner.dark ? "#1a1a1a" : "#fff",
+                textShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "pulseScale 0.8s ease-in-out infinite" }}>
+                🔔 {winner.label}
+              </div>
+              <div className="font-bold mt-1 text-lg" style={{ color: winner.dark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)" }}>
+                foi a primeira!
+              </div>
+            </div>
+            {/* Apenas texto da questão — sem alternativas */}
+            <div className="rounded-3xl px-7 py-6 text-center" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.4rem, 3vw, 2.2rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Outras equipes — somem (só vencedor visível acima) */}
+            <div className="grid grid-cols-3 gap-2">
+              {TEAMS_KAHOOT.filter(t => t.id !== winner.id).map(t => (
+                <div key={t.id} className="rounded-xl flex items-center justify-center font-bold text-sm"
+                  style={{ background: t.color, height: 44, color: t.dark ? "#1a1a1a" : "#fff", opacity: 0.25 }}>
+                  {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: resposta — revela gabarito */}
+        {fase === 'resposta' && questaoAtual && (
+          <>
+            {/* Banner resultado */}
+            <div className="rounded-3xl py-5 px-7 text-center"
+              style={{ background: answer.correto ? "#15803d" : "#dc2626",
+                boxShadow: answer.correto ? "0 0 40px #15803d88" : "0 0 40px #dc262688" }}>
+              <div className="font-black text-white text-3xl">
+                {answer.correto ? "✅ CORRETO! +1 pt" : "❌ ERRADO!"}
+              </div>
+              <div className="text-white/80 font-semibold mt-1">
+                {TEAMS_KAHOOT.find(t => t.id === answer.teamId)?.label} respondeu {ALT_LABELS[answer.alt]}
+                {!answer.correto && ` — correto era ${ALT_LABELS[questaoAtual.correta]}`}
+              </div>
+            </div>
+            {/* Texto da questão */}
+            <div className="rounded-3xl px-7 py-4" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.6rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Alternativas reveladas */}
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => {
+                const isResposta = answer.alt === alt;
                 const isCorreta  = questaoAtual.correta === alt;
-                const revelar    = !!answer;
                 return (
-                  <div key={alt}
-                    className="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm transition-all"
+                  <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4 transition-all"
                     style={{
-                      backgroundColor: revelar && isCorreta ? "#15803d" : revelar && isResposta ? "#dc2626" : ALT_CORES[alt],
-                      opacity: revelar && !isResposta && !isCorreta ? 0.45 : 1,
-                      transform: revelar && isCorreta ? "scale(1.03)" : "scale(1)",
+                      background: isCorreta ? "#15803d" : isResposta ? "#dc2626" : ALT_CORES[alt],
+                      opacity: !isResposta && !isCorreta ? 0.4 : 1,
+                      transform: isCorreta ? "scale(1.04)" : "scale(1)",
+                      boxShadow: isCorreta ? "0 0 30px #15803d99" : isResposta ? "0 0 20px #dc262688" : "none",
                     }}>
-                    <span className="font-black text-2xl text-white w-8 shrink-0 text-center">
-                      {ALT_LABELS[alt]}
-                    </span>
-                    <span className="font-bold text-white text-base md:text-lg leading-tight flex-1">
-                      {questaoAtual[alt]}
-                    </span>
-                    {revelar && isCorreta && <span className="text-white text-xl">✓</span>}
-                    {revelar && isResposta && !isCorreta && <span className="text-white text-xl">✗</span>}
+                    <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                    <span className="font-bold text-white text-base leading-tight flex-1">{questaoAtual[alt]}</span>
+                    {isCorreta && <span className="text-white text-xl font-black">✓</span>}
+                    {isResposta && !isCorreta && <span className="text-white text-xl font-black">✗</span>}
                   </div>
                 );
               })}
             </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-3">
-        {ranking.map((t, idx) => (
-          <div key={t.id} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
-            style={{ backgroundColor: t.color }}>
-            <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
-              style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
-              {idx + 1}º
-            </div>
-            <div className="font-bold text-xl md:text-2xl flex items-center gap-2 flex-1"
-              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
-              {t.label}
-              {buzz?.teamId === t.id && <span className="text-sm font-bold px-2 py-0.5 rounded-full bg-white" style={{ color: t.color }}>🔔 BUZZ!</span>}
-            </div>
-            <div className="h-4 rounded-full overflow-hidden hidden md:block"
-              style={{ flex: "1", backgroundColor: "rgba(255,255,255,0.3)" }}>
-              <div className="h-full rounded-full" style={{
-                width: `${((pts[t.id] || 0) / maxPts) * 100}%`,
-                backgroundColor: "rgba(255,255,255,0.85)",
-                transition: "width 0.7s ease",
-              }} />
-            </div>
-            <div className="font-extrabold text-2xl md:text-3xl tabular-nums"
-              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
-              {pts[t.id] || 0} pts
-            </div>
-          </div>
-        ))}
+          </>
+        )}
       </div>
 
-      {lastUpdate && (
-        <div className="text-center text-xs text-gray-400">
-          Atualizado às {lastUpdate.toLocaleTimeString("pt-BR")}
+      {/* ── Placar compacto (sempre visível no rodapé) ── */}
+      <div className="px-6 pb-4 pt-3 max-w-3xl mx-auto w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex gap-2 items-center">
+          {ranking.map((t, idx) => (
+            <div key={t.id} className="flex-1 rounded-xl px-3 py-2 flex items-center gap-2 transition-all"
+              style={{
+                background: t.color + (buzz?.teamId === t.id ? "ff" : "55"),
+                transform: answer?.teamId === t.id && answer.correto ? "scale(1.06)" : "scale(1)",
+              }}>
+              <span className="text-xs font-bold" style={{ color: t.dark ? "#1a1a1a" : "rgba(255,255,255,0.7)" }}>{idx + 1}º</span>
+              <span className="font-bold text-xs flex-1 truncate" style={{ color: t.dark ? "#1a1a1a" : "#fff" }}>{t.label}</span>
+              <span className="font-extrabold tabular-nums" style={{ fontSize: 18, color: t.dark ? "#1a1a1a" : "#fff" }}>{pts[t.id] || 0}</span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
+
+      <style>{`
+        @keyframes pulseScale {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+        }
+      `}</style>
     </div>
   );
 }
