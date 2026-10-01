@@ -1492,11 +1492,20 @@ function playBuzzerSound() {
   } catch (_) {}
 }
 
+const ALT_CORES = { a: '#ef4444', b: '#3b82f6', c: '#22c55e', d: '#f59e0b' };
+const ALT_LABELS = { a: 'A', b: 'B', c: 'C', d: 'D' };
+const FORM_VAZIO = { texto: '', a: '', b: '', c: '', d: '', correta: 'a' };
+
 function KahootMonitorView({ forceLocal = false }) {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz]   = useState(null);
   const [pts, setPts]     = useState({});
   const [flash, setFlash] = useState(false);
+  const [questoes, setQuestoes]   = useState([]);
+  const [questaoIdx, setQuestaoIdx] = useState(-1);
+  const [showQuestoes, setShowQuestoes] = useState(false);
+  const [editIdx, setEditIdx]   = useState(undefined); // undefined=fechado, null=novo, number=editar
+  const [editForm, setEditForm] = useState(FORM_VAZIO);
   const pollRef    = useRef(null);
   const prevBuzzId = useRef(null);
 
@@ -1505,9 +1514,13 @@ function KahootMonitorView({ forceLocal = false }) {
   const kDel = useCallback((k) => kahootDelete(k, forceLocal), [forceLocal]);
 
   const fetchState = useCallback(async () => {
-    const a = await kGet("kahoot_active");
-    const b = await kGet("kahoot_buzz");
-    const p = await kGet("kahoot_pts");
+    const [a, b, p, q, qi] = await Promise.all([
+      kGet("kahoot_active"),
+      kGet("kahoot_buzz"),
+      kGet("kahoot_pts"),
+      kGet("kahoot_questoes"),
+      kGet("kahoot_questao_idx"),
+    ]);
     const newBuzz = b ?? null;
     // dispara som + flash somente quando buzz aparece pela primeira vez
     const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
@@ -1521,6 +1534,8 @@ function KahootMonitorView({ forceLocal = false }) {
     setActive(!!a);
     setBuzz(newBuzz);
     setPts(p ?? {});
+    setQuestoes(Array.isArray(q) ? q : []);
+    setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
   }, [kGet]);
 
   useEffect(() => {
@@ -1530,11 +1545,20 @@ function KahootMonitorView({ forceLocal = false }) {
   }, [fetchState]);
 
   const novaPergunta = async () => {
+    const len = questoes.length;
+    const nextIdx = len > 0 ? (questaoIdx < 0 ? 0 : Math.min(questaoIdx + 1, len - 1)) : -1;
     await kDel("kahoot_buzz");
     await kSet("kahoot_active", true);
+    if (len > 0) { await kSet("kahoot_questao_idx", nextIdx); setQuestaoIdx(nextIdx); }
     setBuzz(null);
     setActive(true);
     prevBuzzId.current = null;
+  };
+
+  const irParaQuestao = async (idx) => {
+    if (idx < 0 || idx >= questoes.length) return;
+    await kSet("kahoot_questao_idx", idx);
+    setQuestaoIdx(idx);
   };
 
   const pressVirtual = async (teamId) => {
@@ -1571,10 +1595,40 @@ function KahootMonitorView({ forceLocal = false }) {
     await kDel("kahoot_pts");
     await kDel("kahoot_buzz");
     await kDel("kahoot_active");
+    await kSet("kahoot_questao_idx", -1);
     setPts({});
     setBuzz(null);
     setActive(false);
+    setQuestaoIdx(-1);
     prevBuzzId.current = null;
+  };
+
+  const salvarQuestao = async () => {
+    if (!editForm.texto.trim()) return;
+    const novas = [...questoes];
+    if (editIdx === null) {
+      if (novas.length >= 20) { alert("Máximo de 20 questões atingido."); return; }
+      novas.push({ ...editForm });
+    } else {
+      novas[editIdx] = { ...editForm };
+    }
+    await kSet("kahoot_questoes", novas);
+    setQuestoes(novas);
+    setEditIdx(undefined);
+    setEditForm(FORM_VAZIO);
+  };
+
+  const excluirQuestao = async (idx) => {
+    if (!window.confirm(`Excluir questão ${idx + 1}?`)) return;
+    const novas = questoes.filter((_, i) => i !== idx);
+    await kSet("kahoot_questoes", novas);
+    setQuestoes(novas);
+    if (editIdx === idx) { setEditIdx(undefined); setEditForm(FORM_VAZIO); }
+  };
+
+  const abrirEdicao = (idx) => {
+    if (idx === null) { setEditIdx(null); setEditForm(FORM_VAZIO); }
+    else { setEditIdx(idx); setEditForm({ ...questoes[idx] }); }
   };
 
   const winner  = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
@@ -1587,8 +1641,49 @@ function KahootMonitorView({ forceLocal = false }) {
     ? LARANJA
     : "#1e293b";
 
+  const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-lg mx-auto">
+
+      {/* ── Questão atual ── */}
+      {questaoAtual && (
+        <div className="rounded-2xl p-4 border-2" style={{ backgroundColor: AZUL + "0f", borderColor: AZUL + "44" }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: AZUL }}>
+              Questão {questaoIdx + 1} / {questoes.length}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => irParaQuestao(questaoIdx - 1)} disabled={questaoIdx <= 0}
+                className="w-7 h-7 rounded-lg text-xs font-bold disabled:opacity-30"
+                style={{ background: AZUL + "22", color: AZUL }}>◀</button>
+              <button onClick={() => irParaQuestao(questaoIdx + 1)} disabled={questaoIdx >= questoes.length - 1}
+                className="w-7 h-7 rounded-lg text-xs font-bold disabled:opacity-30"
+                style={{ background: AZUL + "22", color: AZUL }}>▶</button>
+            </div>
+          </div>
+          <div className="font-bold text-gray-800 text-sm mb-3 leading-snug">{questaoAtual.texto}</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['a','b','c','d']).map((alt) => (
+              <div key={alt} className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-semibold"
+                style={{
+                  background: questaoAtual.correta === alt ? ALT_CORES[alt] + "22" : "#f1f5f9",
+                  border: `1.5px solid ${questaoAtual.correta === alt ? ALT_CORES[alt] : "transparent"}`,
+                  color: questaoAtual.correta === alt ? ALT_CORES[alt] : "#475569",
+                }}>
+                <span className="font-extrabold">{ALT_LABELS[alt]})</span>
+                <span>{questaoAtual[alt]}</span>
+                {questaoAtual.correta === alt && <span className="ml-auto">✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {questoes.length === 0 && (
+        <div className="text-center text-xs text-gray-400 py-1">
+          Nenhuma questão cadastrada — use "📋 Questões" abaixo.
+        </div>
+      )}
 
       {/* ── Cabeçalho de status ── */}
       <div
@@ -1704,7 +1799,9 @@ function KahootMonitorView({ forceLocal = false }) {
           className="w-full py-3 rounded-2xl font-bold text-lg text-white"
           style={{ backgroundColor: AZUL }}
         >
-          ▶ Nova Pergunta — Ativar Botoeiras
+          {questoes.length > 0
+            ? `▶ Q${Math.min(questaoIdx + 2, questoes.length)} — Nova Pergunta`
+            : "▶ Nova Pergunta — Ativar Botoeiras"}
         </button>
       )}
 
@@ -1725,12 +1822,123 @@ function KahootMonitorView({ forceLocal = false }) {
         </div>
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      <div className="border-t border-gray-200 pt-3 pb-2 flex gap-2">
         <button onClick={resetAll}
-          className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
-          ⚠️ Zerar pontuação do Kahoot
+          className="flex-1 py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
+          ⚠️ Zerar pontuação
+        </button>
+        <button onClick={() => setShowQuestoes((v) => !v)}
+          className="flex-1 py-2 rounded-xl text-sm font-semibold border"
+          style={{
+            background: showQuestoes ? AZUL : "transparent",
+            color: showQuestoes ? "#fff" : AZUL,
+            borderColor: AZUL,
+          }}>
+          📋 Questões ({questoes.length}/20)
         </button>
       </div>
+
+      {/* ── Gerenciar Questões ── */}
+      {showQuestoes && (
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: AZUL }}>
+            <span className="font-bold text-white text-sm">Banco de Questões</span>
+            <button onClick={() => abrirEdicao(null)}
+              className="px-3 py-1 rounded-xl text-xs font-bold bg-white" style={{ color: AZUL }}>
+              + Nova
+            </button>
+          </div>
+
+          {/* Formulário de edição */}
+          {editIdx !== undefined && (
+            <div className="p-4 border-b border-gray-100 bg-blue-50">
+              <div className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: AZUL }}>
+                {editIdx === null ? "Nova Questão" : `Editando Questão ${editIdx + 1}`}
+              </div>
+              <textarea
+                className="w-full rounded-xl border border-gray-300 p-2 text-sm mb-2 resize-none"
+                rows={2}
+                placeholder="Texto da pergunta…"
+                value={editForm.texto}
+                onChange={(e) => setEditForm((f) => ({ ...f, texto: e.target.value }))}
+              />
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {(['a','b','c','d']).map((alt) => (
+                  <div key={alt} className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-xs w-5 text-center"
+                      style={{ color: ALT_CORES[alt] }}>{ALT_LABELS[alt]})</span>
+                    <input
+                      className="flex-1 rounded-lg border border-gray-300 p-1.5 text-xs"
+                      placeholder={`Alternativa ${ALT_LABELS[alt]}`}
+                      value={editForm[alt]}
+                      onChange={(e) => setEditForm((f) => ({ ...f, [alt]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold text-gray-600">Correta:</span>
+                {(['a','b','c','d']).map((alt) => (
+                  <label key={alt} className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="correta" value={alt}
+                      checked={editForm.correta === alt}
+                      onChange={() => setEditForm((f) => ({ ...f, correta: alt }))} />
+                    <span className="text-xs font-bold" style={{ color: ALT_CORES[alt] }}>{ALT_LABELS[alt]}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={salvarQuestao}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold text-white"
+                  style={{ background: AZUL }}>
+                  💾 Salvar
+                </button>
+                <button onClick={() => { setEditIdx(undefined); setEditForm(FORM_VAZIO); }}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold border border-gray-300 text-gray-600">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de questões */}
+          <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+            {questoes.length === 0 && (
+              <div className="text-center text-xs text-gray-400 py-6">
+                Nenhuma questão ainda
+              </div>
+            )}
+            {questoes.map((q, idx) => (
+              <div key={idx}
+                className="flex items-start gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                style={{ borderLeft: questaoIdx === idx ? `4px solid ${LARANJA}` : "4px solid transparent" }}>
+                <span className="font-bold text-xs w-5 shrink-0 mt-0.5" style={{ color: AZUL }}>{idx + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-gray-700 truncate">{q.texto}</div>
+                  <div className="text-xs text-gray-400">
+                    ✓ {ALT_LABELS[q.correta]}: {q[q.correta]}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => irParaQuestao(idx)}
+                    className="w-6 h-6 rounded text-xs" title="Exibir esta questão"
+                    style={{ background: questaoIdx === idx ? LARANJA : "#e2e8f0", color: questaoIdx === idx ? "#fff" : "#64748b" }}>
+                    ▶
+                  </button>
+                  <button onClick={() => abrirEdicao(idx)}
+                    className="w-6 h-6 rounded text-xs" style={{ background: "#e2e8f0", color: "#64748b" }}>
+                    ✏
+                  </button>
+                  <button onClick={() => excluirQuestao(idx)}
+                    className="w-6 h-6 rounded text-xs" style={{ background: "#fee2e2", color: "#dc2626" }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1744,15 +1952,23 @@ function KahootTelaoView({ forceLocal = false }) {
   const [pts, setPts] = useState({});
   const [buzz, setBuzz] = useState(null);
   const [active, setActive] = useState(false);
+  const [questoes, setQuestoes] = useState([]);
+  const [questaoIdx, setQuestaoIdx] = useState(-1);
   const [lastUpdate, setLastUpdate] = useState(null);
 
   const fetchAll = useCallback(async () => {
-    const p = await kahootGet("kahoot_pts", forceLocal);
-    const b = await kahootGet("kahoot_buzz", forceLocal);
-    const a = await kahootGet("kahoot_active", forceLocal);
+    const [p, b, a, q, qi] = await Promise.all([
+      kahootGet("kahoot_pts", forceLocal),
+      kahootGet("kahoot_buzz", forceLocal),
+      kahootGet("kahoot_active", forceLocal),
+      kahootGet("kahoot_questoes", forceLocal),
+      kahootGet("kahoot_questao_idx", forceLocal),
+    ]);
     setPts(p ?? {});
     setBuzz(b ?? null);
     setActive(!!a);
+    setQuestoes(Array.isArray(q) ? q : []);
+    setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
     setLastUpdate(new Date());
   }, [forceLocal]);
 
@@ -1765,9 +1981,10 @@ function KahootTelaoView({ forceLocal = false }) {
   const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
   const maxPts = Math.max(1, ...TEAMS_KAHOOT.map((t) => pts[t.id] || 0));
   const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-6">
       <div>
         <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
           SESI — TORNEIO INFANTIL
@@ -1786,6 +2003,40 @@ function KahootTelaoView({ forceLocal = false }) {
           </div>
         )}
       </div>
+
+      {/* ── Questão atual ── */}
+      {questaoAtual && (
+        <div className="rounded-3xl shadow-lg overflow-hidden" style={{ border: `2px solid ${AZUL}22` }}>
+          <div className="px-6 py-3 flex items-center justify-between"
+            style={{ background: AZUL }}>
+            <span className="font-extrabold text-white text-sm tracking-wide">
+              QUESTÃO {questaoIdx + 1} / {questoes.length}
+            </span>
+            {active && !buzz && (
+              <span className="text-xs font-bold text-white animate-pulse">⚡ RESPONDENDO…</span>
+            )}
+          </div>
+          <div className="px-6 pt-5 pb-4 bg-white">
+            <div className="font-extrabold text-xl md:text-2xl leading-snug mb-5" style={{ color: AZUL }}>
+              {questaoAtual.texto}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map((alt) => (
+                <div key={alt}
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm"
+                  style={{ backgroundColor: ALT_CORES[alt] }}>
+                  <span className="font-black text-2xl text-white w-8 shrink-0 text-center">
+                    {ALT_LABELS[alt]}
+                  </span>
+                  <span className="font-bold text-white text-base md:text-lg leading-tight">
+                    {questaoAtual[alt]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {ranking.map((t, idx) => (
