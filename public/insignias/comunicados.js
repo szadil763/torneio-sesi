@@ -1395,7 +1395,7 @@ async function renderComunicados() {
     carregarBoletim(),
     carregarTodasReacoes().catch(() => {})
   ]);
-  registrarVisita().catch(() => {});
+  if (!_testeSecs) registrarVisita().catch(() => {});
 
   _dadosCache = { recados, dicas, boletim };
   _verificarNovosConteudos(_dadosCache);
