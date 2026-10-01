@@ -369,27 +369,19 @@ function _getOuCriarUUID() {
 
 async function registrarVisita() {
   const uuid = _getOuCriarUUID();
+  const INC = JSON.stringify({ '.sv': { increment: 1 } });
+  const H   = { 'Content-Type': 'application/json' };
   try {
+    // Incremento atômico no servidor — nunca sobrescreve com valor desatualizado
+    await fetch(`${RTDB_STATS_BASE}/visitas.json`,      { method: 'PUT', headers: H, body: INC });
+
     const visitaResp = await fetch(`${RTDB_STATS_BASE}/uuids/${uuid}.json`);
     const jafoi = visitaResp.ok && (await visitaResp.json()) === true;
 
-    const totalResp = await fetch(`${RTDB_STATS_BASE}/visitas.json`);
-    const totalAtual = totalResp.ok ? (await totalResp.json() || 0) : 0;
-    await fetch(`${RTDB_STATS_BASE}/visitas.json`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(totalAtual + 1)
-    });
-
     if (!jafoi) {
-      const univResp = await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`);
-      const univAtual = univResp.ok ? (await univResp.json() || 0) : 0;
-      await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(univAtual + 1)
-      });
+      await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`, { method: 'PUT', headers: H, body: INC });
       await fetch(`${RTDB_STATS_BASE}/uuids/${uuid}.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(true)
+        method: 'PUT', headers: H, body: JSON.stringify(true)
       });
     }
     await _pingOnline(uuid);
