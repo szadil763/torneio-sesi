@@ -448,8 +448,8 @@ let kahootBuzz  = null;
 async function pollKahoot() {
   try {
     const [a, b] = await Promise.all([
-      fetch(`${RTDB_ROOT}/kahoot-ingles/active.json`).then(r => r.json()).catch(() => null),
-      fetch(`${RTDB_ROOT}/kahoot-ingles/buzz.json`).then(r => r.json()).catch(() => null),
+      fetch(`${RTDB_ROOT}/kahoot_active.json`).then(r => r.json()).catch(() => null),
+      fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json()).catch(() => null),
     ]);
     const novoAtivo = !!a;
     const novoBuzz  = b || null;
@@ -559,11 +559,11 @@ async function apertar() {
     btn.disabled = true;
     try {
       // GET com ETag → PUT condicional (if-match) → Firebase aceita só o primeiro, rejeita 412 os demais
-      const getRes = await fetch(`${RTDB_ROOT}/kahoot-ingles/buzz.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+      const getRes = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, { headers: { 'X-Firebase-ETag': 'true' } });
       const etag   = getRes.headers.get('ETag');
       const atual  = await getRes.json();
       if (atual !== null) { jaApertou = false; btn.disabled = false; return; } // outro chegou antes do GET
-      const putRes = await fetch(`${RTDB_ROOT}/kahoot-ingles/buzz.json`, {
+      const putRes = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'if-match': etag },
         body: JSON.stringify({ teamId: KAHOOT_ID, ts: Date.now() }),
@@ -836,7 +836,7 @@ function cfgMostrar() {
 
 async function cfgVerificarConexao() {
   try {
-    const r = await fetch(`${location.protocol}//${location.hostname}:3000/kahoot-ingles/active.json`,
+    const r = await fetch(`${location.protocol}//${location.hostname}:3000/kahoot_active.json`,
       { signal: AbortSignal.timeout(3000) });
     if (r.ok || r.status < 500) {
       cfgConectado = true;
