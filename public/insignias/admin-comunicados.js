@@ -1159,10 +1159,35 @@ function boletimGerarNoticia() {
   const rascunho = { ...noticia, imagens, tipo: 'noticia' };
 
   if (preview) {
+    const escHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     preview.innerHTML = `
       <div class="not-preview-card">
-        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">PRÉ-VISUALIZAÇÃO · ${imagens.length} foto(s)</p>
-        ${renderNoticiaCard(rascunho)}
+        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">
+          ✏️ EDITE ANTES DE PUBLICAR · ${imagens.length} foto(s)
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">CHAPÉU</label>
+          <input id="not-edit-chapeu" class="boletim-input" style="margin:0;font-size:13px"
+            value="${escHtml(rascunho.chapeu||'')}">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">MANCHETE</label>
+          <textarea id="not-edit-manchete" class="boletim-input boletim-textarea" rows="2"
+            style="margin:0;font-size:13px;font-weight:700">${escHtml(rascunho.manchete||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">SUBTÍTULO</label>
+          <textarea id="not-edit-subtitulo" class="boletim-input boletim-textarea" rows="2"
+            style="margin:0;font-size:13px">${escHtml(rascunho.subtitulo||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">CITAÇÃO EM DESTAQUE</label>
+          <textarea id="not-edit-pullquote" class="boletim-input boletim-textarea" rows="2"
+            style="margin:0;font-size:13px;font-style:italic">${escHtml(rascunho.pullquote||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">PARÁGRAFO 1</label>
+          <textarea id="not-edit-p0" class="boletim-input boletim-textarea" rows="3"
+            style="margin:0;font-size:13px">${escHtml((rascunho.corpo||[])[0]||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">PARÁGRAFO 2</label>
+          <textarea id="not-edit-p1" class="boletim-input boletim-textarea" rows="3"
+            style="margin:0;font-size:13px">${escHtml((rascunho.corpo||[])[1]||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">PARÁGRAFO 3</label>
+          <textarea id="not-edit-p2" class="boletim-input boletim-textarea" rows="3"
+            style="margin:0;font-size:13px">${escHtml((rascunho.corpo||[])[2]||'')}</textarea>
+        </div>
         <button class="boletim-btn-add" style="margin-top:14px;width:100%" onclick="boletimPublicarNoticia()">
           📢 Publicar no Boletim
         </button>
@@ -1177,8 +1202,20 @@ async function boletimPublicarNoticia() {
   if (!window._noticiaRascunho) return;
   const inicioDias = document.getElementById('not-inicio')?.value ?? '0';
   const inicioAte  = _calcInicioAte(inicioDias);
+
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const corpo = [g('not-edit-p0'), g('not-edit-p1'), g('not-edit-p2')].filter(Boolean);
+  const editado = {
+    ...window._noticiaRascunho,
+    chapeu:    g('not-edit-chapeu')    || window._noticiaRascunho.chapeu,
+    manchete:  g('not-edit-manchete')  || window._noticiaRascunho.manchete,
+    subtitulo: g('not-edit-subtitulo') || window._noticiaRascunho.subtitulo,
+    pullquote: g('not-edit-pullquote') || window._noticiaRascunho.pullquote,
+    corpo:     corpo.length ? corpo : window._noticiaRascunho.corpo,
+  };
+
   const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), inicioAte, ...window._noticiaRascunho });
+  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), inicioAte, ...editado });
   await salvarBoletim(dados);
   window._noticiaRascunho = null;
   _noticiaFotos = [null, null, null];
