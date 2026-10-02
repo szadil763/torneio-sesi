@@ -1473,10 +1473,22 @@ function KahootBuzzerView() {
 
 // ── Kahoot English — Monitor (admin) ─────────────────────────────
 
-// Sirene intermitente: 4 pulsos alternando 880 Hz ↔ 660 Hz (sawtooth)
-function playBuzzerSound() {
+// AudioContext singleton — reutilizado entre perguntas para evitar limite do browser
+let _kahootAudioCtx = null;
+function _getKahootCtx() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!_kahootAudioCtx || _kahootAudioCtx.state === 'closed') {
+      _kahootAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_kahootAudioCtx.state === 'suspended') _kahootAudioCtx.resume();
+    return _kahootAudioCtx;
+  } catch (_) { return null; }
+}
+
+// Sirene intermitente: 6 pulsos alternando 880 Hz ↔ 660 Hz (sawtooth)
+function playBuzzerSound() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
     const freqs = [880, 660, 880, 660, 880, 660];
     freqs.forEach((freq, i) => {
       const osc  = ctx.createOscillator();
@@ -1493,14 +1505,13 @@ function playBuzzerSound() {
       osc.start(t);
       osc.stop(t + 0.15);
     });
-    setTimeout(() => ctx.close(), 1200);
   } catch (_) {}
 }
 
 // Fanfarra de vitória: arpejo C5-E5-G5-C6 seguido de acorde sustentado
 function playSoundCorreto() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const notas = [
       { f: 523, t: 0.00, dur: 0.14 },
       { f: 659, t: 0.13, dur: 0.14 },
@@ -1521,14 +1532,13 @@ function playSoundCorreto() {
       osc.start(ctx.currentTime + t);
       osc.stop(ctx.currentTime + t + dur + 0.02);
     });
-    setTimeout(() => ctx.close(), 1200);
   } catch (_) {}
 }
 
-// Som de derrota: descida wah-wah (sawtooth desce de 660 → 220)
+// Som de derrota: descida wah-wah (sawtooth desce de 440 → 150)
 function playSoundErrado() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const notas = [
       { f1: 440, f2: 330, t: 0.00, dur: 0.22 },
       { f1: 330, f2: 220, t: 0.20, dur: 0.30 },
@@ -1550,7 +1560,6 @@ function playSoundErrado() {
       osc.start(at);
       osc.stop(at + dur + 0.02);
     });
-    setTimeout(() => ctx.close(), 1500);
   } catch (_) {}
 }
 
@@ -2183,7 +2192,7 @@ function KahootTelaoView({ forceLocal = false }) {
 
   useEffect(() => {
     fetchAll();
-    const id = setInterval(fetchAll, 1500);
+    const id = setInterval(fetchAll, 500);
     return () => clearInterval(id);
   }, [fetchAll]);
 
