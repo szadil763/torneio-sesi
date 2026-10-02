@@ -311,94 +311,8 @@ function renderInicio(dados) {
   }
 }
 
-// ── Áudio do contador ─────────────────────────────────────────────
-let _bipLastSeg   = -1;
+// ── Contador ──────────────────────────────────────────────────────
 let _fimIniciado  = false;
-let _audioCtxCom  = null;
-
-// Pré-cria AudioContext na primeira interação do usuário (exigência dos browsers)
-function _initAudioCtxCom() {
-  if (_audioCtxCom && _audioCtxCom.state !== 'closed') {
-    // Já existe — apenas retoma se suspenso
-    if (_audioCtxCom.state === 'suspended') _audioCtxCom.resume().catch(() => {});
-    return;
-  }
-  try {
-    _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)();
-    // Retoma automaticamente se o browser suspender por inatividade
-    _audioCtxCom.addEventListener('statechange', () => {
-      if (_audioCtxCom.state === 'suspended') _audioCtxCom.resume().catch(() => {});
-    });
-  } catch(_) {}
-  // Esconde o aviso assim que o usuário tocar
-  const aviso = document.getElementById('aviso-toque-audio');
-  if (aviso) aviso.style.display = 'none';
-}
-// Re-ativa em qualquer toque para cobrir o caso em que a tela foi desligada
-document.addEventListener('touchstart', _initAudioCtxCom, { passive: true });
-document.addEventListener('click',      _initAudioCtxCom);
-
-// Retorna o AudioContext garantidamente em estado "running", aguardando resume() se necessário
-async function _getAudioCtx() {
-  if (!_audioCtxCom || _audioCtxCom.state === 'closed') {
-    // Fora de gesto do usuário isso pode falhar — tudo bem, retorna null
-    try { _audioCtxCom = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) { return null; }
-  }
-  if (_audioCtxCom.state === 'suspended') {
-    try { await _audioCtxCom.resume(); } catch(_) { return null; }
-  }
-  return _audioCtxCom.state === 'running' ? _audioCtxCom : null;
-}
-
-async function _tocarBipContagem() {
-  try {
-    const ctx = await _getAudioCtx();
-    if (!ctx) return;
-    const osc = ctx.createOscillator(), g = ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
-    osc.type = 'sine'; osc.frequency.value = 880;
-    const t = ctx.currentTime;
-    g.gain.setValueAtTime(0.22, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    osc.start(t); osc.stop(t + 0.1);
-  } catch(_) {}
-}
-
-async function _tocarSinalFim(onFim) {
-  // Sirene intermitente: 8 pulsos de ~1 s cada (grave→agudo), totalizando ~8 s
-  const DURACAO_TOTAL = 8200;
-  const NUM_PULSOS = 8;
-  const DURACAO_PULSO = DURACAO_TOTAL / NUM_PULSOS; // ~1025 ms por pulso
-
-  let pulsoAtual = 0;
-
-  async function _pulso() {
-    if (pulsoAtual >= NUM_PULSOS) { setTimeout(onFim, 100); return; }
-    try {
-      const ctx = await _getAudioCtx();
-      if (!ctx) { setTimeout(onFim, DURACAO_TOTAL - pulsoAtual * DURACAO_PULSO); return; }
-      const osc = ctx.createOscillator(), g = ctx.createGain();
-      osc.connect(g); g.connect(ctx.destination);
-      osc.type = 'sawtooth';
-      const t = ctx.currentTime;
-      const duracaoS = DURACAO_PULSO / 1000;
-      // sweep grave→agudo em cada pulso (660 Hz → 1320 Hz)
-      osc.frequency.setValueAtTime(660, t);
-      osc.frequency.linearRampToValueAtTime(1320, t + duracaoS * 0.75);
-      // envelope: ataque rápido, sustain, decay
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.40, t + 0.04);
-      g.gain.setValueAtTime(0.40, t + duracaoS * 0.70);
-      g.gain.linearRampToValueAtTime(0, t + duracaoS * 0.92);
-      osc.start(t); osc.stop(t + duracaoS);
-    } catch(_) {}
-    pulsoAtual++;
-    setTimeout(_pulso, DURACAO_PULSO);
-  }
-
-  _pulso();
-  setTimeout(onFim, DURACAO_TOTAL + 200);
-}
 
 function _youtubeId(url) {
   try {
@@ -487,14 +401,8 @@ function renderContadorCom() {
       clearInterval(_countdownInterval);
       _countdownInterval = null;
       inner.innerHTML = `<div class="contador-sinal-fim">🔔 Iniciando abertura…</div>`;
-      _tocarSinalFim(_mostrarAberturaVideo);
+      _mostrarAberturaVideo();
       return;
-    }
-
-    // Bip a cada segundo no último minuto
-    if (tempo.ultimoMinuto && tempo.segs !== _bipLastSeg) {
-      _bipLastSeg = tempo.segs;
-      _tocarBipContagem();
     }
 
     const corSegs = tempo.ultimoMinuto ? '#D32F2F' : '#F5821F';
@@ -1380,13 +1288,6 @@ async function renderComunicados() {
     </div>
     <div id="com-push-wrap"></div>
     ${renderTabBar()}
-    <div id="aviso-toque-audio" class="aviso-toque-audio" onclick="this.style.display='none'">
-      <span class="aviso-toque-icone">📱</span>
-      <span class="aviso-toque-texto">
-        <strong>Toque na tela uma vez</strong> para ativar o som e a abertura automática do vídeo ao final da contagem.
-      </span>
-      <button class="aviso-toque-fechar" aria-label="Fechar">✕</button>
-    </div>
     <div id="com-content" class="com-content-area"></div>`;
 
   _renderBotaoPush(document.getElementById('com-push-wrap'));
