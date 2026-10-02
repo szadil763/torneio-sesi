@@ -194,27 +194,18 @@ function renderAbaBoletimCom(boletim) {
       ` : `
         <div class="boletim-form">
           <p style="font-size:13px;color:var(--muted);margin-bottom:4px">
-            Descreva o momento — a IA gera manchete, parágrafos e citação. Adicione até 3 fotos.
+            Descreva o momento — a IA gera manchete, parágrafos e citação. Adicione fotos à vontade.
           </p>
           <textarea id="not-descricao" class="boletim-input boletim-textarea"
             placeholder="Ex: A equipe verde venceu o desafio de robótica..." rows="3"></textarea>
-          <p style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px;letter-spacing:.04em">FOTOS DA COLAGEM (até 3)</p>
-          <div class="not-slots-grade">
-            ${[0,1,2].map(i => `
-              <div class="not-slot" id="not-thumb-${i}">
-                <span class="not-slot-label">${i === 0 ? 'Principal' : 'Foto ' + (i+1)}</span>
-                <div class="not-slot-btns">
-                  <label class="not-slot-btn" for="not-cam-${i}" title="Câmera">📸
-                    <input id="not-cam-${i}" type="file" accept="image/*" capture="environment"
-                           style="display:none" onchange="noticiaHandleFile(this,${i})">
-                  </label>
-                  <label class="not-slot-btn not-slot-btn-sec" for="not-gal-${i}" title="Galeria">🖼️
-                    <input id="not-gal-${i}" type="file" accept="image/*"
-                           style="display:none" onchange="noticiaHandleFile(this,${i})">
-                  </label>
-                </div>
-              </div>`).join('')}
+          <p style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px;letter-spacing:.04em">FOTOS DA COLAGEM</p>
+          <div class="not-slots-grade" id="not-slots-grade">
+            ${[0,1,2].map(i => _noticiaSlotHTML(i)).join('')}
           </div>
+          <button type="button" onclick="noticiaAdicionarSlot()"
+            style="margin-top:6px;background:none;border:1.5px dashed var(--muted);border-radius:8px;width:100%;padding:8px;font-size:13px;color:var(--muted);cursor:pointer">
+            ＋ Adicionar foto
+          </button>
           <input id="not-foto" type="url" placeholder="Ou cole link de uma foto extra" class="boletim-input" style="margin-top:4px">
           <input id="not-reporter" type="text" placeholder="Seu nome para créditos (opcional — padrão: Redação SESI)" class="boletim-input" style="margin-top:4px">
           ${_seletorInicio('not-inicio')}
@@ -946,6 +937,33 @@ function boletimCancelarPendente() {
 }
 
 let _noticiaFotos = [null, null, null];
+
+function _noticiaSlotHTML(i) {
+  return `
+    <div class="not-slot" id="not-thumb-${i}">
+      <span class="not-slot-label">${i === 0 ? 'Principal' : 'Foto ' + (i + 1)}</span>
+      <div class="not-slot-btns">
+        <label class="not-slot-btn" for="not-cam-${i}" title="Câmera">📸
+          <input id="not-cam-${i}" type="file" accept="image/*" capture="environment"
+                 style="display:none" onchange="noticiaHandleFile(this,${i})">
+        </label>
+        <label class="not-slot-btn not-slot-btn-sec" for="not-gal-${i}" title="Galeria">🖼️
+          <input id="not-gal-${i}" type="file" accept="image/*"
+                 style="display:none" onchange="noticiaHandleFile(this,${i})">
+        </label>
+      </div>
+    </div>`;
+}
+
+function noticiaAdicionarSlot() {
+  const grade = document.getElementById('not-slots-grade');
+  if (!grade) return;
+  const i = _noticiaFotos.length;
+  _noticiaFotos.push(null);
+  const div = document.createElement('div');
+  div.innerHTML = _noticiaSlotHTML(i).trim();
+  grade.appendChild(div.firstElementChild);
+}
 
 function noticiaHandleFile(input, slot) {
   const file = input.files[0];
