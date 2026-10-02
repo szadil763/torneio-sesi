@@ -4,8 +4,12 @@
 const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
 const MEET_LINK = 'https://youtu.be/MceiO4L-cHc';
 
-// Modo de teste: ?teste=65  → contador termina em 65 s a partir de agora
-const _testeSecs = (() => { try { return parseInt(new URLSearchParams(location.search).get('teste')) || 0; } catch(_) { return 0; } })();
+// Modo de teste:
+//   ?teste=65  → contador termina em 65 s (bip começa em ~5 s)
+//   ?teste=bip → atalho: começa em 65 s, mesma coisa
+//   ?teste=10  → vai direto para os últimos 10 s (já no modo bip)
+const _testeParam = (() => { try { return new URLSearchParams(location.search).get('teste') || ''; } catch(_) { return ''; } })();
+const _testeSecs = _testeParam === 'bip' ? 65 : (parseInt(_testeParam) || 0);
 const _CONTADOR_TARGET = _testeSecs > 0 ? new Date(Date.now() + _testeSecs * 1000) : TORNEIO_INICIO;
 
 // ── Idioma ────────────────────────────────────────────────────────
