@@ -1472,23 +1472,85 @@ function KahootBuzzerView() {
 }
 
 // ── Kahoot English — Monitor (admin) ─────────────────────────────
+
+// Sirene intermitente: 4 pulsos alternando 880 Hz ↔ 660 Hz (sawtooth)
 function playBuzzerSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // dois beeps curtos em sequência
-    [0, 0.2].forEach((delay) => {
+    const freqs = [880, 660, 880, 660, 880, 660];
+    freqs.forEach((freq, i) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(300, ctx.currentTime + delay);
-      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + delay + 0.18);
-      gain.gain.setValueAtTime(0.55, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.19);
+      const t = ctx.currentTime + i * 0.15;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
+      gain.gain.setValueAtTime(0.5, t + 0.10);
+      gain.gain.linearRampToValueAtTime(0, t + 0.14);
+      osc.start(t);
+      osc.stop(t + 0.15);
     });
+    setTimeout(() => ctx.close(), 1200);
+  } catch (_) {}
+}
+
+// Fanfarra de vitória: arpejo C5-E5-G5-C6 seguido de acorde sustentado
+function playSoundCorreto() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notas = [
+      { f: 523, t: 0.00, dur: 0.14 },
+      { f: 659, t: 0.13, dur: 0.14 },
+      { f: 784, t: 0.26, dur: 0.14 },
+      { f: 1047, t: 0.39, dur: 0.40 },
+    ];
+    notas.forEach(({ f, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(f, ctx.currentTime + t);
+      gain.gain.setValueAtTime(0, ctx.currentTime + t);
+      gain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + t + 0.02);
+      gain.gain.setValueAtTime(0.55, ctx.currentTime + t + dur - 0.04);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + dur);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + dur + 0.02);
+    });
+    setTimeout(() => ctx.close(), 1200);
+  } catch (_) {}
+}
+
+// Som de derrota: descida wah-wah (sawtooth desce de 660 → 220)
+function playSoundErrado() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notas = [
+      { f1: 440, f2: 330, t: 0.00, dur: 0.22 },
+      { f1: 330, f2: 220, t: 0.20, dur: 0.30 },
+      { f1: 220, f2: 150, t: 0.48, dur: 0.36 },
+    ];
+    notas.forEach(({ f1, f2, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sawtooth";
+      const at = ctx.currentTime + t;
+      osc.frequency.setValueAtTime(f1, at);
+      osc.frequency.exponentialRampToValueAtTime(f2, at + dur);
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(0.50, at + 0.02);
+      gain.gain.setValueAtTime(0.50, at + dur - 0.05);
+      gain.gain.linearRampToValueAtTime(0, at + dur);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+    });
+    setTimeout(() => ctx.close(), 1500);
   } catch (_) {}
 }
 
@@ -1649,6 +1711,7 @@ function KahootMonitorView({ forceLocal = false }) {
     }
     await Promise.all(ops);
     setAnswer(ansObj);
+    if (correto) playSoundCorreto(); else playSoundErrado();
     setActive(false);
     setBuzz(null);
     setTimerStart(null);
