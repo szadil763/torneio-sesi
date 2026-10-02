@@ -216,6 +216,7 @@ function renderAbaBoletimCom(boletim) {
               </div>`).join('')}
           </div>
           <input id="not-foto" type="url" placeholder="Ou cole link de uma foto extra" class="boletim-input" style="margin-top:4px">
+          <input id="not-reporter" type="text" placeholder="Seu nome para créditos (opcional — padrão: Redação SESI)" class="boletim-input" style="margin-top:4px">
           ${_seletorInicio('not-inicio')}
           <button class="boletim-btn-add boletim-btn-noticia" onclick="boletimGerarNoticia()">✨ Gerar Notícia</button>
         </div>
@@ -1108,8 +1109,7 @@ function gerarNoticia(descricao) {
     `O que todos esperavam aconteceu — e foi ainda melhor do que o previsto`
   ]);
 
-  const reporters = ['Ana Paula Ferreira','Carlos Eduardo Lima','Juliana Mendes','Roberto Souza','Mariana Costa'];
-  const reporter  = pick(reporters);
+  const reporter = 'Redação SESI';
 
   const intro = `Em mais um capítulo empolgante do Torneio SESI Infantil, ${d.replace(/[.!?]+$/,'').charAt(0).toLowerCase()+d.replace(/[.!?]+$/,'').slice(1)}. A cena arrancou aplausos da plateia e ficará marcada na memória de todos os presentes.`;
   const para2 = pick([
@@ -1142,15 +1142,17 @@ function gerarNoticia(descricao) {
 }
 
 function boletimGerarNoticia() {
-  const descricao = (document.getElementById('not-descricao')?.value || '').trim();
-  const fotoUrl   = (document.getElementById('not-foto')?.value    || '').trim();
-  const erro      = document.getElementById('not-erro');
-  const preview   = document.getElementById('not-preview');
+  const descricao      = (document.getElementById('not-descricao')?.value  || '').trim();
+  const fotoUrl        = (document.getElementById('not-foto')?.value       || '').trim();
+  const reporterNome   = (document.getElementById('not-reporter')?.value   || '').trim();
+  const erro           = document.getElementById('not-erro');
+  const preview        = document.getElementById('not-preview');
 
   if (!descricao) { if(erro) erro.textContent = 'Descreva o momento antes de gerar.'; return; }
   if(erro) erro.textContent = '';
 
   const noticia = gerarNoticia(descricao);
+  if (reporterNome) noticia.reporter = reporterNome;
   const imagens = _noticiaFotos.filter(Boolean);
   if (fotoUrl) { try { new URL(fotoUrl); imagens.push(fotoUrl); } catch(_) {} }
 
