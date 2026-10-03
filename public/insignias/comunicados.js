@@ -1445,6 +1445,7 @@ function renderAbaShorts(shorts) {
             <div class="short-play-overlay" id="short-play-${i}">
               <span class="short-play-icon">▶</span>
             </div>
+            <button class="short-mute-btn" id="short-mute-${i}" onclick="event.stopPropagation();toggleShortMute(${i})" title="Ativar/silenciar som">🔇</button>
           </div>
           ${s.legenda  ? `<div class="short-caption">${s.legenda}</div>`   : ''}
           ${s.reporter ? `<div class="short-reporter">${s.reporter}</div>` : ''}
@@ -1483,4 +1484,12 @@ function toggleShortPlay(idx) {
     vid.pause();
     if (overlay) overlay.style.opacity = '1';
   }
+}
+
+function toggleShortMute(idx) {
+  const vid = document.getElementById(`short-vid-${idx}`);
+  const btn = document.getElementById(`short-mute-${idx}`);
+  if (!vid) return;
+  vid.muted = !vid.muted;
+  if (btn) btn.textContent = vid.muted ? '🔇' : '🔊';
 }
