@@ -45,6 +45,9 @@ const STRINGS_COM = {
     aba_shorts:    'Shorts',
     fotos_vazio:   'Nenhuma foto ainda.',
     shorts_vazio:  'Nenhum short ainda.',
+    boletim_item:  'item',
+    boletim_itens: 'itens',
+    boletim_vazio: 'Nenhum item no boletim por enquanto.',
     inicio_boas_vindas: 'Bem-vindo ao Torneio!',
     inicio_nav:         'Navegue pelas abas para ver tudo',
     inicio_ultimo_recado: 'Último recado',
@@ -85,6 +88,9 @@ const STRINGS_COM = {
     aba_shorts:    'Shorts',
     fotos_vazio:   'No photos yet.',
     shorts_vazio:  'No shorts yet.',
+    boletim_item:  'item',
+    boletim_itens: 'items',
+    boletim_vazio: 'No bulletin items yet.',
     inicio_boas_vindas: 'Welcome to the Tournament!',
     inicio_nav:         'Use the tabs to explore',
     inicio_ultimo_recado: 'Latest message',
@@ -256,7 +262,7 @@ function renderInicio(dados) {
     { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
     { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
     { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
-    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} ${_langCom === 'pt' ? (boletim.length !== 1 ? 'itens' : 'item') : (boletim.length !== 1 ? 'items' : 'item')}`,  cor: '#2E9E4F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')}`,  cor: '#2E9E4F' },
     { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
     { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: `${((dados.galeria && dados.galeria.itens) || []).length} foto${((dados.galeria && dados.galeria.itens) || []).length !== 1 ? 's' : ''}`, cor: '#D97706' },
     { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: `${((dados.shorts && dados.shorts.itens) || []).length} short${((dados.shorts && dados.shorts.itens) || []).length !== 1 ? 's' : ''}`, cor: '#DC2626' },
@@ -348,7 +354,7 @@ function renderInicio(dados) {
       <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
         <span class="com-inicio-boletim-emoji">🎬</span>
         <div class="com-inicio-boletim-info">
-          <div class="com-inicio-boletim-titulo">${boletim.length} ${boletim.length !== 1 ? 'itens' : 'item'} no boletim</div>
+          <div class="com-inicio-boletim-titulo">${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')} — ${tc('inicio_no_boletim')}</div>
           <div class="com-inicio-boletim-sub">${tc('inicio_ver_boletim')}</div>
         </div>
         <span class="com-inicio-boletim-arrow">›</span>
@@ -982,7 +988,7 @@ function renderBoletimCom(boletim) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">Nenhum item no boletim por enquanto.</div>`
+      ? `<div class="com-vazio">${tc('boletim_vazio')}</div>`
       : `<div class="boletim-galeria">${itens.map(_renderBoletimItem).join('')}</div>`;
     secao.appendChild(lista);
   }
