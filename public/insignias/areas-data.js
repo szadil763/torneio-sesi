@@ -551,7 +551,8 @@ async function salvarGaleria(dados) {
 
 // ── Shorts ────────────────────────────────────────────────────────
 const RTDB_SHORTS_URL      = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/shorts.json";
-const STORAGE_BUCKET       = "torneio-sesi-20de0.appspot.com";
+const CLOUDINARY_CLOUD     = "zimtzbbg";
+const CLOUDINARY_PRESET    = "torneio shorts";
 const STORAGE_KEY_SHORTS   = "torneio-shorts:v1";
 let _shortsCache = null;
 
@@ -587,22 +588,19 @@ async function salvarShorts(dados) {
 }
 
 async function uploadVideoStorage(blob, filename) {
-  const path = `shorts/${filename}`;
-  const url  = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o?uploadType=media&name=${encodeURIComponent(path)}`;
-  const resp = await fetch(url, {
+  const fd = new FormData();
+  fd.append('file', blob, filename);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  fd.append('resource_type', 'video');
+  const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`, {
     method: 'POST',
-    headers: { 'Content-Type': blob.type || 'video/mp4' },
-    body: blob
+    body: fd
   });
   if (!resp.ok) throw new Error('Upload falhou: ' + resp.status);
-  return `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(path)}?alt=media`;
+  const data = await resp.json();
+  return data.secure_url;
 }
 
-async function deletarVideoStorage(videoUrl) {
-  try {
-    const match = videoUrl.match(/\/o\/(.+?)\?/);
-    if (!match) return;
-    const path = decodeURIComponent(match[1]);
-    await fetch(`https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(path)}`, { method: 'DELETE' });
-  } catch (_) {}
+async function deletarVideoStorage(_videoUrl) {
+  // Cloudinary não permite exclusão por upload não assinado — arquivo permanece na nuvem
 }
