@@ -41,6 +41,10 @@ const STRINGS_COM = {
     aba_noticias:  'Notícias',
     noticias_titulo: '📰 Notícias do torneio',
     noticias_vazio:  'Nenhuma notícia por enquanto.',
+    aba_fotos:     'Fotos',
+    aba_shorts:    'Shorts',
+    fotos_vazio:   'Nenhuma foto ainda.',
+    shorts_vazio:  'Nenhum short ainda.',
     inicio_boas_vindas: 'Bem-vindo ao Torneio!',
     inicio_nav:         'Navegue pelas abas para ver tudo',
     inicio_ultimo_recado: 'Último recado',
@@ -77,6 +81,10 @@ const STRINGS_COM = {
     aba_noticias:  'News',
     noticias_titulo: '📰 Tournament News',
     noticias_vazio:  'No news yet.',
+    aba_fotos:     'Photos',
+    aba_shorts:    'Shorts',
+    fotos_vazio:   'No photos yet.',
+    shorts_vazio:  'No shorts yet.',
     inicio_boas_vindas: 'Welcome to the Tournament!',
     inicio_nav:         'Use the tabs to explore',
     inicio_ultimo_recado: 'Latest message',
@@ -111,7 +119,7 @@ let _countdownInterval = null;
 
 // ── Abas ──────────────────────────────────────────────────────────
 let _abaAtiva  = 'inicio';
-let _dadosCache = null; // { recados, dicas, boletim }
+let _dadosCache = null; // { recados, dicas, boletim, galeria, shorts }
 
 const ABAS_CONFIG = [
   { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
@@ -120,6 +128,8 @@ const ABAS_CONFIG = [
   { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
   { id: 'boletim',   emoji: '🎬', labelKey: 'aba_boletim'   },
   { id: 'dicas',     emoji: '💡', labelKey: 'aba_dicas'     },
+  { id: 'fotos',     emoji: '📷', labelKey: 'aba_fotos'     },
+  { id: 'shorts',    emoji: '▶️', labelKey: 'aba_shorts'    },
 ];
 
 function getMountEl() {
@@ -184,7 +194,9 @@ function renderConteudoAba(dados) {
       document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
       carregarVideosPendentes();
       break;
-    case 'dicas':     renderDicas(dados.dicas);        break;
+    case 'dicas':     renderDicas(dados.dicas);            break;
+    case 'fotos':     renderAbaFotos(dados.galeria);       break;
+    case 'shorts':    renderAbaShorts(dados.shorts);       break;
   }
   getMountEl().insertAdjacentHTML('beforeend',
     `<div class="com-rodape">${tc('rodape')}<br><span id="com-stats-visitors" style="font-size:11px;color:var(--muted)"></span></div>`);
@@ -214,6 +226,8 @@ function renderInicio(dados) {
     { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
     { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} ${_langCom === 'pt' ? (boletim.length !== 1 ? 'itens' : 'item') : (boletim.length !== 1 ? 'items' : 'item')}`,  cor: '#2E9E4F' },
     { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
+    { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: `${((dados.galeria && dados.galeria.itens) || []).length} foto${((dados.galeria && dados.galeria.itens) || []).length !== 1 ? 's' : ''}`, cor: '#D97706' },
+    { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: `${((dados.shorts && dados.shorts.itens) || []).length} short${((dados.shorts && dados.shorts.itens) || []).length !== 1 ? 's' : ''}`, cor: '#DC2626' },
   ];
 
   const divCards = document.createElement('div');
@@ -1293,16 +1307,18 @@ async function renderComunicados() {
   _renderBotaoPush(document.getElementById('com-push-wrap'));
 
   // Carrega reações e registra visita em paralelo com os dados
-  const [, recados, dicas, boletim] = await Promise.all([
+  const [, recados, dicas, boletim,, galeria, shorts] = await Promise.all([
     carregarInsignias(),
     carregarRecados(),
     carregarDicas(),
     carregarBoletim(),
-    carregarTodasReacoes().catch(() => {})
+    carregarTodasReacoes().catch(() => {}),
+    carregarGaleria().catch(() => ({ itens: [] })),
+    carregarShorts().catch(() => ({ itens: [] }))
   ]);
   if (!_testeSecs) registrarVisita().catch(() => {});
 
-  _dadosCache = { recados, dicas, boletim };
+  _dadosCache = { recados, dicas, boletim, galeria, shorts };
   _verificarNovosConteudos(_dadosCache);
   renderConteudoAba(_dadosCache);
 
@@ -1329,6 +1345,8 @@ function agendarRefresh() {
     _recadosCache    = null;
     _dicasCache      = null;
     _boletimCache    = null;
+    _galeriaCache    = null;
+    _shortsCache     = null;
     _estojoAtivoCom  = null;
     await renderComunicados();
     agendarRefresh();
@@ -1352,3 +1370,117 @@ window.addEventListener('DOMContentLoaded', async () => {
   await renderComunicados();
   agendarRefresh();
 });
+
+// ── Aba Galeria de Fotos ──────────────────────────────────────────
+function renderAbaFotos(galeria) {
+  const fotos = (galeria && galeria.itens) ? galeria.itens : [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  if (fotos.length === 0) {
+    secao.innerHTML = `
+      <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
+      <p class="com-vazio">${tc('fotos_vazio')}</p>`;
+    getMountEl().appendChild(secao);
+    return;
+  }
+
+  secao.innerHTML = `
+    <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
+    <div class="galeria-mosaic">
+      ${fotos.map((f, i) => `
+        <div class="galeria-foto" onclick="abrirFotoModal(${i})" role="button" tabindex="0">
+          <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-img" loading="lazy">
+          ${f.legenda ? `<div class="galeria-caption">${f.legenda}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
+  getMountEl().appendChild(secao);
+  window._fotosDataCom = fotos;
+}
+
+function abrirFotoModal(idx) {
+  const fotos = window._fotosDataCom || [];
+  const f = fotos[idx];
+  if (!f) return;
+  const existing = document.getElementById('galeria-modal-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'galeria-modal-overlay';
+  overlay.className = 'galeria-modal-overlay';
+  overlay.innerHTML = `
+    <div class="galeria-modal-inner" onclick="event.stopPropagation()">
+      <button class="galeria-modal-fechar" onclick="document.getElementById('galeria-modal-overlay').remove()">✕</button>
+      <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-modal-img">
+      ${f.legenda   ? `<div class="galeria-modal-caption">${f.legenda}</div>`    : ''}
+      ${f.reporter  ? `<div class="galeria-modal-reporter">${f.reporter}</div>`  : ''}
+    </div>`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
+// ── Aba Shorts ────────────────────────────────────────────────────
+let _shortsObserver = null;
+
+function renderAbaShorts(shorts) {
+  const itens = (shorts && shorts.itens) ? shorts.itens : [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  if (itens.length === 0) {
+    secao.innerHTML = `
+      <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
+      <p class="com-vazio">${tc('shorts_vazio')}</p>`;
+    getMountEl().appendChild(secao);
+    return;
+  }
+
+  secao.innerHTML = `
+    <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
+    <div class="shorts-list">
+      ${itens.map((s, i) => `
+        <div class="short-item" id="short-item-${i}">
+          <div class="short-video-wrap" onclick="toggleShortPlay(${i})">
+            <video class="short-video" id="short-vid-${i}"
+                   src="${s.url || ''}" muted playsinline preload="metadata" loop></video>
+            <div class="short-play-overlay" id="short-play-${i}">
+              <span class="short-play-icon">▶</span>
+            </div>
+          </div>
+          ${s.legenda  ? `<div class="short-caption">${s.legenda}</div>`   : ''}
+          ${s.reporter ? `<div class="short-reporter">${s.reporter}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
+  getMountEl().appendChild(secao);
+
+  // Autoplay via IntersectionObserver
+  requestAnimationFrame(() => {
+    if (_shortsObserver) { _shortsObserver.disconnect(); _shortsObserver = null; }
+    _shortsObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const vid = entry.target;
+        const overlay = vid.parentElement?.querySelector('.short-play-overlay');
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          vid.play().catch(() => {});
+          if (overlay) overlay.style.opacity = '0';
+        } else {
+          vid.pause();
+          if (overlay) overlay.style.opacity = '1';
+        }
+      });
+    }, { threshold: 0.6 });
+    document.querySelectorAll('.short-video').forEach(v => _shortsObserver.observe(v));
+  });
+}
+
+function toggleShortPlay(idx) {
+  const vid = document.getElementById(`short-vid-${idx}`);
+  const overlay = document.getElementById(`short-play-${idx}`);
+  if (!vid) return;
+  if (vid.paused) {
+    vid.play().catch(() => {});
+    if (overlay) overlay.style.opacity = '0';
+  } else {
+    vid.pause();
+    if (overlay) overlay.style.opacity = '1';
+  }
+}

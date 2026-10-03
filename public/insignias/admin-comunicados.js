@@ -65,11 +65,16 @@ function renderPainelCom() {
     </div>
 
     <div class="admin-abas">
-      <button class="admin-aba ${abaComAtiva === 'boletim'      ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
-      <button class="admin-aba ${abaComAtiva === 'comunicados'  ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
+      <button class="admin-aba ${abaComAtiva === 'boletim'     ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
+      <button class="admin-aba ${abaComAtiva === 'comunicados' ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
+      <button class="admin-aba ${abaComAtiva === 'fotos'       ? 'ativa' : ''}" onclick="trocarAbaCom('fotos')">📷 Fotos</button>
+      <button class="admin-aba ${abaComAtiva === 'shorts'      ? 'ativa' : ''}" onclick="trocarAbaCom('shorts')">▶️ Shorts</button>
     </div>
 
-    ${abaComAtiva === 'boletim' ? renderAbaBoletimCom(boletim) : renderAbaComunicadosCom()}
+    ${abaComAtiva === 'boletim'     ? renderAbaBoletimCom(boletim)
+    : abaComAtiva === 'comunicados' ? renderAbaComunicadosCom()
+    : abaComAtiva === 'fotos'       ? renderAbaFotosAdmin()
+    :                                  renderAbaShortsAdmin()}
 
     <p class="rodape-nota">
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
@@ -1402,3 +1407,179 @@ window.addEventListener("DOMContentLoaded", async function () {
     renderLoginCom();
   }
 });
+
+// ── Admin — Galeria de Fotos ──────────────────────────────────────
+let _galPendingDataUrl = null;
+
+function renderAbaFotosAdmin() {
+  const galeria = lerGaleria();
+  const fotos = galeria.itens || [];
+  return `
+    <div class="boletim-admin">
+      <h2 style="font-size:17px;font-weight:800;margin:0 0 4px">📷 Galeria de Fotos</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Fotos ficam visíveis na aba Fotos do site de pais e alunos.</p>
+
+      <div class="boletim-form">
+        <div class="bol-upload-opcoes">
+          <label class="bol-upload-btn" for="gal-file-camera"><span>📸</span> Tirar foto</label>
+          <input id="gal-file-camera" type="file" accept="image/*" capture="environment"
+                 style="display:none" onchange="galeriaHandleFile(this)">
+          <label class="bol-upload-btn bol-upload-btn-sec" for="gal-file-input"><span>🖼️</span> Da galeria</label>
+          <input id="gal-file-input" type="file" accept="image/*"
+                 style="display:none" onchange="galeriaHandleFile(this)">
+        </div>
+        <div id="gal-preview" style="margin-top:10px"></div>
+        <input id="gal-legenda"  type="text" placeholder="Legenda (opcional)"   class="boletim-input" style="margin-top:8px">
+        <input id="gal-reporter" type="text" placeholder="Foto por… (opcional)" class="boletim-input" style="margin-top:4px">
+        <button class="boletim-btn-add" style="margin-top:10px" onclick="galeriaAdicionarFoto()">+ Adicionar foto</button>
+        <div id="gal-erro" class="erro" style="margin-top:6px"></div>
+      </div>
+
+      <div class="bol-lista" style="margin-top:16px">
+        ${fotos.length === 0 ? '<p style="color:var(--muted);font-size:13px">Nenhuma foto ainda.</p>' : ''}
+        ${fotos.map((f, i) => `
+          <div class="bol-item" style="display:flex;gap:12px;align-items:center">
+            <img src="${f.dataUrl || f.url || ''}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.legenda || '(sem legenda)'}</div>
+              ${f.reporter ? `<div style="font-size:11px;color:var(--muted)">${f.reporter}</div>` : ''}
+            </div>
+            <button class="bol-item-del" onclick="galeriaRemoverFoto(${i})" title="Remover">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function galeriaHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const preview = document.getElementById('gal-preview');
+  if (preview) preview.innerHTML = '<span style="font-size:12px;color:var(--muted)">⏳ Comprimindo…</span>';
+  const dataUrl = await comprimirImagem(file, 1200, 0.82);
+  _galPendingDataUrl = dataUrl;
+  if (preview) preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:220px;border-radius:8px;object-fit:cover">`;
+}
+
+async function galeriaAdicionarFoto() {
+  const err = document.getElementById('gal-erro');
+  if (err) err.textContent = '';
+  if (!_galPendingDataUrl) {
+    if (err) err.textContent = 'Selecione uma foto primeiro.';
+    return;
+  }
+  const legenda  = (document.getElementById('gal-legenda')?.value  || '').trim();
+  const reporter = (document.getElementById('gal-reporter')?.value || '').trim();
+  try {
+    const galeria = lerGaleria();
+    galeria.itens = galeria.itens || [];
+    galeria.itens.unshift({ dataUrl: _galPendingDataUrl, legenda, reporter, ts: Date.now() });
+    await salvarGaleria(galeria);
+    _galPendingDataUrl = null;
+    trocarAbaCom('fotos');
+  } catch (e) {
+    if (err) err.textContent = 'Erro ao salvar: ' + e.message;
+  }
+}
+
+async function galeriaRemoverFoto(idx) {
+  if (!confirm('Remover esta foto?')) return;
+  const galeria = lerGaleria();
+  galeria.itens = galeria.itens || [];
+  galeria.itens.splice(idx, 1);
+  await salvarGaleria(galeria);
+  trocarAbaCom('fotos');
+}
+
+// ── Admin — Shorts ────────────────────────────────────────────────
+let _shtPendingBlob = null;
+
+function renderAbaShortsAdmin() {
+  const shorts = lerShorts();
+  const itens = shorts.itens || [];
+  return `
+    <div class="boletim-admin">
+      <h2 style="font-size:17px;font-weight:800;margin:0 0 4px">▶️ Shorts</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Vídeos curtos de até 10 s. São enviados para o Firebase Storage.</p>
+
+      <div class="boletim-form">
+        <div class="bol-upload-opcoes">
+          <label class="bol-upload-btn bol-upload-btn-vid" for="sht-file-camera"><span>🎥</span> Gravar vídeo</label>
+          <input id="sht-file-camera" type="file" accept="video/*" capture="environment"
+                 style="display:none" onchange="shortsHandleVideo(this)">
+          <label class="bol-upload-btn bol-upload-btn-sec" for="sht-file-input"><span>📁</span> Da galeria</label>
+          <input id="sht-file-input" type="file" accept="video/*"
+                 style="display:none" onchange="shortsHandleVideo(this)">
+        </div>
+        <div id="sht-preview" style="margin-top:8px"></div>
+        <input id="sht-legenda"  type="text" placeholder="Legenda (opcional)"         class="boletim-input" style="margin-top:8px">
+        <input id="sht-reporter" type="text" placeholder="Filmado por… (opcional)"   class="boletim-input" style="margin-top:4px">
+        <button class="boletim-btn-add" style="margin-top:10px" onclick="shortsAdicionarVideo()">+ Publicar short</button>
+        <div id="sht-progress" style="display:none;font-size:12px;color:var(--muted);text-align:center;margin-top:6px"></div>
+        <div id="sht-erro" class="erro" style="margin-top:6px"></div>
+      </div>
+
+      <div class="bol-lista" style="margin-top:16px">
+        ${itens.length === 0 ? '<p style="color:var(--muted);font-size:13px">Nenhum short ainda.</p>' : ''}
+        ${itens.map((s, i) => `
+          <div class="bol-item" style="display:flex;gap:12px;align-items:center">
+            <video src="${s.url || ''}" style="width:50px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0"
+                   muted preload="metadata"></video>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.legenda || '(sem legenda)'}</div>
+              ${s.reporter ? `<div style="font-size:11px;color:var(--muted)">${s.reporter}</div>` : ''}
+            </div>
+            <button class="bol-item-del" onclick="shortsRemoverVideo(${i})" title="Remover">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function shortsHandleVideo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _shtPendingBlob = file;
+  const url = URL.createObjectURL(file);
+  const preview = document.getElementById('sht-preview');
+  if (preview) preview.innerHTML = `
+    <video src="${url}" style="max-width:100%;max-height:200px;border-radius:8px" muted controls preload="metadata"></video>
+    <p style="font-size:11px;color:var(--muted);margin:4px 0 0">Tamanho: ${(file.size / 1024 / 1024).toFixed(1)} MB</p>`;
+}
+
+async function shortsAdicionarVideo() {
+  const err      = document.getElementById('sht-erro');
+  const progress = document.getElementById('sht-progress');
+  if (err) err.textContent = '';
+  if (!_shtPendingBlob) {
+    if (err) err.textContent = 'Selecione um vídeo primeiro.';
+    return;
+  }
+  const legenda  = (document.getElementById('sht-legenda')?.value  || '').trim();
+  const reporter = (document.getElementById('sht-reporter')?.value || '').trim();
+  if (progress) { progress.style.display = ''; progress.textContent = '⏳ Enviando vídeo para o servidor…'; }
+  try {
+    const ext      = _shtPendingBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `short_${Date.now()}.${ext}`;
+    const url      = await uploadVideoStorage(_shtPendingBlob, filename);
+    const shorts   = lerShorts();
+    shorts.itens   = shorts.itens || [];
+    shorts.itens.unshift({ url, legenda, reporter, ts: Date.now() });
+    await salvarShorts(shorts);
+    _shtPendingBlob = null;
+    if (progress) progress.style.display = 'none';
+    trocarAbaCom('shorts');
+  } catch (e) {
+    if (progress) progress.style.display = 'none';
+    if (err) err.textContent = 'Erro ao publicar: ' + e.message;
+  }
+}
+
+async function shortsRemoverVideo(idx) {
+  if (!confirm('Remover este short?')) return;
+  const shorts = lerShorts();
+  shorts.itens  = shorts.itens || [];
+  const item    = shorts.itens[idx];
+  shorts.itens.splice(idx, 1);
+  await salvarShorts(shorts);
+  if (item && item.url) deletarVideoStorage(item.url).catch(() => {});
+  trocarAbaCom('shorts');
+}

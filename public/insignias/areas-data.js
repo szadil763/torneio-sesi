@@ -512,3 +512,97 @@ function renderNoticiaCard(item) {
       </div>
     </div>`;
 }
+
+// ── Galeria de fotos ──────────────────────────────────────────────
+const RTDB_GALERIA_URL     = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/galeria.json";
+const STORAGE_KEY_GALERIA  = "torneio-galeria:v1";
+let _galeriaCache = null;
+
+function lerGaleria() {
+  if (_galeriaCache) return _galeriaCache;
+  try {
+    const s = localStorage.getItem(STORAGE_KEY_GALERIA);
+    return s ? JSON.parse(s) : { itens: [] };
+  } catch { return { itens: [] }; }
+}
+
+async function carregarGaleria() {
+  try {
+    const resp = await fetch(RTDB_GALERIA_URL);
+    if (resp.ok) {
+      const data = await resp.json();
+      _galeriaCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(_galeriaCache)); } catch (_) {}
+      return _galeriaCache;
+    }
+  } catch (_) {}
+  _galeriaCache = lerGaleria();
+  return _galeriaCache;
+}
+
+async function salvarGaleria(dados) {
+  _galeriaCache = dados;
+  try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(dados)); } catch (_) {}
+  await fetch(RTDB_GALERIA_URL, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  });
+}
+
+// ── Shorts ────────────────────────────────────────────────────────
+const RTDB_SHORTS_URL      = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/shorts.json";
+const STORAGE_BUCKET       = "torneio-sesi-20de0.appspot.com";
+const STORAGE_KEY_SHORTS   = "torneio-shorts:v1";
+let _shortsCache = null;
+
+function lerShorts() {
+  if (_shortsCache) return _shortsCache;
+  try {
+    const s = localStorage.getItem(STORAGE_KEY_SHORTS);
+    return s ? JSON.parse(s) : { itens: [] };
+  } catch { return { itens: [] }; }
+}
+
+async function carregarShorts() {
+  try {
+    const resp = await fetch(RTDB_SHORTS_URL);
+    if (resp.ok) {
+      const data = await resp.json();
+      _shortsCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      try { localStorage.setItem(STORAGE_KEY_SHORTS, JSON.stringify(_shortsCache)); } catch (_) {}
+      return _shortsCache;
+    }
+  } catch (_) {}
+  _shortsCache = lerShorts();
+  return _shortsCache;
+}
+
+async function salvarShorts(dados) {
+  _shortsCache = dados;
+  try { localStorage.setItem(STORAGE_KEY_SHORTS, JSON.stringify(dados)); } catch (_) {}
+  await fetch(RTDB_SHORTS_URL, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  });
+}
+
+async function uploadVideoStorage(blob, filename) {
+  const path = `shorts/${filename}`;
+  const url  = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o?uploadType=media&name=${encodeURIComponent(path)}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': blob.type || 'video/mp4' },
+    body: blob
+  });
+  if (!resp.ok) throw new Error('Upload falhou: ' + resp.status);
+  return `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(path)}?alt=media`;
+}
+
+async function deletarVideoStorage(videoUrl) {
+  try {
+    const match = videoUrl.match(/\/o\/(.+?)\?/);
+    if (!match) return;
+    const path = decodeURIComponent(match[1]);
+    await fetch(`https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(path)}`, { method: 'DELETE' });
+  } catch (_) {}
+}
