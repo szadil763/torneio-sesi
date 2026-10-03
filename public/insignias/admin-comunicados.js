@@ -1409,7 +1409,7 @@ window.addEventListener("DOMContentLoaded", async function () {
 });
 
 // ── Admin — Galeria de Fotos ──────────────────────────────────────
-let _galPendingDataUrl = null;
+let _galPendingDataUrls = []; // array de { dataUrl, legenda, reporter }
 
 function renderAbaFotosAdmin() {
   const galeria = lerGaleria();
@@ -1423,15 +1423,15 @@ function renderAbaFotosAdmin() {
         <div class="bol-upload-opcoes">
           <label class="bol-upload-btn" for="gal-file-camera"><span>📸</span> Tirar foto</label>
           <input id="gal-file-camera" type="file" accept="image/*" capture="environment"
-                 style="display:none" onchange="galeriaHandleFile(this)">
-          <label class="bol-upload-btn bol-upload-btn-sec" for="gal-file-input"><span>🖼️</span> Da galeria</label>
-          <input id="gal-file-input" type="file" accept="image/*"
-                 style="display:none" onchange="galeriaHandleFile(this)">
+                 style="display:none" onchange="galeriaHandleFiles(this)">
+          <label class="bol-upload-btn bol-upload-btn-sec" for="gal-file-input"><span>🖼️</span> Da galeria (até 10)</label>
+          <input id="gal-file-input" type="file" accept="image/*" multiple
+                 style="display:none" onchange="galeriaHandleFiles(this)">
         </div>
         <div id="gal-preview" style="margin-top:10px"></div>
-        <input id="gal-legenda"  type="text" placeholder="Legenda (opcional)"   class="boletim-input" style="margin-top:8px">
+        <input id="gal-legenda"  type="text" placeholder="Legenda comum (opcional)"   class="boletim-input" style="margin-top:8px">
         <input id="gal-reporter" type="text" placeholder="Foto por… (opcional)" class="boletim-input" style="margin-top:4px">
-        <button class="boletim-btn-add" style="margin-top:10px" onclick="galeriaAdicionarFoto()">+ Adicionar foto</button>
+        <button class="boletim-btn-add" style="margin-top:10px" onclick="galeriaAdicionarFotos()">+ Adicionar foto(s)</button>
         <div id="gal-erro" class="erro" style="margin-top:6px"></div>
       </div>
 
@@ -1450,21 +1450,32 @@ function renderAbaFotosAdmin() {
     </div>`;
 }
 
-async function galeriaHandleFile(input) {
-  const file = input.files[0];
-  if (!file) return;
+async function galeriaHandleFiles(input) {
+  const files = Array.from(input.files || []).slice(0, 10);
+  if (!files.length) return;
   const preview = document.getElementById('gal-preview');
   if (preview) preview.innerHTML = '<span style="font-size:12px;color:var(--muted)">⏳ Comprimindo…</span>';
-  const dataUrl = await comprimirImagem(file, 1200, 0.82);
-  _galPendingDataUrl = dataUrl;
-  if (preview) preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:220px;border-radius:8px;object-fit:cover">`;
+  _galPendingDataUrls = [];
+  for (const file of files) {
+    const dataUrl = await comprimirImagem(file, 1200, 0.82);
+    _galPendingDataUrls.push(dataUrl);
+  }
+  if (preview) {
+    if (_galPendingDataUrls.length === 1) {
+      preview.innerHTML = `<img src="${_galPendingDataUrls[0]}" style="max-width:100%;max-height:220px;border-radius:8px;object-fit:cover">`;
+    } else {
+      preview.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px">${
+        _galPendingDataUrls.map(u => `<img src="${u}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px">`).join('')
+      }</div><div style="font-size:12px;color:var(--muted);margin-top:4px">${_galPendingDataUrls.length} fotos selecionadas</div>`;
+    }
+  }
 }
 
-async function galeriaAdicionarFoto() {
+async function galeriaAdicionarFotos() {
   const err = document.getElementById('gal-erro');
   if (err) err.textContent = '';
-  if (!_galPendingDataUrl) {
-    if (err) err.textContent = 'Selecione uma foto primeiro.';
+  if (!_galPendingDataUrls.length) {
+    if (err) err.textContent = 'Selecione ao menos uma foto primeiro.';
     return;
   }
   const legenda  = (document.getElementById('gal-legenda')?.value  || '').trim();
@@ -1472,9 +1483,11 @@ async function galeriaAdicionarFoto() {
   try {
     const galeria = lerGaleria();
     galeria.itens = galeria.itens || [];
-    galeria.itens.unshift({ dataUrl: _galPendingDataUrl, legenda, reporter, ts: Date.now() });
+    for (const dataUrl of _galPendingDataUrls) {
+      galeria.itens.unshift({ dataUrl, legenda, reporter, ts: Date.now() });
+    }
     await salvarGaleria(galeria);
-    _galPendingDataUrl = null;
+    _galPendingDataUrls = [];
     trocarAbaCom('fotos');
   } catch (e) {
     if (err) err.textContent = 'Erro ao salvar: ' + e.message;
@@ -1562,7 +1575,7 @@ async function shortsAdicionarVideo() {
     const url      = await uploadVideoStorage(_shtPendingBlob, filename);
     const shorts   = lerShorts();
     shorts.itens   = shorts.itens || [];
-    shorts.itens.unshift({ url, legenda, reporter, ts: Date.now() });
+    shorts.itens.unshift({ id: `sht_${Date.now()}`, url, legenda, reporter, ts: Date.now() });
     await salvarShorts(shorts);
     _shtPendingBlob = null;
     if (progress) progress.style.display = 'none';

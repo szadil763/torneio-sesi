@@ -1487,7 +1487,7 @@ function renderAbaShorts(shorts) {
           </div>
           ${s.legenda  ? `<div class="short-caption">${s.legenda}</div>`   : ''}
           ${s.reporter ? `<div class="short-reporter">${s.reporter}</div>` : ''}
-          ${_reacoesBar(`short_${i}`)}
+          ${_reacoesBar(`short_${s.id || s.ts || i}`)}
         </div>`).join('')}
     </div>`;
   getMountEl().appendChild(secao);
