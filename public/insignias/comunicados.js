@@ -202,10 +202,42 @@ function renderConteudoAba(dados) {
     `<div class="com-rodape">${tc('rodape')}<br><span id="com-stats-visitors" style="font-size:11px;color:var(--muted)"></span></div>`);
 }
 
+// ── Banner de novidades ───────────────────────────────────────────
+const BANNER_NOVIDADES_KEY = 'torneio-banner-novidades-fotos-shorts:v1';
+
+function _renderBannerNovidades() {
+  try { if (localStorage.getItem(BANNER_NOVIDADES_KEY)) return; } catch (_) {}
+  const div = document.createElement('div');
+  div.className = 'com-banner-novidades';
+  div.innerHTML = `
+    <button class="com-banner-fechar" onclick="_fecharBannerNovidades()" aria-label="Fechar">✕</button>
+    <div class="com-banner-novo-tag">✨ NOVIDADE</div>
+    <div class="com-banner-titulo">Confira as novas seções!</div>
+    <div class="com-banner-desc">Agora você pode acompanhar fotos e vídeos curtos do torneio em tempo real.</div>
+    <div class="com-banner-btns">
+      <button class="com-banner-btn com-banner-btn-fotos" onclick="trocarAba('fotos')">
+        📷 Ver Fotos
+      </button>
+      <button class="com-banner-btn com-banner-btn-shorts" onclick="trocarAba('shorts')">
+        ▶️ Ver Shorts
+      </button>
+    </div>`;
+  getMountEl().appendChild(div);
+}
+
+function _fecharBannerNovidades() {
+  try { localStorage.setItem(BANNER_NOVIDADES_KEY, '1'); } catch (_) {}
+  const el = document.querySelector('.com-banner-novidades');
+  if (el) { el.style.transition = 'opacity .25s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); }
+}
+
 // ── Aba Início ────────────────────────────────────────────────────
 function renderInicio(dados) {
   // Countdown sempre no topo
   renderContadorCom();
+
+  // Banner de novidades: Fotos + Shorts
+  _renderBannerNovidades();
 
   const recados = (dados.recados && dados.recados.itens) || [];
   const boletim = (dados.boletim && dados.boletim.itens) || [];

@@ -802,6 +802,80 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Banner novidades ───────────────────────────────────────────── */
+.com-banner-novidades {
+  position: relative;
+  margin: 12px 0 4px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #004B8D 0%, #0072D6 50%, #F5821F 100%);
+  padding: 18px 16px 16px;
+  color: #fff;
+  overflow: hidden;
+}
+.com-banner-novidades::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at top right, rgba(255,255,255,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.com-banner-fechar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255,255,255,.2);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.com-banner-novo-tag {
+  display: inline-block;
+  background: rgba(255,255,255,.25);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 3px 10px;
+  margin-bottom: 8px;
+}
+.com-banner-titulo {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  padding-right: 28px;
+}
+.com-banner-desc {
+  font-size: 13px;
+  opacity: .9;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+.com-banner-btns {
+  display: flex;
+  gap: 10px;
+}
+.com-banner-btn {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s, opacity .15s;
+}
+.com-banner-btn:active { transform: scale(.96); opacity: .85; }
+.com-banner-btn-fotos  { background: #fff; color: #D97706; }
+.com-banner-btn-shorts { background: rgba(255,255,255,.2); color: #fff; border: 1.5px solid rgba(255,255,255,.5); }
+
 /* ── Vazio ──────────────────────────────────────────────────────── */
 .com-vazio {
   text-align: center;
