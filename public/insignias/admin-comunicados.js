@@ -65,11 +65,16 @@ function renderPainelCom() {
     </div>
 
     <div class="admin-abas">
-      <button class="admin-aba ${abaComAtiva === 'boletim'      ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
-      <button class="admin-aba ${abaComAtiva === 'comunicados'  ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
+      <button class="admin-aba ${abaComAtiva === 'boletim'     ? 'ativa' : ''}" onclick="trocarAbaCom('boletim')">📸 Boletim</button>
+      <button class="admin-aba ${abaComAtiva === 'comunicados' ? 'ativa' : ''}" onclick="trocarAbaCom('comunicados')">📢 Recados e Dicas</button>
+      <button class="admin-aba ${abaComAtiva === 'fotos'       ? 'ativa' : ''}" onclick="trocarAbaCom('fotos')">📷 Fotos</button>
+      <button class="admin-aba ${abaComAtiva === 'shorts'      ? 'ativa' : ''}" onclick="trocarAbaCom('shorts')">▶️ Shorts</button>
     </div>
 
-    ${abaComAtiva === 'boletim' ? renderAbaBoletimCom(boletim) : renderAbaComunicadosCom()}
+    ${abaComAtiva === 'boletim'     ? renderAbaBoletimCom(boletim)
+    : abaComAtiva === 'comunicados' ? renderAbaComunicadosCom()
+    : abaComAtiva === 'fotos'       ? renderAbaFotosAdmin()
+    :                                  renderAbaShortsAdmin()}
 
     <p class="rodape-nota">
       <a href="/hub.html" style="color:var(--muted);text-decoration:none">← Painel principal</a>
@@ -89,6 +94,42 @@ function _carregarStatsAdmin() {
     if (su) su.textContent = `${unicos} família${unicos !== 1 ? 's' : ''} única${unicos !== 1 ? 's' : ''}`;
     if (so) so.innerHTML   = `<span style="color:${online > 0 ? '#2E9E4F' : 'var(--muted)'}">● ${online} online agora</span>`;
   }).catch(() => {});
+}
+
+// ── Painel de notificações push (Opção A) ────────────────────────
+const RTDB_FCM_TOKENS_ADMIN = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens';
+
+async function _carregarPainelPush() {
+  const inner = document.getElementById('push-admin-inner');
+  if (!inner) return;
+  try {
+    const res   = await fetch(`${RTDB_FCM_TOKENS_ADMIN}.json`);
+    const dados = res.ok ? await res.json() : null;
+    const total = dados && typeof dados === 'object' ? Object.keys(dados).length : 0;
+
+    inner.innerHTML = total === 0
+      ? `<p style="font-size:12px;color:var(--muted);margin:0">
+           Nenhum dispositivo inscrito ainda. Os pais precisam abrir a página de comunicados
+           e clicar em <strong>"🔔 Receber novidades"</strong>.
+         </p>`
+      : `<p style="font-size:12px;color:var(--muted);margin:0 0 12px">
+           <strong style="color:var(--text)">${total} dispositivo${total !== 1 ? 's' : ''}</strong> inscrito${total !== 1 ? 's' : ''}.
+           Para enviar uma notificação, rode o script abaixo no seu computador:
+         </p>
+         <div style="background:rgba(0,0,0,.18);border-radius:9px;padding:12px 14px;font-size:11px;font-family:monospace;white-space:pre-wrap;color:#7dd3fc;overflow-x:auto">node scripts/enviar-push.cjs "Título" "Mensagem"</div>
+         <p style="font-size:11px;color:var(--muted);margin:8px 0 0">
+           📌 Instale uma vez: <code style="font-size:10px">npm install web-push</code> na pasta do projeto.
+           Preencha as chaves VAPID em <code style="font-size:10px">scripts/enviar-push.cjs</code>.<br>
+           💡 Para envio automático pelo Firebase, faça upgrade para o Plano Blaze (gratuito para este volume).
+         </p>`;
+  } catch (_) {
+    if (inner) inner.textContent = '⚠ Não foi possível carregar inscrições.';
+  }
+}
+
+// Carrega contagem de tokens quando o painel renderiza
+function _agendarCarregarPush() {
+  setTimeout(_carregarPainelPush, 0);
 }
 
 function copiarLinkComunicados() {
@@ -158,28 +199,20 @@ function renderAbaBoletimCom(boletim) {
       ` : `
         <div class="boletim-form">
           <p style="font-size:13px;color:var(--muted);margin-bottom:4px">
-            Descreva o momento — a IA gera manchete, parágrafos e citação. Adicione até 3 fotos.
+            Descreva o momento — a IA gera manchete, parágrafos e citação. Adicione fotos à vontade.
           </p>
           <textarea id="not-descricao" class="boletim-input boletim-textarea"
             placeholder="Ex: A equipe verde venceu o desafio de robótica..." rows="3"></textarea>
-          <p style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px;letter-spacing:.04em">FOTOS DA COLAGEM (até 3)</p>
-          <div class="not-slots-grade">
-            ${[0,1,2].map(i => `
-              <div class="not-slot" id="not-thumb-${i}">
-                <span class="not-slot-label">${i === 0 ? 'Principal' : 'Foto ' + (i+1)}</span>
-                <div class="not-slot-btns">
-                  <label class="not-slot-btn" for="not-cam-${i}" title="Câmera">📸
-                    <input id="not-cam-${i}" type="file" accept="image/*" capture="environment"
-                           style="display:none" onchange="noticiaHandleFile(this,${i})">
-                  </label>
-                  <label class="not-slot-btn not-slot-btn-sec" for="not-gal-${i}" title="Galeria">🖼️
-                    <input id="not-gal-${i}" type="file" accept="image/*"
-                           style="display:none" onchange="noticiaHandleFile(this,${i})">
-                  </label>
-                </div>
-              </div>`).join('')}
+          <p style="font-size:12px;font-weight:700;color:var(--muted);margin:4px 0 6px;letter-spacing:.04em">FOTOS DA COLAGEM</p>
+          <div class="not-slots-grade" id="not-slots-grade">
+            ${[0,1,2].map(i => _noticiaSlotHTML(i)).join('')}
           </div>
+          <button type="button" onclick="noticiaAdicionarSlot()"
+            style="margin-top:6px;background:none;border:1.5px dashed var(--muted);border-radius:8px;width:100%;padding:8px;font-size:13px;color:var(--muted);cursor:pointer">
+            ＋ Adicionar foto
+          </button>
           <input id="not-foto" type="url" placeholder="Ou cole link de uma foto extra" class="boletim-input" style="margin-top:4px">
+          <input id="not-reporter" type="text" placeholder="Seu nome para créditos (opcional — padrão: Redação SESI)" class="boletim-input" style="margin-top:4px">
           ${_seletorInicio('not-inicio')}
           <button class="boletim-btn-add boletim-btn-noticia" onclick="boletimGerarNoticia()">✨ Gerar Notícia</button>
         </div>
@@ -197,10 +230,11 @@ function renderAbaBoletimCom(boletim) {
                 return `
                   <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
                     <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando item do boletim</div>
+                    ${_seletorModalidade('bol-edit-modalidade', 'boletim')}
                     <input id="bol-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${tituloEdit.replace(/"/g,'&quot;')}" placeholder="Título">
                     <input id="bol-edit-legenda" type="text" class="boletim-input" style="margin:0" value="${legendaEdit.replace(/"/g,'&quot;')}" placeholder="Legenda">
-                    ${_seletorInicio('bol-edit-inicio')}
-                    ${_seletorArea('bol-edit-area', '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?')}
+                    ${_seletorInicio('bol-edit-inicio', item.inicioAte)}
+                    ${_seletorArea('bol-edit-area', '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?', item.area)}
                     <div style="display:flex;gap:8px;margin-top:4px">
                       <button class="boletim-btn-add" style="flex:1;margin:0" onclick="boletimSalvarEdicao(${i})">💾 Salvar</button>
                       <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editBolIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -294,13 +328,14 @@ function renderSubRecadosCom(recados) {
           ${itens.map((item, i) => _editRecadoIdx === i ? `
             <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
               <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando recado</div>
+              ${_seletorModalidade('rec-edit-modalidade', 'recado')}
               <input id="rec-edit-titulo" type="text" class="boletim-input" style="margin:0" value="${(item.titulo||'').replace(/"/g,'&quot;')}" placeholder="Título (opcional)">
               <textarea id="rec-edit-texto" class="boletim-input boletim-textarea" rows="3" style="margin:0">${item.texto||''}</textarea>
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
                 <input type="checkbox" id="rec-edit-destaque" ${item.destaque?'checked':''}> Destacar (laranja)
               </label>
-              ${_seletorInicio('rec-edit-inicio')}
-              ${_seletorArea('rec-edit-area')}
+              ${_seletorInicio('rec-edit-inicio', item.inicioAte)}
+              ${_seletorArea('rec-edit-area', undefined, item.area)}
               <div style="display:flex;gap:8px;margin-top:4px">
                 <button class="boletim-btn-add" style="flex:1;margin:0" onclick="recadoSalvarEdicao(${i})">💾 Salvar</button>
                 <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editRecadoIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -333,10 +368,12 @@ function renderSubDicasCom(dicas) {
       <div id="dic-ia-resultado" style="display:none;font-size:12px;background:color-mix(in srgb,#2F8FE0 10%,var(--card));border:1px solid #2F8FE0;border-radius:10px;padding:10px 12px;margin-bottom:8px;color:var(--text)"></div>
 
       <div class="bol-separador"><span>ou escreva diretamente</span></div>
-      <div style="display:flex;gap:8px">
+      <input id="dic-titulo" type="text" placeholder="Título / manchete (opcional)" class="boletim-input">
+      <div style="display:flex;gap:8px;margin-top:8px">
         <input id="dic-icone" type="text" placeholder="💡" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0">
-        <input id="dic-texto" type="text" placeholder="Texto da dica" class="boletim-input" style="flex:1">
+        <textarea id="dic-texto" rows="2" placeholder="Texto da dica" class="boletim-input boletim-textarea" style="flex:1;margin:0"></textarea>
       </div>
+      ${_inputMidiaDica('dic-midia', 'dic-midia-url', '')}
       ${_seletorInicio('dic-inicio')}
       ${_seletorArea('dic-area')}
       <button class="boletim-btn-add" style="margin-top:12px" onclick="dicaAdicionar()">+ Adicionar dica</button>
@@ -348,12 +385,15 @@ function renderSubDicasCom(dicas) {
           ${itens.map((item, i) => _editDicaIdx === i ? `
             <div class="bol-item-admin" style="flex-direction:column;align-items:stretch;gap:10px;padding:14px">
               <div style="font-size:11px;font-weight:700;color:#004B8D;letter-spacing:.05em;text-transform:uppercase">✏️ Editando dica</div>
-              <div style="display:flex;gap:8px">
+              ${_seletorModalidade('dic-edit-modalidade', 'dica')}
+              <input id="dic-edit-titulo" type="text" class="boletim-input" placeholder="Título / manchete (opcional)" value="${(item.titulo||'').replace(/"/g,'&quot;')}">
+              <div style="display:flex;gap:8px;margin-top:8px">
                 <input id="dic-edit-icone" type="text" class="boletim-input" style="width:70px;text-align:center;font-size:20px;flex-shrink:0;margin:0" value="${item.icone||'💡'}">
-                <input id="dic-edit-texto" type="text" class="boletim-input" style="flex:1;margin:0" value="${(item.texto||'').replace(/"/g,'&quot;')}">
+                <textarea id="dic-edit-texto" rows="2" class="boletim-input boletim-textarea" style="flex:1;margin:0">${(item.texto||'').replace(/</g,'&lt;')}</textarea>
               </div>
-              ${_seletorInicio('dic-edit-inicio')}
-              ${_seletorArea('dic-edit-area')}
+              ${_inputMidiaDica('dic-edit-midia', 'dic-edit-midia-url', item.imagem||'')}
+              ${_seletorInicio('dic-edit-inicio', item.inicioAte)}
+              ${_seletorArea('dic-edit-area', undefined, item.area)}
               <div style="display:flex;gap:8px;margin-top:4px">
                 <button class="boletim-btn-add" style="flex:1;margin:0" onclick="dicaSalvarEdicao(${i})">💾 Salvar</button>
                 <button class="boletim-btn-noticia" style="flex:1;margin:0" onclick="_editDicaIdx=null;renderPainelCom()">✕ Cancelar</button>
@@ -377,28 +417,80 @@ function renderSubDicasCom(dicas) {
 function comTrocarSubAba(sub) { comSubAba = sub; _editRecadoIdx = null; _editDicaIdx = null; renderPainelCom(); }
 
 // ── Helpers de formulário ─────────────────────────────────────────
-function _seletorArea(id, label) {
+function _seletorArea(id, label, valorAtual) {
+  const v = valorAtual || '';
   return `
     <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">${label || '📍 APÓS A INÍCIO, FICARÁ EM QUAL ÁREA?'}</label>
     <select id="${id}" class="boletim-input" style="margin-top:0">
-      <option value="">— Todas as áreas (visível para todos) —</option>
-      <option value="robotica">🤖 Robótica</option>
-      <option value="ingles">🌎 Inglês</option>
-      <option value="artes">🎨 Artes</option>
-      <option value="educacao-fisica">⚽ Ed. Física</option>
+      <option value=""        ${v === ''               ? 'selected' : ''}>— Todas as áreas (visível para todos) —</option>
+      <option value="robotica"       ${v === 'robotica'       ? 'selected' : ''}>🤖 Robótica</option>
+      <option value="ingles"         ${v === 'ingles'         ? 'selected' : ''}>🌎 Inglês</option>
+      <option value="artes"          ${v === 'artes'          ? 'selected' : ''}>🎨 Artes</option>
+      <option value="educacao-fisica"${v === 'educacao-fisica'? 'selected' : ''}>⚽ Ed. Física</option>
     </select>`;
 }
 
-function _seletorInicio(id) {
+function _seletorModalidade(id, modalidadeAtual) {
+  const opts = [
+    { v: 'boletim', label: '📸 Boletim' },
+    { v: 'recado',  label: '📢 Recado'  },
+    { v: 'dica',    label: '💡 Dica'    },
+  ];
+  return `
+    <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:0 0 4px;letter-spacing:.04em">🔄 MODALIDADE</label>
+    <select id="${id}" class="boletim-input" style="margin-top:0">
+      ${opts.map(o => `<option value="${o.v}" ${modalidadeAtual === o.v ? 'selected' : ''}>${o.label}</option>`).join('')}
+    </select>`;
+}
+
+function _inputMidiaDica(idFile, idUrl, imagemAtual) {
+  const preview = imagemAtual
+    ? `<div style="margin-top:6px;position:relative;display:inline-block">
+         <img src="${imagemAtual}" style="max-width:100%;max-height:140px;border-radius:10px;display:block">
+         <button type="button" onclick="dicaRemoverImagem('${idFile}','${idUrl}')"
+           style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:14px;cursor:pointer;line-height:1">✕</button>
+       </div>`
+    : '';
+  return `
+    <div style="margin-top:6px">
+      <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:.04em">🖼️ IMAGEM (opcional)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label class="boletim-btn-noticia" style="cursor:pointer;padding:8px 12px;font-size:13px;margin:0" title="Câmera">
+          📸 Câmera
+          <input id="${idFile}-cam" type="file" accept="image/*" capture="environment" style="display:none" onchange="dicaHandleImagem(this,'${idFile}','${idUrl}')">
+        </label>
+        <label class="boletim-btn-noticia" style="cursor:pointer;padding:8px 12px;font-size:13px;margin:0" title="Galeria">
+          🖼️ Galeria
+          <input id="${idFile}-gal" type="file" accept="image/*" style="display:none" onchange="dicaHandleImagem(this,'${idFile}','${idUrl}')">
+        </label>
+      </div>
+      <input id="${idUrl}" type="url" class="boletim-input" style="margin-top:6px" placeholder="Ou cole link de uma imagem (https://…)" value="">
+      <div id="${idFile}-preview">${preview}</div>
+    </div>`;
+}
+
+function _inicioAteParaDias(inicioAte) {
+  if (inicioAte == null) return '0';
+  if (inicioAte === -1) return '-1';
+  const diasRestantes = Math.round((inicioAte - Date.now()) / 86_400_000);
+  const opcoes = [1, 3, 7, 14];
+  const closest = opcoes.reduce((prev, curr) =>
+    Math.abs(curr - diasRestantes) < Math.abs(prev - diasRestantes) ? curr : prev
+  );
+  return String(closest);
+}
+
+function _seletorInicio(id, inicioAteAtual) {
+  const v = inicioAteAtual !== undefined ? _inicioAteParaDias(inicioAteAtual) : '0';
   return `
     <label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin:10px 0 4px;letter-spacing:.04em">🏠 POR QUANTO TEMPO APARECE NA PÁGINA INÍCIO?</label>
     <select id="${id}" class="boletim-input" style="margin-top:0">
-      <option value="0">✅ Sempre visível na Início</option>
-      <option value="1">⏱ Por 1 dia, depois vai para a área escolhida</option>
-      <option value="3">⏱ Por 3 dias, depois vai para a área escolhida</option>
-      <option value="7">⏱ Por 7 dias, depois vai para a área escolhida</option>
-      <option value="14">⏱ Por 14 dias, depois vai para a área escolhida</option>
-      <option value="-1">🚫 Não exibir na Início (só na área escolhida)</option>
+      <option value="0"  ${v === '0'  ? 'selected' : ''}>✅ Sempre visível na Início</option>
+      <option value="1"  ${v === '1'  ? 'selected' : ''}>⏱ Por 1 dia, depois vai para a área escolhida</option>
+      <option value="3"  ${v === '3'  ? 'selected' : ''}>⏱ Por 3 dias, depois vai para a área escolhida</option>
+      <option value="7"  ${v === '7'  ? 'selected' : ''}>⏱ Por 7 dias, depois vai para a área escolhida</option>
+      <option value="14" ${v === '14' ? 'selected' : ''}>⏱ Por 14 dias, depois vai para a área escolhida</option>
+      <option value="-1" ${v === '-1' ? 'selected' : ''}>🚫 Não exibir na Início (só na área escolhida)</option>
     </select>`;
 }
 
@@ -851,6 +943,33 @@ function boletimCancelarPendente() {
 
 let _noticiaFotos = [null, null, null];
 
+function _noticiaSlotHTML(i) {
+  return `
+    <div class="not-slot" id="not-thumb-${i}">
+      <span class="not-slot-label">${i === 0 ? 'Principal' : 'Foto ' + (i + 1)}</span>
+      <div class="not-slot-btns">
+        <label class="not-slot-btn" for="not-cam-${i}" title="Câmera">📸
+          <input id="not-cam-${i}" type="file" accept="image/*" capture="environment"
+                 style="display:none" onchange="noticiaHandleFile(this,${i})">
+        </label>
+        <label class="not-slot-btn not-slot-btn-sec" for="not-gal-${i}" title="Galeria">🖼️
+          <input id="not-gal-${i}" type="file" accept="image/*"
+                 style="display:none" onchange="noticiaHandleFile(this,${i})">
+        </label>
+      </div>
+    </div>`;
+}
+
+function noticiaAdicionarSlot() {
+  const grade = document.getElementById('not-slots-grade');
+  if (!grade) return;
+  const i = _noticiaFotos.length;
+  _noticiaFotos.push(null);
+  const div = document.createElement('div');
+  div.innerHTML = _noticiaSlotHTML(i).trim();
+  grade.appendChild(div.firstElementChild);
+}
+
 function noticiaHandleFile(input, slot) {
   const file = input.files[0];
   if (!file) return;
@@ -881,7 +1000,68 @@ async function boletimAdicionar() {
   renderPainelCom();
 }
 
+async function _mudarModalidade(deMod, idx, paraMod) {
+  // Lê os valores do formulário de edição atual
+  let titulo = '', legenda = '', texto = '', icone = '💡', area = '', inicioAte;
+  if (deMod === 'boletim') {
+    titulo    = (document.getElementById('bol-edit-titulo')?.value  || '').trim();
+    legenda   = (document.getElementById('bol-edit-legenda')?.value || '').trim();
+    area      = document.getElementById('bol-edit-area')?.value  || '';
+    inicioAte = _calcInicioAte(document.getElementById('bol-edit-inicio')?.value ?? '0');
+    texto     = legenda || titulo;
+  } else if (deMod === 'recado') {
+    titulo    = (document.getElementById('rec-edit-titulo')?.value || '').trim();
+    texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim();
+    legenda   = texto;
+    area      = document.getElementById('rec-edit-area')?.value  || '';
+    inicioAte = _calcInicioAte(document.getElementById('rec-edit-inicio')?.value ?? '0');
+  } else if (deMod === 'dica') {
+    icone     = (document.getElementById('dic-edit-icone')?.value || '').trim() || '💡';
+    texto     = (document.getElementById('dic-edit-texto')?.value || '').trim();
+    titulo    = texto.slice(0, 60);
+    legenda   = texto;
+    area      = document.getElementById('dic-edit-area')?.value  || '';
+    inicioAte = _calcInicioAte(document.getElementById('dic-edit-inicio')?.value ?? '0');
+  }
+  const id = Date.now().toString(36);
+  const ts = Date.now();
+
+  // Remove da coleção de origem (boletim com mídia permanece — apenas cria cópia na nova modalidade)
+  if (deMod === 'boletim') {
+    const itemOrig = lerBoletim().itens[idx];
+    const temMidia = !!(itemOrig?.url || itemOrig?.videoId || itemOrig?.imagem);
+    if (!temMidia) { const d = lerBoletim(); d.itens.splice(idx, 1); await salvarBoletim(d); }
+    _editBolIdx = null;
+  } else if (deMod === 'recado') {
+    const d = lerRecados(); d.itens.splice(idx, 1); await salvarRecados(d); _editRecadoIdx = null;
+  } else if (deMod === 'dica') {
+    const d = lerDicas(); d.itens.splice(idx, 1); await salvarDicas(d); _editDicaIdx = null;
+  }
+
+  // Adiciona na coleção de destino e navega até ela
+  if (paraMod === 'boletim') {
+    const d = lerBoletim();
+    d.itens.unshift({ id, tipo: 'link', url: '', titulo, legenda, area: area || undefined, inicioAte, ts });
+    await salvarBoletim(d);
+    abaComAtiva = 'boletim';
+  } else if (paraMod === 'recado') {
+    const d = lerRecados();
+    d.itens.unshift({ id, titulo, texto: texto || legenda, destaque: false, area: area || undefined, inicioAte, ts });
+    await salvarRecados(d);
+    abaComAtiva = 'comunicados'; comSubAba = 'recados';
+  } else if (paraMod === 'dica') {
+    const d = lerDicas();
+    d.itens.push({ id, icone, texto: texto || titulo, area: area || undefined, inicioAte });
+    await salvarDicas(d);
+    abaComAtiva = 'comunicados'; comSubAba = 'dicas';
+  }
+
+  renderPainelCom();
+}
+
 async function boletimSalvarEdicao(idx) {
+  const novaMod = document.getElementById('bol-edit-modalidade')?.value || 'boletim';
+  if (novaMod !== 'boletim') { await _mudarModalidade('boletim', idx, novaMod); return; }
   const dados = lerBoletim();
   const item  = dados.itens[idx];
   if (!item) return;
@@ -889,8 +1069,8 @@ async function boletimSalvarEdicao(idx) {
   const legenda    = (document.getElementById('bol-edit-legenda')?.value || '').trim();
   const area       = document.getElementById('bol-edit-area')?.value || '';
   const inicioDias = document.getElementById('bol-edit-inicio')?.value ?? '0';
-  if (item.tipo === 'noticia') { if (titulo) item.manchete  = titulo; if (legenda) item.subtitulo = legenda; }
-  else                         { if (titulo) item.titulo    = titulo; if (legenda) item.legenda   = legenda; }
+  if (item.tipo === 'noticia') { item.manchete  = titulo; item.subtitulo = legenda; }
+  else                         { item.titulo    = titulo; item.legenda   = legenda; }
   item.area     = area || undefined;
   item.inicioAte = _calcInicioAte(inicioDias);
   await salvarBoletim(dados);
@@ -952,8 +1132,7 @@ function gerarNoticia(descricao) {
     `O que todos esperavam aconteceu — e foi ainda melhor do que o previsto`
   ]);
 
-  const reporters = ['Ana Paula Ferreira','Carlos Eduardo Lima','Juliana Mendes','Roberto Souza','Mariana Costa'];
-  const reporter  = pick(reporters);
+  const reporter = 'Redação SESI';
 
   const intro = `Em mais um capítulo empolgante do Torneio SESI Infantil, ${d.replace(/[.!?]+$/,'').charAt(0).toLowerCase()+d.replace(/[.!?]+$/,'').slice(1)}. A cena arrancou aplausos da plateia e ficará marcada na memória de todos os presentes.`;
   const para2 = pick([
@@ -986,25 +1165,52 @@ function gerarNoticia(descricao) {
 }
 
 function boletimGerarNoticia() {
-  const descricao = (document.getElementById('not-descricao')?.value || '').trim();
-  const fotoUrl   = (document.getElementById('not-foto')?.value    || '').trim();
-  const erro      = document.getElementById('not-erro');
-  const preview   = document.getElementById('not-preview');
+  const descricao      = (document.getElementById('not-descricao')?.value  || '').trim();
+  const fotoUrl        = (document.getElementById('not-foto')?.value       || '').trim();
+  const reporterNome   = (document.getElementById('not-reporter')?.value   || '').trim();
+  const erro           = document.getElementById('not-erro');
+  const preview        = document.getElementById('not-preview');
 
   if (!descricao) { if(erro) erro.textContent = 'Descreva o momento antes de gerar.'; return; }
   if(erro) erro.textContent = '';
 
   const noticia = gerarNoticia(descricao);
+  if (reporterNome) noticia.reporter = reporterNome;
   const imagens = _noticiaFotos.filter(Boolean);
   if (fotoUrl) { try { new URL(fotoUrl); imagens.push(fotoUrl); } catch(_) {} }
 
   const rascunho = { ...noticia, imagens, tipo: 'noticia' };
 
   if (preview) {
+    const escHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     preview.innerHTML = `
       <div class="not-preview-card">
-        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">PRÉ-VISUALIZAÇÃO · ${imagens.length} foto(s)</p>
-        ${renderNoticiaCard(rascunho)}
+        <p style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:.05em">
+          ✏️ EDITE ANTES DE PUBLICAR · ${imagens.length} foto(s)
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">CHAPÉU</label>
+          <input id="not-edit-chapeu" class="boletim-input" style="margin:0;font-size:13px"
+            value="${escHtml(rascunho.chapeu||'')}">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">MANCHETE</label>
+          <textarea id="not-edit-manchete" class="boletim-input boletim-textarea" rows="2"
+            style="margin:0;font-size:13px;font-weight:700">${escHtml(rascunho.manchete||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">SUBTÍTULO</label>
+          <textarea id="not-edit-subtitulo" class="boletim-input boletim-textarea" rows="2"
+            style="margin:0;font-size:13px">${escHtml(rascunho.subtitulo||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">CITAÇÃO EM DESTAQUE</label>
+          <textarea id="not-edit-pullquote" class="boletim-input boletim-textarea" rows="2"
+            style="margin:0;font-size:13px;font-style:italic">${escHtml(rascunho.pullquote||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">PARÁGRAFO 1</label>
+          <textarea id="not-edit-p0" class="boletim-input boletim-textarea" rows="3"
+            style="margin:0;font-size:13px">${escHtml((rascunho.corpo||[])[0]||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">PARÁGRAFO 2</label>
+          <textarea id="not-edit-p1" class="boletim-input boletim-textarea" rows="3"
+            style="margin:0;font-size:13px">${escHtml((rascunho.corpo||[])[1]||'')}</textarea>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em">PARÁGRAFO 3</label>
+          <textarea id="not-edit-p2" class="boletim-input boletim-textarea" rows="3"
+            style="margin:0;font-size:13px">${escHtml((rascunho.corpo||[])[2]||'')}</textarea>
+        </div>
         <button class="boletim-btn-add" style="margin-top:14px;width:100%" onclick="boletimPublicarNoticia()">
           📢 Publicar no Boletim
         </button>
@@ -1019,8 +1225,20 @@ async function boletimPublicarNoticia() {
   if (!window._noticiaRascunho) return;
   const inicioDias = document.getElementById('not-inicio')?.value ?? '0';
   const inicioAte  = _calcInicioAte(inicioDias);
+
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const corpo = [g('not-edit-p0'), g('not-edit-p1'), g('not-edit-p2')].filter(Boolean);
+  const editado = {
+    ...window._noticiaRascunho,
+    chapeu:    g('not-edit-chapeu')    || window._noticiaRascunho.chapeu,
+    manchete:  g('not-edit-manchete')  || window._noticiaRascunho.manchete,
+    subtitulo: g('not-edit-subtitulo') || window._noticiaRascunho.subtitulo,
+    pullquote: g('not-edit-pullquote') || window._noticiaRascunho.pullquote,
+    corpo:     corpo.length ? corpo : window._noticiaRascunho.corpo,
+  };
+
   const dados = lerBoletim();
-  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), inicioAte, ...window._noticiaRascunho });
+  dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), inicioAte, ...editado });
   await salvarBoletim(dados);
   window._noticiaRascunho = null;
   _noticiaFotos = [null, null, null];
@@ -1045,11 +1263,13 @@ async function recadoAdicionar() {
 }
 
 async function recadoSalvarEdicao(idx) {
+  const novaMod = document.getElementById('rec-edit-modalidade')?.value || 'recado';
+  if (novaMod !== 'recado') { await _mudarModalidade('recado', idx, novaMod); return; }
   const dados = lerRecados();
   const item  = dados.itens[idx];
   if (!item) return;
   item.titulo    = (document.getElementById('rec-edit-titulo')?.value || '').trim();
-  item.texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim() || item.texto;
+  item.texto     = (document.getElementById('rec-edit-texto')?.value  || '').trim();
   item.destaque  = document.getElementById('rec-edit-destaque')?.checked || false;
   const area     = document.getElementById('rec-edit-area')?.value || '';
   item.area      = area || undefined;
@@ -1077,28 +1297,77 @@ async function recadoMover(idx, delta) {
   renderPainelCom();
 }
 
+// ── Dicas — mídia ────────────────────────────────────────────────
+let _dicaMidiaCache = {};  // { [prefixo]: dataUrl }
+
+async function dicaHandleImagem(input, prefixo, idUrl) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const dataUrl = await comprimirImagem(file, 1200, 0.82);
+  _dicaMidiaCache[prefixo] = dataUrl;
+  const preview = document.getElementById(`${prefixo}-preview`);
+  if (preview) {
+    preview.innerHTML = `<div style="margin-top:6px;position:relative;display:inline-block">
+      <img src="${dataUrl}" style="max-width:100%;max-height:140px;border-radius:10px;display:block">
+      <button type="button" onclick="dicaRemoverImagem('${prefixo}','${idUrl}')"
+        style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:14px;cursor:pointer;line-height:1">✕</button>
+    </div>`;
+  }
+  const urlInput = document.getElementById(idUrl);
+  if (urlInput) urlInput.value = '';
+}
+
+function dicaRemoverImagem(prefixo, idUrl) {
+  delete _dicaMidiaCache[prefixo];
+  const preview = document.getElementById(`${prefixo}-preview`);
+  if (preview) preview.innerHTML = '';
+  const urlInput = document.getElementById(idUrl);
+  if (urlInput) urlInput.value = '';
+}
+
+function _lerMidiaDica(prefixo, idUrl) {
+  return _dicaMidiaCache[prefixo] || (document.getElementById(idUrl)?.value || '').trim() || undefined;
+}
+
 // ── Dicas ─────────────────────────────────────────────────────────
 async function dicaAdicionar() {
+  const titulo     = (document.getElementById('dic-titulo')?.value  || '').trim();
   const icone      = (document.getElementById('dic-icone')?.value || '').trim() || '💡';
   const texto      = (document.getElementById('dic-texto')?.value  || '').trim();
   const area       = document.getElementById('dic-area')?.value || '';
   const inicioDias = document.getElementById('dic-inicio')?.value ?? '0';
   const inicioAte  = _calcInicioAte(inicioDias);
+  const imagem     = _lerMidiaDica('dic-midia', 'dic-midia-url');
   const erro  = document.getElementById('dic-erro');
   if (!texto) { if(erro) erro.textContent = 'Escreva o texto da dica.'; return; }
   if(erro) erro.textContent = '';
+  delete _dicaMidiaCache['dic-midia'];
   const dados = lerDicas();
-  dados.itens.push({ id: Date.now().toString(36), icone, texto, area: area || undefined, inicioAte });
+  dados.itens.push({ id: Date.now().toString(36), titulo: titulo || undefined, icone, texto, imagem, area: area || undefined, inicioAte });
   await salvarDicas(dados);
   renderPainelCom();
 }
 
 async function dicaSalvarEdicao(idx) {
+  const novaMod = document.getElementById('dic-edit-modalidade')?.value || 'dica';
+  if (novaMod !== 'dica') { await _mudarModalidade('dica', idx, novaMod); return; }
   const dados = lerDicas();
   const item  = dados.itens[idx];
   if (!item) return;
+  item.titulo  = (document.getElementById('dic-edit-titulo')?.value || '').trim() || undefined;
   item.icone   = (document.getElementById('dic-edit-icone')?.value || '').trim() || item.icone || '💡';
-  item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim() || item.texto;
+  item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim();
+  // Atualiza imagem: novo upload > URL digitada > mantém existente (preview vazio = removeu)
+  const urlEditVal = (document.getElementById('dic-edit-midia-url')?.value || '').trim();
+  const previewVazio = !(document.getElementById('dic-edit-midia-preview')?.firstElementChild);
+  if (_dicaMidiaCache['dic-edit-midia']) {
+    item.imagem = _dicaMidiaCache['dic-edit-midia'];
+  } else if (urlEditVal) {
+    item.imagem = urlEditVal;
+  } else if (previewVazio) {
+    item.imagem = undefined;
+  }
+  delete _dicaMidiaCache['dic-edit-midia'];
   const area   = document.getElementById('dic-edit-area')?.value || '';
   item.area    = area || undefined;
   const inicioDias = document.getElementById('dic-edit-inicio')?.value ?? '0';
@@ -1138,3 +1407,179 @@ window.addEventListener("DOMContentLoaded", async function () {
     renderLoginCom();
   }
 });
+
+// ── Admin — Galeria de Fotos ──────────────────────────────────────
+let _galPendingDataUrl = null;
+
+function renderAbaFotosAdmin() {
+  const galeria = lerGaleria();
+  const fotos = galeria.itens || [];
+  return `
+    <div class="boletim-admin">
+      <h2 style="font-size:17px;font-weight:800;margin:0 0 4px">📷 Galeria de Fotos</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Fotos ficam visíveis na aba Fotos do site de pais e alunos.</p>
+
+      <div class="boletim-form">
+        <div class="bol-upload-opcoes">
+          <label class="bol-upload-btn" for="gal-file-camera"><span>📸</span> Tirar foto</label>
+          <input id="gal-file-camera" type="file" accept="image/*" capture="environment"
+                 style="display:none" onchange="galeriaHandleFile(this)">
+          <label class="bol-upload-btn bol-upload-btn-sec" for="gal-file-input"><span>🖼️</span> Da galeria</label>
+          <input id="gal-file-input" type="file" accept="image/*"
+                 style="display:none" onchange="galeriaHandleFile(this)">
+        </div>
+        <div id="gal-preview" style="margin-top:10px"></div>
+        <input id="gal-legenda"  type="text" placeholder="Legenda (opcional)"   class="boletim-input" style="margin-top:8px">
+        <input id="gal-reporter" type="text" placeholder="Foto por… (opcional)" class="boletim-input" style="margin-top:4px">
+        <button class="boletim-btn-add" style="margin-top:10px" onclick="galeriaAdicionarFoto()">+ Adicionar foto</button>
+        <div id="gal-erro" class="erro" style="margin-top:6px"></div>
+      </div>
+
+      <div class="bol-lista" style="margin-top:16px">
+        ${fotos.length === 0 ? '<p style="color:var(--muted);font-size:13px">Nenhuma foto ainda.</p>' : ''}
+        ${fotos.map((f, i) => `
+          <div class="bol-item" style="display:flex;gap:12px;align-items:center">
+            <img src="${f.dataUrl || f.url || ''}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.legenda || '(sem legenda)'}</div>
+              ${f.reporter ? `<div style="font-size:11px;color:var(--muted)">${f.reporter}</div>` : ''}
+            </div>
+            <button class="bol-item-del" onclick="galeriaRemoverFoto(${i})" title="Remover">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function galeriaHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const preview = document.getElementById('gal-preview');
+  if (preview) preview.innerHTML = '<span style="font-size:12px;color:var(--muted)">⏳ Comprimindo…</span>';
+  const dataUrl = await comprimirImagem(file, 1200, 0.82);
+  _galPendingDataUrl = dataUrl;
+  if (preview) preview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:220px;border-radius:8px;object-fit:cover">`;
+}
+
+async function galeriaAdicionarFoto() {
+  const err = document.getElementById('gal-erro');
+  if (err) err.textContent = '';
+  if (!_galPendingDataUrl) {
+    if (err) err.textContent = 'Selecione uma foto primeiro.';
+    return;
+  }
+  const legenda  = (document.getElementById('gal-legenda')?.value  || '').trim();
+  const reporter = (document.getElementById('gal-reporter')?.value || '').trim();
+  try {
+    const galeria = lerGaleria();
+    galeria.itens = galeria.itens || [];
+    galeria.itens.unshift({ dataUrl: _galPendingDataUrl, legenda, reporter, ts: Date.now() });
+    await salvarGaleria(galeria);
+    _galPendingDataUrl = null;
+    trocarAbaCom('fotos');
+  } catch (e) {
+    if (err) err.textContent = 'Erro ao salvar: ' + e.message;
+  }
+}
+
+async function galeriaRemoverFoto(idx) {
+  if (!confirm('Remover esta foto?')) return;
+  const galeria = lerGaleria();
+  galeria.itens = galeria.itens || [];
+  galeria.itens.splice(idx, 1);
+  await salvarGaleria(galeria);
+  trocarAbaCom('fotos');
+}
+
+// ── Admin — Shorts ────────────────────────────────────────────────
+let _shtPendingBlob = null;
+
+function renderAbaShortsAdmin() {
+  const shorts = lerShorts();
+  const itens = shorts.itens || [];
+  return `
+    <div class="boletim-admin">
+      <h2 style="font-size:17px;font-weight:800;margin:0 0 4px">▶️ Shorts</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Vídeos curtos de até 10 s. São enviados para o Firebase Storage.</p>
+
+      <div class="boletim-form">
+        <div class="bol-upload-opcoes">
+          <label class="bol-upload-btn bol-upload-btn-vid" for="sht-file-camera"><span>🎥</span> Gravar vídeo</label>
+          <input id="sht-file-camera" type="file" accept="video/*" capture="environment"
+                 style="display:none" onchange="shortsHandleVideo(this)">
+          <label class="bol-upload-btn bol-upload-btn-sec" for="sht-file-input"><span>📁</span> Da galeria</label>
+          <input id="sht-file-input" type="file" accept="video/*"
+                 style="display:none" onchange="shortsHandleVideo(this)">
+        </div>
+        <div id="sht-preview" style="margin-top:8px"></div>
+        <input id="sht-legenda"  type="text" placeholder="Legenda (opcional)"         class="boletim-input" style="margin-top:8px">
+        <input id="sht-reporter" type="text" placeholder="Filmado por… (opcional)"   class="boletim-input" style="margin-top:4px">
+        <button class="boletim-btn-add" style="margin-top:10px" onclick="shortsAdicionarVideo()">+ Publicar short</button>
+        <div id="sht-progress" style="display:none;font-size:12px;color:var(--muted);text-align:center;margin-top:6px"></div>
+        <div id="sht-erro" class="erro" style="margin-top:6px"></div>
+      </div>
+
+      <div class="bol-lista" style="margin-top:16px">
+        ${itens.length === 0 ? '<p style="color:var(--muted);font-size:13px">Nenhum short ainda.</p>' : ''}
+        ${itens.map((s, i) => `
+          <div class="bol-item" style="display:flex;gap:12px;align-items:center">
+            <video src="${s.url || ''}" style="width:50px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0"
+                   muted preload="metadata"></video>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.legenda || '(sem legenda)'}</div>
+              ${s.reporter ? `<div style="font-size:11px;color:var(--muted)">${s.reporter}</div>` : ''}
+            </div>
+            <button class="bol-item-del" onclick="shortsRemoverVideo(${i})" title="Remover">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function shortsHandleVideo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _shtPendingBlob = file;
+  const url = URL.createObjectURL(file);
+  const preview = document.getElementById('sht-preview');
+  if (preview) preview.innerHTML = `
+    <video src="${url}" style="max-width:100%;max-height:200px;border-radius:8px" muted controls preload="metadata"></video>
+    <p style="font-size:11px;color:var(--muted);margin:4px 0 0">Tamanho: ${(file.size / 1024 / 1024).toFixed(1)} MB</p>`;
+}
+
+async function shortsAdicionarVideo() {
+  const err      = document.getElementById('sht-erro');
+  const progress = document.getElementById('sht-progress');
+  if (err) err.textContent = '';
+  if (!_shtPendingBlob) {
+    if (err) err.textContent = 'Selecione um vídeo primeiro.';
+    return;
+  }
+  const legenda  = (document.getElementById('sht-legenda')?.value  || '').trim();
+  const reporter = (document.getElementById('sht-reporter')?.value || '').trim();
+  if (progress) { progress.style.display = ''; progress.textContent = '⏳ Enviando vídeo para o servidor…'; }
+  try {
+    const ext      = _shtPendingBlob.type.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `short_${Date.now()}.${ext}`;
+    const url      = await uploadVideoStorage(_shtPendingBlob, filename);
+    const shorts   = lerShorts();
+    shorts.itens   = shorts.itens || [];
+    shorts.itens.unshift({ url, legenda, reporter, ts: Date.now() });
+    await salvarShorts(shorts);
+    _shtPendingBlob = null;
+    if (progress) progress.style.display = 'none';
+    trocarAbaCom('shorts');
+  } catch (e) {
+    if (progress) progress.style.display = 'none';
+    if (err) err.textContent = 'Erro ao publicar: ' + e.message;
+  }
+}
+
+async function shortsRemoverVideo(idx) {
+  if (!confirm('Remover este short?')) return;
+  const shorts = lerShorts();
+  shorts.itens  = shorts.itens || [];
+  const item    = shorts.itens[idx];
+  shorts.itens.splice(idx, 1);
+  await salvarShorts(shorts);
+  if (item && item.url) deletarVideoStorage(item.url).catch(() => {});
+  trocarAbaCom('shorts');
+}

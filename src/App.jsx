@@ -1472,44 +1472,158 @@ function KahootBuzzerView() {
 }
 
 // ── Kahoot English — Monitor (admin) ─────────────────────────────
-function playBuzzerSound() {
+
+// AudioContext singleton — reutilizado entre perguntas para evitar limite do browser
+let _kahootAudioCtx = null;
+function _getKahootCtx() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // dois beeps curtos em sequência
-    [0, 0.2].forEach((delay) => {
+    if (!_kahootAudioCtx || _kahootAudioCtx.state === 'closed') {
+      _kahootAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_kahootAudioCtx.state === 'suspended') _kahootAudioCtx.resume();
+    return _kahootAudioCtx;
+  } catch (_) { return null; }
+}
+
+// Sirene intermitente: 6 pulsos alternando 880 Hz ↔ 660 Hz (sawtooth)
+function playBuzzerSound() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
+    const freqs = [880, 660, 880, 660, 880, 660];
+    freqs.forEach((freq, i) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(300, ctx.currentTime + delay);
-      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + delay + 0.18);
-      gain.gain.setValueAtTime(0.55, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.19);
+      const t = ctx.currentTime + i * 0.15;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
+      gain.gain.setValueAtTime(0.5, t + 0.10);
+      gain.gain.linearRampToValueAtTime(0, t + 0.14);
+      osc.start(t);
+      osc.stop(t + 0.15);
     });
   } catch (_) {}
 }
+
+// Fanfarra de vitória: arpejo C5-E5-G5-C6 seguido de acorde sustentado
+function playSoundCorreto() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
+    const notas = [
+      { f: 523, t: 0.00, dur: 0.14 },
+      { f: 659, t: 0.13, dur: 0.14 },
+      { f: 784, t: 0.26, dur: 0.14 },
+      { f: 1047, t: 0.39, dur: 0.40 },
+    ];
+    notas.forEach(({ f, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(f, ctx.currentTime + t);
+      gain.gain.setValueAtTime(0, ctx.currentTime + t);
+      gain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + t + 0.02);
+      gain.gain.setValueAtTime(0.55, ctx.currentTime + t + dur - 0.04);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + dur);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + dur + 0.02);
+    });
+  } catch (_) {}
+}
+
+// Som de derrota: descida wah-wah (sawtooth desce de 440 → 150)
+function playSoundErrado() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
+    const notas = [
+      { f1: 440, f2: 330, t: 0.00, dur: 0.22 },
+      { f1: 330, f2: 220, t: 0.20, dur: 0.30 },
+      { f1: 220, f2: 150, t: 0.48, dur: 0.36 },
+    ];
+    notas.forEach(({ f1, f2, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sawtooth";
+      const at = ctx.currentTime + t;
+      osc.frequency.setValueAtTime(f1, at);
+      osc.frequency.exponentialRampToValueAtTime(f2, at + dur);
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(0.50, at + 0.02);
+      gain.gain.setValueAtTime(0.50, at + dur - 0.05);
+      gain.gain.linearRampToValueAtTime(0, at + dur);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+    });
+  } catch (_) {}
+}
+
+const ALT_CORES  = { a: '#ef4444', b: '#3b82f6', c: '#22c55e', d: '#f59e0b' };
+const ALT_LABELS = { a: 'A', b: 'B', c: 'C', d: 'D' };
+const FORM_VAZIO = { texto: '', a: '', b: '', c: '', d: '', correta: 'a' };
+const TIMER_MS   = 10000;
+
+const QUESTOES_DEFAULT = [
+  { texto: '1º ANO — HOW MANY LETTERS ARE THERE IN THE WORD "DUCKLING"?', a: '6', b: '7', c: '8', d: '9', correta: 'b' },
+  { texto: '1º ANO — WHICH WORD RHYMES WITH "DUCK"?', a: 'Tree', b: 'Truck', c: 'Bird', d: 'Swan', correta: 'b' },
+  { texto: '1º ANO — WHICH LETTER COMES FIRST IN THE WORD "SWAN"?', a: 'S', b: 'W', c: 'A', d: 'N', correta: 'a' },
+  { texto: '1º ANO — WHICH WORD STARTS WITH THE SAME SOUND AS "DUCK"?', a: 'Dog', b: 'Swan', c: 'Nest', d: 'Egg', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD BEGINS WITH THE SAME SOUND AS "SWAN"?', a: 'Swim', b: 'Tree', c: 'Cat', d: 'Pond', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD IS HIDDEN INSIDE "DUCKLING"?', a: 'Duck', b: 'Lake', c: 'Wing', d: 'Nest', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD ENDS WITH THE SAME SOUND AS "NEST"?', a: 'Best', b: 'Duck', c: 'Swan', d: 'Pond', correta: 'a' },
+  { texto: '2º ANO — HOW MANY LETTERS ARE THERE IN THE WORD "SWAN"?', a: '3', b: '4', c: '5', d: '6', correta: 'b' },
+  { texto: '3º ANO — UNSCRAMBLE THE LETTERS: K - C - U - D', a: 'Duck', b: 'Luck', c: 'Desk', d: 'Swan', correta: 'a' },
+  { texto: '3º ANO — WHICH WORD DOES NOT BELONG TO THE GROUP?', a: 'Duck', b: 'Swan', c: 'Goose', d: 'Carrot', correta: 'd' },
+  { texto: '3º ANO — WHICH WORD BELONGS TO THE GROUP "ANIMALS"?', a: 'Flower', b: 'Swan', c: 'Winter', d: 'Water', correta: 'b' },
+  { texto: '3º ANO — UNSCRAMBLE THE LETTERS: N - A - W - S', a: 'Swan', b: 'Snow', c: 'Wans', d: 'Wing', correta: 'a' },
+  { texto: '4º ANO — WHICH WORD MEANS THE OPPOSITE OF "BIG"?', a: 'Tall', b: 'Fast', c: 'Small', d: 'Strong', correta: 'c' },
+  { texto: '4º ANO — WHICH WORD HAS THREE VOWELS?', a: 'Duck', b: 'Swan', c: 'Nest', d: 'Animal', correta: 'd' },
+  { texto: '4º ANO — WHICH WORD MEANS THE OPPOSITE OF "COLD"?', a: 'Hot', b: 'Slow', c: 'Small', d: 'Dark', correta: 'a' },
+  { texto: '4º ANO — WHICH WORD HAS THREE SYLLABLES?', a: 'Swan', b: 'Winter', c: 'Animal', d: 'Pond', correta: 'c' },
+  { texto: '5º ANO — PUT IN ORDER: BEAUTIFUL • BECOMES • THE • SWAN • DUCKLING • A', a: 'THE BEAUTIFUL DUCKLING BECOMES A SWAN.', b: 'THE DUCKLING BECOMES A BEAUTIFUL SWAN.', c: 'A SWAN BECOMES THE BEAUTIFUL DUCKLING.', d: 'THE DUCKLING A BEAUTIFUL SWAN BECOMES.', correta: 'b' },
+  { texto: '5º ANO — COMPLETE: B E A U T I _ U L — WHICH LETTER IS MISSING?', a: 'P', b: 'F', c: 'V', d: 'T', correta: 'b' },
+  { texto: '5º ANO — PUT IN ORDER: IS • THE • WATER • LOOKING • DUCKLING • INTO • THE', a: 'THE DUCKLING IS LOOKING INTO THE WATER.', b: 'THE WATER IS LOOKING INTO THE DUCKLING.', c: 'THE DUCKLING LOOKING IS INTO THE WATER.', d: 'IS THE DUCKLING THE WATER LOOKING INTO.', correta: 'a' },
+  { texto: '5º ANO — COMPLETE: R E F L E C T I _ N — WHICH LETTER IS MISSING?', a: 'A', b: 'E', c: 'O', d: 'U', correta: 'c' },
+];
 
 function KahootMonitorView({ forceLocal = false }) {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz]   = useState(null);
   const [pts, setPts]     = useState({});
   const [flash, setFlash] = useState(false);
-  const pollRef    = useRef(null);
-  const prevBuzzId = useRef(null);
+  const [questoes, setQuestoes]     = useState([]);
+  const [questaoIdx, setQuestaoIdx] = useState(-1);
+  const [timerStart, setTimerStart] = useState(null); // ms timestamp or null
+  const [timeLeft, setTimeLeft]     = useState(0);    // ms remaining
+  const [answer, setAnswer]         = useState(null); // { alt, correto, teamId } or null
+  const [showQuestoes, setShowQuestoes] = useState(false);
+  const [editIdx, setEditIdx]   = useState(undefined);
+  const [editForm, setEditForm] = useState(FORM_VAZIO);
+  const pollRef      = useRef(null);
+  const prevBuzzId   = useRef(null);
+  const timerRef     = useRef(null);
+  const activatedRef = useRef(false);
 
   const kGet = useCallback((k) => kahootGet(k, forceLocal), [forceLocal]);
   const kSet = useCallback((k, v) => kahootSet(k, v, forceLocal), [forceLocal]);
   const kDel = useCallback((k) => kahootDelete(k, forceLocal), [forceLocal]);
 
   const fetchState = useCallback(async () => {
-    const a = await kGet("kahoot_active");
-    const b = await kGet("kahoot_buzz");
-    const p = await kGet("kahoot_pts");
+    const [a, b, p, q, qi, ts, ans] = await Promise.all([
+      kGet("kahoot_active"),
+      kGet("kahoot_buzz"),
+      kGet("kahoot_pts"),
+      kGet("kahoot_questoes"),
+      kGet("kahoot_questao_idx"),
+      kGet("kahoot_timer_start"),
+      kGet("kahoot_answer"),
+    ]);
     const newBuzz = b ?? null;
-    // dispara som + flash somente quando buzz aparece pela primeira vez
     const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
     if (newId && newId !== prevBuzzId.current) {
       prevBuzzId.current = newId;
@@ -1521,6 +1635,10 @@ function KahootMonitorView({ forceLocal = false }) {
     setActive(!!a);
     setBuzz(newBuzz);
     setPts(p ?? {});
+    setQuestoes(Array.isArray(q) ? q : []);
+    setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
+    setTimerStart(ts ? Number(ts) : null);
+    setAnswer(ans ?? null);
   }, [kGet]);
 
   useEffect(() => {
@@ -1529,12 +1647,55 @@ function KahootMonitorView({ forceLocal = false }) {
     return () => clearInterval(pollRef.current);
   }, [fetchState]);
 
-  const novaPergunta = async () => {
-    await kDel("kahoot_buzz");
-    await kSet("kahoot_active", true);
-    setBuzz(null);
+  // ── Cronômetro local seeded pelo Firebase ──────────────────────
+  const activarBotoeiras = useCallback(async () => {
+    await Promise.all([kSet("kahoot_active", true), kDel("kahoot_timer_start")]);
     setActive(true);
+    setTimerStart(null);
+    setTimeLeft(0);
+  }, [kSet, kDel]);
+
+  useEffect(() => {
+    clearInterval(timerRef.current);
+    activatedRef.current = false;
+    if (!timerStart) { setTimeLeft(0); return; }
+    const tick = () => {
+      const left = Math.max(0, TIMER_MS - (Date.now() - timerStart));
+      setTimeLeft(left);
+      if (left <= 0 && !activatedRef.current) {
+        activatedRef.current = true;
+        clearInterval(timerRef.current);
+        activarBotoeiras();
+      }
+    };
+    tick();
+    timerRef.current = setInterval(tick, 100);
+    return () => clearInterval(timerRef.current);
+  }, [timerStart, activarBotoeiras]);
+
+  const novaPergunta = async () => {
+    const len = questoes.length;
+    const nextIdx = len > 0 ? (questaoIdx < 0 ? 0 : Math.min(questaoIdx + 1, len - 1)) : -1;
+    const now = Date.now();
+    await Promise.all([
+      kDel("kahoot_buzz"),
+      kDel("kahoot_active"),
+      kDel("kahoot_answer"),
+      kSet("kahoot_timer_start", now),
+      ...(len > 0 ? [kSet("kahoot_questao_idx", nextIdx)] : []),
+    ]);
+    if (len > 0) setQuestaoIdx(nextIdx);
+    setBuzz(null);
+    setActive(false);
+    setAnswer(null);
+    setTimerStart(now);
     prevBuzzId.current = null;
+  };
+
+  const irParaQuestao = async (idx) => {
+    if (idx < 0 || idx >= questoes.length) return;
+    await kSet("kahoot_questao_idx", idx);
+    setQuestaoIdx(idx);
   };
 
   const pressVirtual = async (teamId) => {
@@ -1547,48 +1708,139 @@ function KahootMonitorView({ forceLocal = false }) {
     await fetchState();
   };
 
-  const awarPoint = async (teamId) => {
-    const newPts = { ...pts, [teamId]: (pts[teamId] || 0) + 1 };
-    await kSet("kahoot_pts", newPts);
-    await kDel("kahoot_active");
-    await kDel("kahoot_buzz");
-    setPts(newPts);
+  const darResposta = async (alt) => {
+    if (!buzz || !questaoAtualRef.current) return;
+    const correto = alt === questaoAtualRef.current.correta;
+    const ansObj  = { alt, correto, teamId: buzz.teamId };
+    const ops     = [kSet("kahoot_answer", ansObj), kDel("kahoot_active"), kDel("kahoot_buzz"), kDel("kahoot_timer_start")];
+    if (correto) {
+      const newPts = { ...pts, [buzz.teamId]: (pts[buzz.teamId] || 0) + 1 };
+      ops.push(kSet("kahoot_pts", newPts));
+      setPts(newPts);
+    }
+    await Promise.all(ops);
+    setAnswer(ansObj);
+    if (correto) playSoundCorreto(); else playSoundErrado();
     setActive(false);
     setBuzz(null);
+    setTimerStart(null);
     prevBuzzId.current = null;
   };
 
-  const errado = async () => {
-    await kDel("kahoot_active");
-    await kDel("kahoot_buzz");
+  const pular = async () => {
+    await Promise.all([kDel("kahoot_active"), kDel("kahoot_buzz"), kDel("kahoot_timer_start"), kDel("kahoot_answer")]);
     setActive(false);
     setBuzz(null);
+    setTimerStart(null);
+    setAnswer(null);
     prevBuzzId.current = null;
   };
 
   const resetAll = async () => {
     if (!window.confirm("Zerar toda a pontuação do Kahoot English?")) return;
-    await kDel("kahoot_pts");
-    await kDel("kahoot_buzz");
-    await kDel("kahoot_active");
+    await Promise.all([
+      kDel("kahoot_pts"), kDel("kahoot_buzz"), kDel("kahoot_active"),
+      kDel("kahoot_timer_start"), kDel("kahoot_answer"), kSet("kahoot_questao_idx", -1),
+    ]);
     setPts({});
     setBuzz(null);
     setActive(false);
+    setQuestaoIdx(-1);
+    setTimerStart(null);
+    setAnswer(null);
     prevBuzzId.current = null;
   };
 
-  const winner  = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
-  const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const salvarQuestao = async () => {
+    if (!editForm.texto.trim()) return;
+    const novas = [...questoes];
+    if (editIdx === null) {
+      if (novas.length >= 20) { alert("Máximo de 20 questões atingido."); return; }
+      novas.push({ ...editForm });
+    } else {
+      novas[editIdx] = { ...editForm };
+    }
+    await kSet("kahoot_questoes", novas);
+    setQuestoes(novas);
+    setEditIdx(undefined);
+    setEditForm(FORM_VAZIO);
+  };
+
+  const excluirQuestao = async (idx) => {
+    if (!window.confirm(`Excluir questão ${idx + 1}?`)) return;
+    const novas = questoes.filter((_, i) => i !== idx);
+    await kSet("kahoot_questoes", novas);
+    setQuestoes(novas);
+    if (editIdx === idx) { setEditIdx(undefined); setEditForm(FORM_VAZIO); }
+  };
+
+  const abrirEdicao = (idx) => {
+    if (idx === null) { setEditIdx(null); setEditForm(FORM_VAZIO); }
+    else { setEditIdx(idx); setEditForm({ ...questoes[idx] }); }
+  };
+
+  const winner      = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const ranking     = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
+  const questaoAtualRef = useRef(questaoAtual);
+  useEffect(() => { questaoAtualRef.current = questaoAtual; }, [questaoAtual]);
+
+  const contando = timerStart !== null && timeLeft > 0;
+  const secsLeft = Math.ceil(timeLeft / 1000);
+  const pct      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
 
   /* ── cores de fundo do cabeçalho ── */
   const headerBg = winner
     ? winner.color
+    : contando
+    ? AZUL_ESCURO
     : active
     ? LARANJA
+    : answer
+    ? (answer.correto ? "#15803d" : "#dc2626")
     : "#1e293b";
 
   return (
     <div className="flex flex-col gap-4 p-4 max-w-lg mx-auto">
+
+      {/* ── Questão atual ── */}
+      {questaoAtual && (
+        <div className="rounded-2xl p-4 border-2" style={{ backgroundColor: AZUL + "0f", borderColor: AZUL + "44" }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: AZUL }}>
+              Questão {questaoIdx + 1} / {questoes.length}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => irParaQuestao(questaoIdx - 1)} disabled={questaoIdx <= 0}
+                className="w-7 h-7 rounded-lg text-xs font-bold disabled:opacity-30"
+                style={{ background: AZUL + "22", color: AZUL }}>◀</button>
+              <button onClick={() => irParaQuestao(questaoIdx + 1)} disabled={questaoIdx >= questoes.length - 1}
+                className="w-7 h-7 rounded-lg text-xs font-bold disabled:opacity-30"
+                style={{ background: AZUL + "22", color: AZUL }}>▶</button>
+            </div>
+          </div>
+          <div className="font-bold text-gray-800 text-sm mb-3 leading-snug">{questaoAtual.texto}</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['a','b','c','d']).map((alt) => (
+              <div key={alt} className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-semibold"
+                style={{
+                  background: questaoAtual.correta === alt ? ALT_CORES[alt] + "22" : "#f1f5f9",
+                  border: `1.5px solid ${questaoAtual.correta === alt ? ALT_CORES[alt] : "transparent"}`,
+                  color: questaoAtual.correta === alt ? ALT_CORES[alt] : "#475569",
+                }}>
+                <span className="font-extrabold">{ALT_LABELS[alt]})</span>
+                <span>{questaoAtual[alt]}</span>
+                {questaoAtual.correta === alt && <span className="ml-auto">✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {questoes.length === 0 && (
+        <div className="text-center text-xs text-gray-400 py-1">
+          Nenhuma questão cadastrada — use "📋 Questões" abaixo.
+        </div>
+      )}
 
       {/* ── Cabeçalho de status ── */}
       <div
@@ -1599,53 +1851,85 @@ function KahootMonitorView({ forceLocal = false }) {
           transition: "background 0.3s, outline 0.1s",
         }}
       >
+        {/* barra de progresso do timer */}
+        {contando && (
+          <div className="h-2 w-full" style={{ background: "rgba(255,255,255,0.15)" }}>
+            <div className="h-full transition-all" style={{
+              width: `${pct}%`,
+              background: pct > 70 ? "#ef4444" : pct > 40 ? "#f59e0b" : "#22c55e",
+              transition: "width 0.1s linear, background 0.3s",
+            }} />
+          </div>
+        )}
         <div className="px-5 py-5">
-          {!active && !winner && (
-            <div className="text-white/60 font-semibold text-sm tracking-wide">
-              Pronto — pressione "Nova Pergunta"
+          {/* Contando */}
+          {contando && (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="font-black text-white" style={{ fontSize: 56, lineHeight: 1, textShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
+                  {secsLeft}
+                </div>
+                <div className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">
+                  Leia a questão…
+                </div>
+              </div>
+              <button onClick={activarBotoeiras}
+                className="px-4 py-2 rounded-xl text-xs font-bold"
+                style={{ background: "rgba(255,255,255,0.18)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.4)" }}>
+                ⚡ Ativar já
+              </button>
             </div>
           )}
-          {active && !winner && (
+          {/* Botoeiras ativas */}
+          {!contando && active && !winner && (
             <div className="font-extrabold text-xl text-white animate-pulse tracking-wide"
               style={{ textShadow: "0 2px 10px rgba(0,0,0,0.4)" }}>
-              ⚡ Botoeiras ativas — aguardando...
+              ⚡ Primeira equipe a apertar!
             </div>
           )}
+          {/* Vencedor — selecionar alternativa */}
           {winner && (
             <div>
-              <div
-                className="font-black text-white tracking-tight"
-                style={{ fontSize: 32, textShadow: "0 3px 16px rgba(0,0,0,0.5)" }}
-              >
-                🏆 {winner.label}
+              <div className="font-black text-white tracking-tight" style={{ fontSize: 28, textShadow: "0 3px 16px rgba(0,0,0,0.5)" }}>
+                🔔 {winner.label}
               </div>
-              <div className="text-white/80 text-sm font-semibold mt-0.5 mb-4">
-                foi a primeira!
+              <div className="text-white/80 text-sm font-semibold mt-0.5 mb-3">
+                foi a primeira! Qual alternativa respondeu?
               </div>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => awarPoint(winner.id)}
-                  className="px-5 py-2.5 rounded-xl font-bold text-sm"
-                  style={{
-                    background: "rgba(255,255,255,0.22)",
-                    color: "#fff",
-                    border: "2px solid rgba(255,255,255,0.55)",
-                  }}
-                >
-                  ✓ Correto +1 pt
-                </button>
-                <button
-                  onClick={errado}
-                  className="px-5 py-2.5 rounded-xl font-bold text-sm"
-                  style={{
-                    background: "rgba(0,0,0,0.22)",
-                    color: "#fff",
-                    border: "2px solid rgba(255,255,255,0.3)",
-                  }}
-                >
-                  ✗ Errado
-                </button>
+              <div className="grid grid-cols-2 gap-2">
+                {(['a','b','c','d']).map((alt) => (
+                  <button key={alt} onClick={() => darResposta(alt)}
+                    className="py-2.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2"
+                    style={{ background: ALT_CORES[alt], color: '#fff', boxShadow: `0 4px 12px ${ALT_CORES[alt]}88` }}>
+                    <span className="text-base">{ALT_LABELS[alt]}</span>
+                    <span className="font-semibold text-xs opacity-90 truncate max-w-[80px]">
+                      {questaoAtual?.[alt] || ''}
+                    </span>
+                  </button>
+                ))}
               </div>
+              <button onClick={pular} className="w-full mt-2 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.7)" }}>
+                Pular / equipe não respondeu
+              </button>
+            </div>
+          )}
+          {/* Resultado da resposta */}
+          {answer && !winner && !contando && !active && (
+            <div>
+              <div className="font-black text-white text-2xl">
+                {answer.correto ? "✅ Correto! +1 pt" : "❌ Errado!"}
+              </div>
+              <div className="text-white/80 text-sm mt-1">
+                {TEAMS_KAHOOT.find(t => t.id === answer.teamId)?.label} respondeu {ALT_LABELS[answer.alt]}
+                {questaoAtual && ` — correto era ${ALT_LABELS[questaoAtual.correta]}`}
+              </div>
+            </div>
+          )}
+          {/* Aguardando */}
+          {!contando && !active && !winner && !answer && (
+            <div className="text-white/60 font-semibold text-sm tracking-wide">
+              Pronto — pressione "Nova Pergunta"
             </div>
           )}
         </div>
@@ -1698,13 +1982,15 @@ function KahootMonitorView({ forceLocal = false }) {
       </div>
 
       {/* ── Nova Pergunta ── */}
-      {!active && (
+      {!contando && !active && !winner && (
         <button
           onClick={novaPergunta}
           className="w-full py-3 rounded-2xl font-bold text-lg text-white"
           style={{ backgroundColor: AZUL }}
         >
-          ▶ Nova Pergunta — Ativar Botoeiras
+          {questoes.length > 0
+            ? `▶ Q${Math.min(questaoIdx + 2, questoes.length)} — Nova Pergunta`
+            : "▶ Nova Pergunta — Iniciar Cronômetro"}
         </button>
       )}
 
@@ -1725,12 +2011,134 @@ function KahootMonitorView({ forceLocal = false }) {
         </div>
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      <div className="border-t border-gray-200 pt-3 pb-2 flex gap-2">
         <button onClick={resetAll}
-          className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
-          ⚠️ Zerar pontuação do Kahoot
+          className="flex-1 py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
+          ⚠️ Zerar pontuação
+        </button>
+        <button onClick={() => setShowQuestoes((v) => !v)}
+          className="flex-1 py-2 rounded-xl text-sm font-semibold border"
+          style={{
+            background: showQuestoes ? AZUL : "transparent",
+            color: showQuestoes ? "#fff" : AZUL,
+            borderColor: AZUL,
+          }}>
+          📋 Questões ({questoes.length}/20)
         </button>
       </div>
+
+      {/* ── Gerenciar Questões ── */}
+      {showQuestoes && (
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: AZUL }}>
+            <span className="font-bold text-white text-sm">Banco de Questões</span>
+            <div className="flex gap-2">
+              {questoes.length === 0 && (
+                <button onClick={async () => {
+                  await kSet("kahoot_questoes", QUESTOES_DEFAULT);
+                  setQuestoes(QUESTOES_DEFAULT);
+                }}
+                  className="px-3 py-1 rounded-xl text-xs font-bold bg-yellow-400" style={{ color: '#1e3a5f' }}>
+                  ⬇ Importar 20 questões
+                </button>
+              )}
+              <button onClick={() => abrirEdicao(null)}
+                className="px-3 py-1 rounded-xl text-xs font-bold bg-white" style={{ color: AZUL }}>
+                + Nova
+              </button>
+            </div>
+          </div>
+
+          {/* Formulário de edição */}
+          {editIdx !== undefined && (
+            <div className="p-4 border-b border-gray-100 bg-blue-50">
+              <div className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: AZUL }}>
+                {editIdx === null ? "Nova Questão" : `Editando Questão ${editIdx + 1}`}
+              </div>
+              <textarea
+                className="w-full rounded-xl border border-gray-300 p-2 text-sm mb-2 resize-none"
+                rows={2}
+                placeholder="Texto da pergunta…"
+                value={editForm.texto}
+                onChange={(e) => setEditForm((f) => ({ ...f, texto: e.target.value }))}
+              />
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {(['a','b','c','d']).map((alt) => (
+                  <div key={alt} className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-xs w-5 text-center"
+                      style={{ color: ALT_CORES[alt] }}>{ALT_LABELS[alt]})</span>
+                    <input
+                      className="flex-1 rounded-lg border border-gray-300 p-1.5 text-xs"
+                      placeholder={`Alternativa ${ALT_LABELS[alt]}`}
+                      value={editForm[alt]}
+                      onChange={(e) => setEditForm((f) => ({ ...f, [alt]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold text-gray-600">Correta:</span>
+                {(['a','b','c','d']).map((alt) => (
+                  <label key={alt} className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="correta" value={alt}
+                      checked={editForm.correta === alt}
+                      onChange={() => setEditForm((f) => ({ ...f, correta: alt }))} />
+                    <span className="text-xs font-bold" style={{ color: ALT_CORES[alt] }}>{ALT_LABELS[alt]}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={salvarQuestao}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold text-white"
+                  style={{ background: AZUL }}>
+                  💾 Salvar
+                </button>
+                <button onClick={() => { setEditIdx(undefined); setEditForm(FORM_VAZIO); }}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold border border-gray-300 text-gray-600">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de questões */}
+          <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+            {questoes.length === 0 && (
+              <div className="text-center text-xs text-gray-400 py-6">
+                Nenhuma questão ainda
+              </div>
+            )}
+            {questoes.map((q, idx) => (
+              <div key={idx}
+                className="flex items-start gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                style={{ borderLeft: questaoIdx === idx ? `4px solid ${LARANJA}` : "4px solid transparent" }}>
+                <span className="font-bold text-xs w-5 shrink-0 mt-0.5" style={{ color: AZUL }}>{idx + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-gray-700 truncate">{q.texto}</div>
+                  <div className="text-xs text-gray-400">
+                    ✓ {ALT_LABELS[q.correta]}: {q[q.correta]}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => irParaQuestao(idx)}
+                    className="w-6 h-6 rounded text-xs" title="Exibir esta questão"
+                    style={{ background: questaoIdx === idx ? LARANJA : "#e2e8f0", color: questaoIdx === idx ? "#fff" : "#64748b" }}>
+                    ▶
+                  </button>
+                  <button onClick={() => abrirEdicao(idx)}
+                    className="w-6 h-6 rounded text-xs" style={{ background: "#e2e8f0", color: "#64748b" }}>
+                    ✏
+                  </button>
+                  <button onClick={() => excluirQuestao(idx)}
+                    className="w-6 h-6 rounded text-xs" style={{ background: "#fee2e2", color: "#dc2626" }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1744,83 +2152,292 @@ function KahootTelaoView({ forceLocal = false }) {
   const [pts, setPts] = useState({});
   const [buzz, setBuzz] = useState(null);
   const [active, setActive] = useState(false);
+  const [questoes, setQuestoes] = useState([]);
+  const [questaoIdx, setQuestaoIdx] = useState(-1);
+  const [timerStart, setTimerStart] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [answer, setAnswer] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const timerRefT = useRef(null);
 
   const fetchAll = useCallback(async () => {
-    const p = await kahootGet("kahoot_pts", forceLocal);
-    const b = await kahootGet("kahoot_buzz", forceLocal);
-    const a = await kahootGet("kahoot_active", forceLocal);
+    const [p, b, a, q, qi, ts, ans] = await Promise.all([
+      kahootGet("kahoot_pts", forceLocal),
+      kahootGet("kahoot_buzz", forceLocal),
+      kahootGet("kahoot_active", forceLocal),
+      kahootGet("kahoot_questoes", forceLocal),
+      kahootGet("kahoot_questao_idx", forceLocal),
+      kahootGet("kahoot_timer_start", forceLocal),
+      kahootGet("kahoot_answer", forceLocal),
+    ]);
     setPts(p ?? {});
     setBuzz(b ?? null);
     setActive(!!a);
+    setQuestoes(Array.isArray(q) ? q : []);
+    setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
+    setTimerStart(ts ? Number(ts) : null);
+    setAnswer(ans ?? null);
     setLastUpdate(new Date());
   }, [forceLocal]);
 
+  // Countdown local no telão (só visual, não escreve no Firebase)
+  useEffect(() => {
+    clearInterval(timerRefT.current);
+    if (!timerStart) { setTimeLeft(0); return; }
+    const tick = () => setTimeLeft(Math.max(0, TIMER_MS - (Date.now() - timerStart)));
+    tick();
+    timerRefT.current = setInterval(tick, 100);
+    return () => clearInterval(timerRefT.current);
+  }, [timerStart]);
+
   useEffect(() => {
     fetchAll();
-    const id = setInterval(fetchAll, 1500);
+    const id = setInterval(fetchAll, 500);
     return () => clearInterval(id);
   }, [fetchAll]);
 
-  const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
-  const maxPts = Math.max(1, ...TEAMS_KAHOOT.map((t) => pts[t.id] || 0));
-  const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const ranking  = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const maxPts   = Math.max(1, ...TEAMS_KAHOOT.map((t) => pts[t.id] || 0));
+  const winner   = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
+  const contandoT = timerStart !== null && timeLeft > 0;
+  const secsLeftT = Math.ceil(timeLeft / 1000);
+  const pctT      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
+
+  // Fase atual do telão
+  const fase = buzz ? 'buzz'
+    : answer ? 'resposta'
+    : contandoT ? 'countdown'
+    : active ? 'ativo'
+    : 'idle';
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
-      <div>
-        <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
-          SESI — TORNEIO INFANTIL
+    <div className="min-h-screen flex flex-col" style={{ background: AZUL_ESCURO }}>
+
+      {/* ── Cabeçalho fixo ── */}
+      <div className="flex items-center justify-between px-6 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div>
+          <div className="text-xs font-bold tracking-widest" style={{ color: LARANJA }}>SESI — TORNEIO INFANTIL</div>
+          <div className="font-extrabold text-white text-lg">🎓 Kahoot English</div>
         </div>
-        <h1 className="text-center text-3xl md:text-4xl font-extrabold" style={{ color: AZUL }}>
-          🎓 Kahoot English
-        </h1>
-        {active && !buzz && (
-          <div className="text-center font-bold text-lg mt-2 animate-pulse" style={{ color: LARANJA }}>
-            ⚡ Botoeira ativa — primeira equipe a responder ganha!
-          </div>
-        )}
-        {buzz && winner && (
-          <div className="text-center font-extrabold text-2xl mt-2" style={{ color: winner.color }}>
-            🏆 {winner.label} foi primeiro!
+        {questoes.length > 0 && questaoIdx >= 0 && (
+          <div className="flex items-center gap-2">
+            {questoes.map((_, i) => (
+              <div key={i} className="rounded-full transition-all"
+                style={{
+                  width: i === questaoIdx ? 18 : 8,
+                  height: 8,
+                  background: i === questaoIdx ? LARANJA : i < questaoIdx ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)",
+                  transition: "all 0.3s",
+                }} />
+            ))}
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        {ranking.map((t, idx) => (
-          <div key={t.id} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
-            style={{ backgroundColor: t.color }}>
-            <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
-              style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
-              {idx + 1}º
+      {/* ── Conteúdo principal ── */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-4 gap-5 max-w-3xl mx-auto w-full">
+
+        {/* FASE: idle */}
+        {fase === 'idle' && (
+          <div className="text-center py-12">
+            <div className="font-black text-white text-opacity-30 text-4xl" style={{ color: "rgba(255,255,255,0.2)" }}>
+              🎓
             </div>
-            <div className="font-bold text-xl md:text-2xl flex items-center gap-2 flex-1"
-              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
-              {t.label}
-              {buzz?.teamId === t.id && <span className="text-sm font-bold px-2 py-0.5 rounded-full bg-white" style={{ color: t.color }}>🔔 BUZZ!</span>}
-            </div>
-            <div className="h-4 rounded-full overflow-hidden hidden md:block"
-              style={{ flex: "1", backgroundColor: "rgba(255,255,255,0.3)" }}>
-              <div className="h-full rounded-full" style={{
-                width: `${((pts[t.id] || 0) / maxPts) * 100}%`,
-                backgroundColor: "rgba(255,255,255,0.85)",
-                transition: "width 0.7s ease",
-              }} />
-            </div>
-            <div className="font-extrabold text-2xl md:text-3xl tabular-nums"
-              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
-              {pts[t.id] || 0} pts
-            </div>
+            <div className="text-white/40 font-semibold mt-3">Aguardando próxima pergunta…</div>
           </div>
-        ))}
+        )}
+
+        {/* FASE: countdown — questão + botões travados */}
+        {fase === 'countdown' && questaoAtual && (
+          <>
+            {/* Cronômetro */}
+            <div className="flex items-center gap-4">
+              <div className="font-black text-white shrink-0"
+                style={{ fontSize: 72, lineHeight: 1, textShadow: "0 6px 30px rgba(0,0,0,0.5)",
+                  animation: secsLeftT <= 3 ? "pulseScale 0.5s ease-in-out infinite" : "none" }}>
+                {secsLeftT}
+              </div>
+              <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
+                <div className="h-full rounded-full" style={{
+                  width: `${pctT}%`,
+                  background: pctT > 70 ? "#ef4444" : pctT > 40 ? "#f59e0b" : "#22c55e",
+                  transition: "width 0.1s linear, background 0.3s",
+                }} />
+              </div>
+            </div>
+            {/* Texto da questão (sem alternativas) */}
+            <div className="rounded-3xl px-7 py-6" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: LARANJA }}>
+                Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.3rem, 3vw, 2rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Botões das equipes — travados */}
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => (
+                <div key={t.id}
+                  className="rounded-2xl flex items-center justify-center gap-3 font-extrabold"
+                  style={{
+                    background: t.color,
+                    height: 72,
+                    fontSize: 18,
+                    color: t.dark ? "#1a1a1a" : "#fff",
+                    opacity: 0.45,
+                    filter: "grayscale(30%)",
+                  }}>
+                  🔒 {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: ativo — questão + alternativas + botões pulsando */}
+        {fase === 'ativo' && questaoAtual && (
+          <>
+            {/* Texto da questão */}
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: LARANJA }}>
+                Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Alternativas */}
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => (
+                <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4"
+                  style={{ background: ALT_CORES[alt] }}>
+                  <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                  <span className="font-bold text-white text-base leading-tight">{questaoAtual[alt]}</span>
+                </div>
+              ))}
+            </div>
+            {/* Botões equipes — pulsando */}
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => (
+                <div key={t.id}
+                  className="rounded-2xl flex items-center justify-center gap-3 font-extrabold"
+                  style={{
+                    background: t.color,
+                    height: 68,
+                    fontSize: 18,
+                    color: t.dark ? "#1a1a1a" : "#fff",
+                    animation: "pulseScale 1s ease-in-out infinite",
+                    boxShadow: `0 0 28px ${t.color}99`,
+                  }}>
+                  🔔 {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: buzz — vencedor em destaque + questão grande */}
+        {fase === 'buzz' && winner && questaoAtual && (
+          <>
+            {/* Vencedor em destaque */}
+            <div className="rounded-3xl flex flex-col items-center justify-center py-8"
+              style={{ background: winner.color, boxShadow: `0 0 60px ${winner.color}88` }}>
+              <div className="font-black" style={{ fontSize: 56, color: winner.dark ? "#1a1a1a" : "#fff",
+                textShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "pulseScale 0.8s ease-in-out infinite" }}>
+                🔔 {winner.label}
+              </div>
+              <div className="font-bold mt-1 text-lg" style={{ color: winner.dark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)" }}>
+                foi a primeira!
+              </div>
+            </div>
+            {/* Apenas texto da questão — sem alternativas */}
+            <div className="rounded-3xl px-7 py-6 text-center" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.4rem, 3vw, 2.2rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Outras equipes — somem (só vencedor visível acima) */}
+            <div className="grid grid-cols-3 gap-2">
+              {TEAMS_KAHOOT.filter(t => t.id !== winner.id).map(t => (
+                <div key={t.id} className="rounded-xl flex items-center justify-center font-bold text-sm"
+                  style={{ background: t.color, height: 44, color: t.dark ? "#1a1a1a" : "#fff", opacity: 0.25 }}>
+                  {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: resposta — revela gabarito */}
+        {fase === 'resposta' && questaoAtual && (
+          <>
+            {/* Banner resultado */}
+            <div className="rounded-3xl py-5 px-7 text-center"
+              style={{ background: answer.correto ? "#15803d" : "#dc2626",
+                boxShadow: answer.correto ? "0 0 40px #15803d88" : "0 0 40px #dc262688" }}>
+              <div className="font-black text-white text-3xl">
+                {answer.correto ? "✅ CORRETO! +1 pt" : "❌ ERRADO!"}
+              </div>
+              <div className="text-white/80 font-semibold mt-1">
+                {TEAMS_KAHOOT.find(t => t.id === answer.teamId)?.label} respondeu {ALT_LABELS[answer.alt]}
+                {!answer.correto && ` — correto era ${ALT_LABELS[questaoAtual.correta]}`}
+              </div>
+            </div>
+            {/* Texto da questão */}
+            <div className="rounded-3xl px-7 py-4" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.6rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Alternativas reveladas */}
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => {
+                const isResposta = answer.alt === alt;
+                const isCorreta  = questaoAtual.correta === alt;
+                return (
+                  <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4 transition-all"
+                    style={{
+                      background: isCorreta ? "#15803d" : isResposta ? "#dc2626" : ALT_CORES[alt],
+                      opacity: !isResposta && !isCorreta ? 0.4 : 1,
+                      transform: isCorreta ? "scale(1.04)" : "scale(1)",
+                      boxShadow: isCorreta ? "0 0 30px #15803d99" : isResposta ? "0 0 20px #dc262688" : "none",
+                    }}>
+                    <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                    <span className="font-bold text-white text-base leading-tight flex-1">{questaoAtual[alt]}</span>
+                    {isCorreta && <span className="text-white text-xl font-black">✓</span>}
+                    {isResposta && !isCorreta && <span className="text-white text-xl font-black">✗</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
-      {lastUpdate && (
-        <div className="text-center text-xs text-gray-400">
-          Atualizado às {lastUpdate.toLocaleTimeString("pt-BR")}
+      {/* ── Placar compacto (sempre visível no rodapé) ── */}
+      <div className="px-6 pb-4 pt-3 max-w-3xl mx-auto w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex gap-2 items-center">
+          {ranking.map((t, idx) => (
+            <div key={t.id} className="flex-1 rounded-xl px-3 py-2 flex items-center gap-2 transition-all"
+              style={{
+                background: t.color + (buzz?.teamId === t.id ? "ff" : "55"),
+                transform: answer?.teamId === t.id && answer.correto ? "scale(1.06)" : "scale(1)",
+              }}>
+              <span className="text-xs font-bold" style={{ color: t.dark ? "#1a1a1a" : "rgba(255,255,255,0.7)" }}>{idx + 1}º</span>
+              <span className="font-bold text-xs flex-1 truncate" style={{ color: t.dark ? "#1a1a1a" : "#fff" }}>{t.label}</span>
+              <span className="font-extrabold tabular-nums" style={{ fontSize: 18, color: t.dark ? "#1a1a1a" : "#fff" }}>{pts[t.id] || 0}</span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
+
+      <style>{`
+        @keyframes pulseScale {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+        }
+      `}</style>
     </div>
   );
 }

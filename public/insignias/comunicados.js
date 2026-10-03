@@ -2,7 +2,15 @@
 // Sem token, acessível a todos. Dados do Firebase RTDB.
 
 const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
-const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
+const MEET_LINK = 'https://youtu.be/MceiO4L-cHc';
+
+// Modo de teste:
+//   ?teste=65  → contador termina em 65 s (bip começa em ~5 s)
+//   ?teste=bip → atalho: começa em 65 s, mesma coisa
+//   ?teste=10  → vai direto para os últimos 10 s (já no modo bip)
+const _testeParam = (() => { try { return new URLSearchParams(location.search).get('teste') || ''; } catch(_) { return ''; } })();
+const _testeSecs = _testeParam === 'bip' ? 65 : (parseInt(_testeParam) || 0);
+const _CONTADOR_TARGET = _testeSecs > 0 ? new Date(Date.now() + _testeSecs * 1000) : TORNEIO_INICIO;
 
 // ── Idioma ────────────────────────────────────────────────────────
 const STRINGS_COM = {
@@ -24,18 +32,30 @@ const STRINGS_COM = {
     data_evento:      '📅 02 de outubro de 2026 · 14h50',
     dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
     ao_vivo:          '📺 Assistir abertura ao vivo',
-    ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
+    ao_vivo_btn:      '📺 Abertura ao vivo — YouTube',
     aba_inicio:    'Início',
     aba_insignias: 'Insígnias',
     aba_recados:   'Recados',
     aba_boletim:   'Boletim',
     aba_dicas:     'Dicas',
+    aba_noticias:  'Notícias',
+    noticias_titulo: '📰 Notícias do torneio',
+    noticias_vazio:  'Nenhuma notícia por enquanto.',
+    aba_fotos:     'Fotos',
+    aba_shorts:    'Shorts',
+    fotos_vazio:   'Nenhuma foto ainda.',
+    shorts_vazio:  'Nenhum short ainda.',
+    boletim_item:  'item',
+    boletim_itens: 'itens',
+    boletim_vazio: 'Nenhum item no boletim por enquanto.',
     inicio_boas_vindas: 'Bem-vindo ao Torneio!',
     inicio_nav:         'Navegue pelas abas para ver tudo',
     inicio_ultimo_recado: 'Último recado',
     inicio_ver_recados:   'Ver todos os recados →',
     inicio_no_boletim:    'No boletim',
     inicio_ver_boletim:   'Ver boletim →',
+    inicio_noticias:      'Últimas notícias',
+    inicio_ver_noticias:  'Ver todas as notícias →',
   },
   en: {
     titulo_pagina:    'Updates',
@@ -55,18 +75,30 @@ const STRINGS_COM = {
     data_evento:      '📅 October 2, 2026 · 2:50 PM',
     dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
     ao_vivo:          '📺 Watch opening ceremony live',
-    ao_vivo_btn:      '📺 Live opening — Teams',
+    ao_vivo_btn:      '📺 Live opening — YouTube',
     aba_inicio:    'Home',
     aba_insignias: 'Badges',
     aba_recados:   'Messages',
     aba_boletim:   'Bulletin',
     aba_dicas:     'Tips',
+    aba_noticias:  'News',
+    noticias_titulo: '📰 Tournament News',
+    noticias_vazio:  'No news yet.',
+    aba_fotos:     'Photos',
+    aba_shorts:    'Shorts',
+    fotos_vazio:   'No photos yet.',
+    shorts_vazio:  'No shorts yet.',
+    boletim_item:  'item',
+    boletim_itens: 'items',
+    boletim_vazio: 'No bulletin items yet.',
     inicio_boas_vindas: 'Welcome to the Tournament!',
     inicio_nav:         'Use the tabs to explore',
     inicio_ultimo_recado: 'Latest message',
     inicio_ver_recados:   'See all messages →',
     inicio_no_boletim:    'In the bulletin',
     inicio_ver_boletim:   'View bulletin →',
+    inicio_noticias:      'Latest news',
+    inicio_ver_noticias:  'See all news →',
   }
 };
 
@@ -93,14 +125,17 @@ let _countdownInterval = null;
 
 // ── Abas ──────────────────────────────────────────────────────────
 let _abaAtiva  = 'inicio';
-let _dadosCache = null; // { recados, dicas, boletim }
+let _dadosCache = null; // { recados, dicas, boletim, galeria, shorts }
 
 const ABAS_CONFIG = [
   { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
+  { id: 'noticias',  emoji: '📰', labelKey: 'aba_noticias'  },
   { id: 'insignias', emoji: '🏅', labelKey: 'aba_insignias' },
   { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
   { id: 'boletim',   emoji: '🎬', labelKey: 'aba_boletim'   },
   { id: 'dicas',     emoji: '💡', labelKey: 'aba_dicas'     },
+  { id: 'fotos',     emoji: '📷', labelKey: 'aba_fotos'     },
+  { id: 'shorts',    emoji: '▶️', labelKey: 'aba_shorts'    },
 ];
 
 function getMountEl() {
@@ -157,6 +192,7 @@ function trocarAba(id) {
 function renderConteudoAba(dados) {
   switch (_abaAtiva) {
     case 'inicio':    renderInicio(dados);             break;
+    case 'noticias':  renderNoticias(dados);           break;
     case 'insignias': renderEstojosSection();           break;
     case 'recados':   renderRecados(dados.recados);    break;
     case 'boletim':
@@ -164,16 +200,50 @@ function renderConteudoAba(dados) {
       document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
       carregarVideosPendentes();
       break;
-    case 'dicas':     renderDicas(dados.dicas);        break;
+    case 'dicas':     renderDicas(dados.dicas);            break;
+    case 'fotos':     renderAbaFotos(dados.galeria);       break;
+    case 'shorts':    renderAbaShorts(dados.shorts);       break;
   }
   getMountEl().insertAdjacentHTML('beforeend',
     `<div class="com-rodape">${tc('rodape')}<br><span id="com-stats-visitors" style="font-size:11px;color:var(--muted)"></span></div>`);
+}
+
+// ── Banner de novidades ───────────────────────────────────────────
+const BANNER_NOVIDADES_KEY = 'torneio-banner-novidades-fotos-shorts:v1';
+
+function _renderBannerNovidades() {
+  try { if (localStorage.getItem(BANNER_NOVIDADES_KEY)) return; } catch (_) {}
+  const div = document.createElement('div');
+  div.className = 'com-banner-novidades';
+  div.innerHTML = `
+    <button class="com-banner-fechar" onclick="_fecharBannerNovidades()" aria-label="Fechar">✕</button>
+    <div class="com-banner-novo-tag">✨ NOVIDADE</div>
+    <div class="com-banner-titulo">Confira as novas seções!</div>
+    <div class="com-banner-desc">Agora você pode acompanhar fotos e vídeos curtos do torneio em tempo real.</div>
+    <div class="com-banner-btns">
+      <button class="com-banner-btn com-banner-btn-fotos" onclick="trocarAba('fotos')">
+        📷 Ver Fotos
+      </button>
+      <button class="com-banner-btn com-banner-btn-shorts" onclick="trocarAba('shorts')">
+        ▶️ Ver Shorts
+      </button>
+    </div>`;
+  getMountEl().appendChild(div);
+}
+
+function _fecharBannerNovidades() {
+  try { localStorage.setItem(BANNER_NOVIDADES_KEY, '1'); } catch (_) {}
+  const el = document.querySelector('.com-banner-novidades');
+  if (el) { el.style.transition = 'opacity .25s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); }
 }
 
 // ── Aba Início ────────────────────────────────────────────────────
 function renderInicio(dados) {
   // Countdown sempre no topo
   renderContadorCom();
+
+  // Banner de novidades: Fotos + Shorts
+  _renderBannerNovidades();
 
   const recados = (dados.recados && dados.recados.itens) || [];
   const boletim = (dados.boletim && dados.boletim.itens) || [];
@@ -187,11 +257,15 @@ function renderInicio(dados) {
     } catch (_) { return 0; }
   })();
 
+  const noticias = _coletarNoticias(dados);
   const cards = [
+    { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
     { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
     { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
-    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} item${boletim.length !== 1 ? 's' : ''}`,  cor: '#2E9E4F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')}`,  cor: '#2E9E4F' },
     { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
+    { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: `${((dados.galeria && dados.galeria.itens) || []).length} foto${((dados.galeria && dados.galeria.itens) || []).length !== 1 ? 's' : ''}`, cor: '#D97706' },
+    { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: `${((dados.shorts && dados.shorts.itens) || []).length} short${((dados.shorts && dados.shorts.itens) || []).length !== 1 ? 's' : ''}`, cor: '#DC2626' },
   ];
 
   const divCards = document.createElement('div');
@@ -230,6 +304,28 @@ function renderInicio(dados) {
     getMountEl().appendChild(div);
   }
 
+  // Notícias — preview da mais recente
+  const agora2 = Date.now();
+  const noticiaPreview = noticias.find(n =>
+    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora2 <= n.inicioAte)
+  );
+  if (noticiaPreview) {
+    const titulo  = noticiaPreview.titulo || noticiaPreview.manchete || '';
+    const sub     = noticiaPreview.subtitulo || noticiaPreview.texto || '';
+    const preview = sub.length > 100 ? sub.substring(0, 100) + '…' : sub;
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_noticias')}</div>
+      <div class="com-noticia-card com-recado-clicavel" onclick="trocarAba('noticias')" role="button" tabindex="0">
+        ${noticiaPreview.imagem ? `<img src="${noticiaPreview.imagem}" class="com-noticia-img">` : ''}
+        ${titulo ? `<div class="com-noticia-titulo">${titulo}</div>` : ''}
+        ${preview ? `<div class="com-noticia-sub">${preview}</div>` : ''}
+        <div class="com-inicio-ver-mais">${tc('inicio_ver_noticias')}</div>
+      </div>`;
+    getMountEl().appendChild(div);
+  }
+
   // Boletim — itens visíveis na Início (sem inicioAte=-1 e dentro do prazo)
   const bolInicio = boletim.filter(b =>
     b.inicioAte !== -1 && (b.inicioAte === null || b.inicioAte === undefined || agora <= b.inicioAte)
@@ -258,7 +354,7 @@ function renderInicio(dados) {
       <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
         <span class="com-inicio-boletim-emoji">🎬</span>
         <div class="com-inicio-boletim-info">
-          <div class="com-inicio-boletim-titulo">${boletim.length} item${boletim.length !== 1 ? 's' : ''} no boletim</div>
+          <div class="com-inicio-boletim-titulo">${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')} — ${tc('inicio_no_boletim')}</div>
           <div class="com-inicio-boletim-sub">${tc('inicio_ver_boletim')}</div>
         </div>
         <span class="com-inicio-boletim-arrow">›</span>
@@ -267,16 +363,76 @@ function renderInicio(dados) {
   }
 }
 
+// ── Contador ──────────────────────────────────────────────────────
+let _fimIniciado  = false;
+
+function _youtubeId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
+    return u.searchParams.get('v') || '';
+  } catch(_) { return ''; }
+}
+
+function _ativarSomYoutube() {
+  const iframe = document.getElementById('yt-iframe-abertura');
+  if (!iframe) return;
+  // postMessage para o player do YouTube: desmutar e volume máximo
+  const cmd = JSON.stringify({ event: 'command', func: 'unMute',      args: [] });
+  const vol  = JSON.stringify({ event: 'command', func: 'setVolume',  args: [100] });
+  try { iframe.contentWindow.postMessage(cmd, '*'); } catch(_) {}
+  try { iframe.contentWindow.postMessage(vol, '*'); } catch(_) {}
+  const btn = document.getElementById('btn-ativar-som');
+  if (btn) btn.style.display = 'none';
+}
+
+function _mostrarAberturaVideo() {
+  const secao = document.getElementById('contador-torneio');
+  if (!secao) return;
+  const temLink = MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI';
+  const videoId = temLink ? _youtubeId(MEET_LINK) : '';
+
+  // autoplay=1 + mute=1 → vídeo inicia automaticamente sem som (browsers sempre permitem)
+  // enablejsapi=1 → habilita postMessage para desmutar via botão
+  secao.innerHTML = `
+    <div class="contador-abertura-overlay">
+      <div class="contador-abertura-titulo">🏆 ABERTURA DO TORNEIO!</div>
+      <div class="contador-abertura-sub">SESI TORNEIO INFANTIL 2026</div>
+      ${videoId
+        ? `<div style="position:relative">
+             <div class="contador-video-wrap">
+               <iframe id="yt-iframe-abertura"
+                 src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&playsinline=1&enablejsapi=1"
+                 class="contador-video-iframe"
+                 frameborder="0"
+                 allow="autoplay; fullscreen; picture-in-picture"
+                 allowfullscreen></iframe>
+             </div>
+             <button id="btn-ativar-som" class="btn-ativar-som" onclick="_ativarSomYoutube()">
+               🔊 Toque para ativar o som
+             </button>
+           </div>`
+        : `<div class="contador-abertura-link-pendente">📺 Transmissão em breve</div>`}
+    </div>`;
+
+  // Confete
+  try { dispararConfeteCom('#F5821F'); } catch(_) {}
+  try { setTimeout(() => dispararConfeteCom('#004B8D'), 600); } catch(_) {}
+}
+
 // ── Contador regressivo ───────────────────────────────────────────
 function renderContadorCom() {
   function calcular() {
-    const diff = TORNEIO_INICIO.getTime() - Date.now();
+    const diff = _CONTADOR_TARGET.getTime() - Date.now();
     if (diff <= 0) return null;
+    const totalSegs = Math.floor(diff / 1000);
     return {
       dias:    Math.floor(diff / 86400000),
       horas:   Math.floor((diff % 86400000) / 3600000),
       minutos: Math.floor((diff % 3600000)  / 60000),
-      segs:    Math.floor((diff % 60000)     / 1000)
+      segs:    Math.floor((diff % 60000)     / 1000),
+      totalSegs,
+      ultimoMinuto: totalSegs <= 60,
     };
   }
 
@@ -292,21 +448,22 @@ function renderContadorCom() {
     if (!inner) return;
 
     if (!tempo) {
-      inner.innerHTML = `
-        <div class="contador-ao-vivo" style="--c:#F5821F">
-          🏆 <span>${tc('andamento')}</span>
-        </div>
-        ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-          ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">${tc('ao_vivo')}</a>`
-          : ''}`;
+      if (_fimIniciado) return;
+      _fimIniciado = true;
       clearInterval(_countdownInterval);
       _countdownInterval = null;
+      inner.innerHTML = `<div class="contador-sinal-fim">🔔 Iniciando abertura…</div>`;
+      _mostrarAberturaVideo();
       return;
     }
+
+    const corSegs = tempo.ultimoMinuto ? '#D32F2F' : '#F5821F';
+    const pulsarClass = tempo.ultimoMinuto ? ' contador-bloco-alerta' : '';
 
     inner.innerHTML = `
       <div class="contador-titulo">🏆 SESI TORNEIO INFANTIL</div>
       <div class="contador-subtitulo">${tc('comeca_em')}</div>
+      ${tempo.ultimoMinuto ? `<div class="contador-alerta-faixa">⚠️ Último minuto!</div>` : ''}
       <div class="contador-numeros">
         <div class="contador-bloco" style="--c:#004B8D">
           <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
@@ -323,15 +480,12 @@ function renderContadorCom() {
           <span class="contador-label">${tc('min')}</span>
         </div>
         <span class="contador-sep">:</span>
-        <div class="contador-bloco" style="--c:#F5821F">
+        <div class="contador-bloco${pulsarClass}" style="--c:${corSegs}">
           <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
           <span class="contador-label">${tc('seg')}</span>
         </div>
       </div>
-      <div class="contador-data">${tc('data_evento')}</div>
-      ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-        ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#004B8D">${tc('ao_vivo_btn')}</a>`
-        : ''}`;
+      <div class="contador-data">${tc('data_evento')}</div>`;
   }
 
   atualizar();
@@ -696,6 +850,53 @@ function renderRecados(recados) {
   getMountEl().appendChild(secao);
 }
 
+// ── Notícias (dicas com titulo + boletim tipo:noticia) ────────────
+function _coletarNoticias(dados) {
+  const agora = Date.now();
+  const dicasItens = ((dados.dicas && dados.dicas.itens) || [])
+    .filter(d => d.titulo)
+    .map(d => ({ _fonte: 'dica', titulo: d.titulo, texto: d.texto, imagem: d.imagem, icone: d.icone, area: d.area, inicioAte: d.inicioAte, ts: d.ts || d.id || 0 }));
+  const bolItens = ((dados.boletim && dados.boletim.itens) || [])
+    .filter(b => b.tipo === 'noticia')
+    .map(b => ({ _fonte: 'boletim', titulo: b.manchete, texto: b.subtitulo, imagem: undefined, icone: '📰', area: b.area, inicioAte: b.inicioAte, ts: b.ts || b.id || 0 }));
+  return [...dicasItens, ...bolItens].sort((a, b) => (b.ts > a.ts ? 1 : b.ts < a.ts ? -1 : 0));
+}
+
+function renderNoticias(dados) {
+  const todos = _coletarNoticias(dados);
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  const agora = Date.now();
+  const visiveis = todos.filter(n =>
+    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora <= n.inicioAte)
+  );
+
+  secao.innerHTML = `<div class="com-secao-titulo">${tc('noticias_titulo')}</div>`;
+  if (visiveis.length === 0) {
+    secao.innerHTML += `<div class="com-vazio">${tc('noticias_vazio')}</div>`;
+  } else {
+    const lista = document.createElement('div');
+    lista.className = 'com-noticias-lista';
+    lista.innerHTML = visiveis.map((n, i) => {
+      const id = `not-${i}`;
+      return `
+      <article class="com-noticia-card">
+        ${n.imagem ? `<img src="${n.imagem}" class="com-noticia-img">` : ''}
+        <div class="com-noticia-body">
+          <span class="com-noticia-icone">${n.icone || '📰'}</span>
+          ${n.titulo ? `<h3 class="com-noticia-titulo">${n.titulo}</h3>` : ''}
+          ${n.texto  ? `<p class="com-noticia-sub">${n.texto}</p>`     : ''}
+          ${_reacoesBar(id)}
+        </div>
+      </article>`;
+    }).join('');
+    secao.appendChild(lista);
+  }
+
+  getMountEl().appendChild(secao);
+}
+
 // ── Renderização de dicas ─────────────────────────────────────────
 function renderDicas(dicas) {
   const todos = dicas.itens || [];
@@ -719,7 +920,9 @@ function renderDicas(dicas) {
             <div class="com-dica">
               ${_badgeArea(d)}
               <span class="com-dica-icone">${d.icone || '💡'}</span>
+              ${d.titulo ? `<strong style="display:block;font-size:15px;line-height:1.3;margin-bottom:4px">${d.titulo}</strong>` : ''}
               <span class="com-dica-texto">${d.texto}</span>
+              ${d.imagem ? `<img src="${d.imagem}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;margin-top:8px;display:block">` : ''}
               ${_reacoesBar(id)}
             </div>`;
           }).join('')}
@@ -785,7 +988,7 @@ function renderBoletimCom(boletim) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">Nenhum item no boletim por enquanto.</div>`
+      ? `<div class="com-vazio">${tc('boletim_vazio')}</div>`
       : `<div class="boletim-galeria">${itens.map(_renderBoletimItem).join('')}</div>`;
     secao.appendChild(lista);
   }
@@ -829,6 +1032,293 @@ async function carregarVideosPendentes() {
   }
 }
 
+// ── Opção B: banner de novo conteúdo ─────────────────────────────
+const _ULTIMA_VISITA_KEY = 'torneio-com-ultima-visita';
+
+function _maxTs(dados) {
+  const ts = [];
+  const recados = (dados.recados && dados.recados.itens) || [];
+  const dicas   = (dados.dicas   && dados.dicas.itens)   || [];
+  const boletim = (dados.boletim && dados.boletim.itens) || [];
+  recados.forEach(r => r.ts && ts.push(r.ts));
+  dicas.forEach(d => d.ts && ts.push(d.ts));
+  boletim.forEach(b => b.ts && ts.push(b.ts));
+  return ts.length ? Math.max(...ts) : 0;
+}
+
+function _verificarNovosConteudos(dados) {
+  let ultimaVisita = 0;
+  try { ultimaVisita = parseInt(localStorage.getItem(_ULTIMA_VISITA_KEY) || '0', 10); } catch (_) {}
+
+  const maxTs = _maxTs(dados);
+
+  // Atualiza timestamp de última visita sempre que a página é carregada
+  try { localStorage.setItem(_ULTIMA_VISITA_KEY, String(Date.now())); } catch (_) {}
+
+  // Só mostra banner se há conteúdo mais novo que a última visita registrada
+  // e se o usuário já visitou antes (ultimaVisita > 0)
+  if (!maxTs || !ultimaVisita || maxTs <= ultimaVisita) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'com-novo-banner';
+  banner.className = 'com-novo-banner';
+  banner.innerHTML = `
+    <span class="com-novo-banner-icone">📢</span>
+    <span class="com-novo-banner-texto">Novo conteúdo desde sua última visita!</span>
+    <button class="com-novo-banner-fechar" onclick="this.closest('#com-novo-banner').remove()" aria-label="Fechar">✕</button>`;
+  document.getElementById('app').insertBefore(banner, document.getElementById('app').firstChild);
+}
+
+// ── Opção A: notificações Web Push (FCM) ─────────────────────────
+const FCM_VAPID_KEY = 'BOLK-rUbBqUG2BHeCStWaqW9ypJN-r0JIUPA4FvXqEjWJX-4G5ccF8bbf05OjOR_iS6eszp_ZVc5Mr22_3ImXrY';
+const FCM_SENDER_ID  = 'COLE_O_SENDER_ID_AQUI'; // número, ex: 123456789012
+const RTDB_FCM_TOKENS = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens';
+
+async function _registrarServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    return reg;
+  } catch (e) {
+    console.warn('[push] SW falhou:', e);
+    return null;
+  }
+}
+
+function _urlBase64ToUint8(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function _obterTokenFCM(reg) {
+  try {
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8(FCM_VAPID_KEY),
+      });
+    }
+    // Salva no RTDB para o admin enviar notificações
+    const uuid = (() => {
+      try {
+        let u = localStorage.getItem('torneio-visitor-uuid');
+        if (!u) { u = crypto.randomUUID(); localStorage.setItem('torneio-visitor-uuid', u); }
+        return u;
+      } catch (_) { return 'anon'; }
+    })();
+    const payload = JSON.stringify({
+      endpoint:   sub.endpoint,
+      p256dh:     btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
+      auth:       btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
+      ts:         Date.now(),
+    });
+    await fetch(`${RTDB_FCM_TOKENS}/${uuid}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+    return sub;
+  } catch (e) {
+    console.warn('[push] token falhou:', e);
+    return null;
+  }
+}
+
+let _pushBtnEl = null;
+
+async function ativarNotificacoes() {
+  const btn = _pushBtnEl;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Ativando…'; }
+
+  if (!('Notification' in window)) {
+    if (btn) { btn.textContent = '⚠ Não suportado'; btn.disabled = false; }
+    return;
+  }
+
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    perm = await Notification.requestPermission();
+  }
+
+  if (perm === 'default') {
+    // Chrome "Reduzir pedidos" silenciou o pedido — mostra dica do ícone na barra
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔔 Receber novidades';
+    }
+    _mostrarDicaChromeQuiet();
+    return;
+  }
+
+  if (perm !== 'granted') {
+    if (btn) { btn.textContent = '🔕 Bloqueado'; btn.disabled = false; }
+    location.reload(); // recarrega para mostrar instruções de desbloqueio
+    return;
+  }
+
+  const reg = await _registrarServiceWorker();
+  if (!reg) {
+    if (btn) { btn.textContent = '⚠ Erro ao registrar SW'; btn.disabled = false; }
+    return;
+  }
+
+  const sub = await _obterTokenFCM(reg);
+  if (sub) {
+    try { localStorage.setItem('torneio-push-ativo', '1'); } catch (_) {}
+    if (btn) {
+      btn.textContent = '🔔 Notificações ativas';
+      btn.classList.add('ativo');
+      btn.disabled = false;
+    }
+  } else {
+    if (btn) { btn.textContent = '⚠ Falhou — tente de novo'; btn.disabled = false; }
+  }
+}
+
+function _mostrarDicaChromeQuiet() {
+  // Remove aviso anterior se houver
+  document.getElementById('push-quiet-dica')?.remove();
+  const wrap = document.getElementById('com-push-wrap');
+  if (!wrap) return;
+  const div = document.createElement('div');
+  div.id = 'push-quiet-dica';
+  div.className = 'com-push-bloqueado-card';
+  div.style.marginTop = '8px';
+  const isMobileQuiet = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  div.innerHTML = `
+    <div class="com-push-bloq-titulo">🔔 Quase lá! O Chrome ocultou o pedido</div>
+    <p style="font-size:13px;margin:0 0 10px;line-height:1.5">
+      O Chrome está configurado para reduzir popups de notificação.
+      ${isMobileQuiet
+        ? 'Toque no ícone <strong>ⓘ</strong> na barra de endereço → <strong>Permissões</strong> → <strong>Notificações → Permitir</strong> e tente novamente.'
+        : 'Procure um <strong>ícone de sino 🔔</strong> no lado direito da barra de endereço e clique em <strong>"Permitir"</strong>.'}
+    </p>
+    ${isMobileQuiet ? '' : `<p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+      Se não aparecer nenhum ícone, cole na barra de endereço:
+      <code style="font-size:11px;color:#60a5fa">chrome://settings/content/notifications</code>
+      → escolha <strong>"Expandir todos os pedidos"</strong> → volte aqui e tente de novo.
+    </p>`}
+    <button class="com-push-btn" onclick="this.closest('#push-quiet-dica').remove();ativarNotificacoes()" style="width:100%">
+      🔔 Tentar novamente
+    </button>`;
+  wrap.appendChild(div);
+}
+
+function _renderBotaoPush(container) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (FCM_VAPID_KEY === 'COLE_A_VAPID_KEY_PUBLICA_AQUI') return; // não configurado ainda
+
+  const jaAtivo = (() => { try { return localStorage.getItem('torneio-push-ativo') === '1'; } catch(_) { return false; }})();
+  const permBloqueado = 'Notification' in window && Notification.permission === 'denied';
+
+  if (permBloqueado) {
+    const ua      = navigator.userAgent;
+    const isIOS   = /iphone|ipad|ipod/i.test(ua);
+    const isAndroid = /android/i.test(ua);
+    const isMobile  = isIOS || isAndroid || ('ontouchstart' in window && screen.width < 768);
+    const isSafari  = /^((?!chrome|android).)*safari/i.test(ua);
+    const isFF      = ua.includes('Firefox');
+
+    // Gera instruções e ação principal por browser
+    let instrucoes, acaoExtra = '';
+
+    if (isIOS) {
+      instrucoes = [
+        'Abra os <strong>Ajustes</strong> do iPhone/iPad',
+        'Role até <strong>Safari</strong> e toque nele',
+        'Toque em <strong>Notificações</strong> → ative para este site',
+        'Volte aqui e toque em "Já desbloqueei"',
+      ];
+    } else if (isAndroid) {
+      instrucoes = [
+        'Toque no ícone <strong>ⓘ</strong> ou <strong>🔒</strong> na barra de endereço',
+        'Toque em <strong>Permissões</strong>',
+        'Em <strong>Notificações</strong>, escolha <strong>Permitir</strong>',
+        'Volte aqui e toque em "Já desbloqueei"',
+      ];
+    } else if (isSafari) {
+      instrucoes = [
+        'No menu superior, clique em <strong>Safari → Preferências para este site…</strong>',
+        'Mude <strong>Notificações</strong> para <strong>Permitir</strong>',
+        'Clique em "Já desbloqueei" abaixo',
+      ];
+    } else if (isFF) {
+      instrucoes = [
+        'Clique no <strong>escudo 🛡 ou cadeado 🔒</strong> à esquerda do endereço',
+        'Clique em <strong>Permissões</strong>',
+        'Em <strong>Receber notificações</strong>, clique em ✕ para remover o bloqueio',
+        'Clique em "Já desbloqueei" abaixo',
+      ];
+    } else {
+      // Chrome / Edge desktop
+      const settingsUrl = 'chrome://settings/content/notifications';
+      instrucoes = [
+        'Copie o endereço abaixo, abra uma <strong>nova aba</strong> e cole:',
+        'Encontre <strong>torneio-sesi-20de0.web.app</strong> em "Bloqueado"',
+        'Clique em <strong>⋮ → Permitir</strong> ao lado do site',
+        'Volte aqui e clique em "Já desbloqueei"',
+      ];
+      acaoExtra = `
+        <div class="com-push-bloq-copiar">
+          <code id="push-settings-url">${settingsUrl}</code>
+          <button class="com-push-bloq-copiar-btn" onclick="
+            navigator.clipboard.writeText('${settingsUrl}').then(() => {
+              this.textContent = '✓ Copiado!';
+              setTimeout(() => this.textContent = '📋 Copiar', 2000);
+            }).catch(() => {
+              const el = document.getElementById('push-settings-url');
+              const r = document.createRange(); r.selectNode(el);
+              window.getSelection().removeAllRanges();
+              window.getSelection().addRange(r);
+            })
+          ">📋 Copiar</button>
+        </div>`;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'com-push-bloqueado-card';
+    div.innerHTML = `
+      <p class="com-push-bloq-convite">Quer ficar atualizado com tudo que rola no torneio? Siga o passo a passo e desbloqueie as notificações 👇</p>
+      <div class="com-push-bloq-titulo">🔕 Notificações bloqueadas</div>
+      <ol class="com-push-bloq-passos">
+        ${instrucoes.map(p => `<li>${p}</li>`).join('')}
+      </ol>
+      ${acaoExtra}
+      <button class="com-push-btn" onclick="location.reload()" style="margin-top:10px;width:100%">
+        ✅ Já desbloqueei — Recarregar
+      </button>`;
+    container.appendChild(div);
+    return;
+  }
+
+  if (jaAtivo) {
+    const btn = document.createElement('button');
+    btn.className = 'com-push-btn ativo';
+    btn.textContent = '🔔 Notificações ativas';
+    btn.onclick = ativarNotificacoes;
+    _pushBtnEl = btn;
+    container.appendChild(btn);
+    return;
+  }
+
+  // Convite para ativar notificações
+  const card = document.createElement('div');
+  card.className = 'com-push-convite';
+  card.innerHTML = `
+    <span class="com-push-convite-icone">🔔</span>
+    <div class="com-push-convite-texto">
+      <strong>Quer ficar por dentro de tudo que rola no torneio?</strong>
+      <span>Ative as notificações e receba recados, fotos e novidades na hora!</span>
+    </div>
+    <button class="com-push-convite-btn" id="btn-push-ativar">Ativar</button>`;
+  card.querySelector('#btn-push-ativar').onclick = ativarNotificacoes;
+  _pushBtnEl = card.querySelector('#btn-push-ativar');
+  container.appendChild(card);
+}
+
 // ── Página principal ──────────────────────────────────────────────
 async function renderComunicados() {
   const app = document.getElementById('app');
@@ -848,20 +1338,26 @@ async function renderComunicados() {
       <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
       <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
     </div>
+    <div id="com-push-wrap"></div>
     ${renderTabBar()}
     <div id="com-content" class="com-content-area"></div>`;
 
+  _renderBotaoPush(document.getElementById('com-push-wrap'));
+
   // Carrega reações e registra visita em paralelo com os dados
-  const [, recados, dicas, boletim] = await Promise.all([
+  const [, recados, dicas, boletim,, galeria, shorts] = await Promise.all([
     carregarInsignias(),
     carregarRecados(),
     carregarDicas(),
     carregarBoletim(),
-    carregarTodasReacoes().catch(() => {})
+    carregarTodasReacoes().catch(() => {}),
+    carregarGaleria().catch(() => ({ itens: [] })),
+    carregarShorts().catch(() => ({ itens: [] }))
   ]);
-  registrarVisita().catch(() => {});
+  if (!_testeSecs) registrarVisita().catch(() => {});
 
-  _dadosCache = { recados, dicas, boletim };
+  _dadosCache = { recados, dicas, boletim, galeria, shorts };
+  _verificarNovosConteudos(_dadosCache);
   renderConteudoAba(_dadosCache);
 
   // Atualiza rodapé com visitantes únicos após carregar stats
@@ -887,6 +1383,8 @@ function agendarRefresh() {
     _recadosCache    = null;
     _dicasCache      = null;
     _boletimCache    = null;
+    _galeriaCache    = null;
+    _shortsCache     = null;
     _estojoAtivoCom  = null;
     await renderComunicados();
     agendarRefresh();
@@ -910,3 +1408,127 @@ window.addEventListener('DOMContentLoaded', async () => {
   await renderComunicados();
   agendarRefresh();
 });
+
+// ── Aba Galeria de Fotos ──────────────────────────────────────────
+function renderAbaFotos(galeria) {
+  const fotos = (galeria && galeria.itens) ? galeria.itens : [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  if (fotos.length === 0) {
+    secao.innerHTML = `
+      <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
+      <p class="com-vazio">${tc('fotos_vazio')}</p>`;
+    getMountEl().appendChild(secao);
+    return;
+  }
+
+  secao.innerHTML = `
+    <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
+    <div class="galeria-mosaic">
+      ${fotos.map((f, i) => `
+        <div class="galeria-foto" onclick="abrirFotoModal(${i})" role="button" tabindex="0">
+          <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-img" loading="lazy">
+          ${f.legenda ? `<div class="galeria-caption">${f.legenda}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
+  getMountEl().appendChild(secao);
+  window._fotosDataCom = fotos;
+}
+
+function abrirFotoModal(idx) {
+  const fotos = window._fotosDataCom || [];
+  const f = fotos[idx];
+  if (!f) return;
+  const existing = document.getElementById('galeria-modal-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'galeria-modal-overlay';
+  overlay.className = 'galeria-modal-overlay';
+  overlay.innerHTML = `
+    <div class="galeria-modal-inner" onclick="event.stopPropagation()">
+      <button class="galeria-modal-fechar" onclick="document.getElementById('galeria-modal-overlay').remove()">✕</button>
+      <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-modal-img">
+      ${f.legenda   ? `<div class="galeria-modal-caption">${f.legenda}</div>`    : ''}
+      ${f.reporter  ? `<div class="galeria-modal-reporter">${f.reporter}</div>`  : ''}
+    </div>`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
+// ── Aba Shorts ────────────────────────────────────────────────────
+let _shortsObserver = null;
+
+function renderAbaShorts(shorts) {
+  const itens = (shorts && shorts.itens) ? shorts.itens : [];
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  if (itens.length === 0) {
+    secao.innerHTML = `
+      <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
+      <p class="com-vazio">${tc('shorts_vazio')}</p>`;
+    getMountEl().appendChild(secao);
+    return;
+  }
+
+  secao.innerHTML = `
+    <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
+    <div class="shorts-list">
+      ${itens.map((s, i) => `
+        <div class="short-item" id="short-item-${i}">
+          <div class="short-video-wrap" onclick="toggleShortPlay(${i})">
+            <video class="short-video" id="short-vid-${i}"
+                   src="${s.url || ''}" muted playsinline preload="metadata" loop></video>
+            <div class="short-play-overlay" id="short-play-${i}">
+              <span class="short-play-icon">▶</span>
+            </div>
+            <button class="short-mute-btn" id="short-mute-${i}" onclick="event.stopPropagation();toggleShortMute(${i})" title="Ativar/silenciar som">🔇</button>
+          </div>
+          ${s.legenda  ? `<div class="short-caption">${s.legenda}</div>`   : ''}
+          ${s.reporter ? `<div class="short-reporter">${s.reporter}</div>` : ''}
+          ${_reacoesBar(`short_${i}`)}
+        </div>`).join('')}
+    </div>`;
+  getMountEl().appendChild(secao);
+
+  // Autoplay via IntersectionObserver
+  requestAnimationFrame(() => {
+    if (_shortsObserver) { _shortsObserver.disconnect(); _shortsObserver = null; }
+    _shortsObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const vid = entry.target;
+        const overlay = vid.parentElement?.querySelector('.short-play-overlay');
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          vid.play().catch(() => {});
+          if (overlay) overlay.style.opacity = '0';
+        } else {
+          vid.pause();
+          if (overlay) overlay.style.opacity = '1';
+        }
+      });
+    }, { threshold: 0.6 });
+    document.querySelectorAll('.short-video').forEach(v => _shortsObserver.observe(v));
+  });
+}
+
+function toggleShortPlay(idx) {
+  const vid = document.getElementById(`short-vid-${idx}`);
+  const overlay = document.getElementById(`short-play-${idx}`);
+  if (!vid) return;
+  if (vid.paused) {
+    vid.play().catch(() => {});
+    if (overlay) overlay.style.opacity = '0';
+  } else {
+    vid.pause();
+    if (overlay) overlay.style.opacity = '1';
+  }
+}
+
+function toggleShortMute(idx) {
+  const vid = document.getElementById(`short-vid-${idx}`);
+  const btn = document.getElementById(`short-mute-${idx}`);
+  if (!vid) return;
+  vid.muted = !vid.muted;
+  if (btn) btn.textContent = vid.muted ? '🔇' : '🔊';
+}
