@@ -1544,6 +1544,12 @@ function renderAbaShortsAdmin() {
             <button class="bol-item-del" onclick="shortsRemoverVideo(${i})" title="Remover">✕</button>
           </div>`).join('')}
       </div>
+
+      <div style="margin-top:20px;padding:12px;background:var(--card-bg,#f5f5f5);border-radius:10px">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 8px">🔧 <b>Restaurar reações antigas:</b> migra reações armazenadas por índice (sistema antigo) para as IDs estáveis dos vídeos.</p>
+        <button class="bol-upload-btn bol-upload-btn-sec" style="width:100%" onclick="shortsMigrarReacoes()">↺ Restaurar reações antigas</button>
+        <div id="sht-migr-status" style="font-size:12px;margin-top:6px;color:var(--muted)"></div>
+      </div>
     </div>`;
 }
 
@@ -1595,4 +1601,75 @@ async function shortsRemoverVideo(idx) {
   await salvarShorts(shorts);
   if (item && item.url) deletarVideoStorage(item.url).catch(() => {});
   trocarAbaCom('shorts');
+}
+
+async function shortsMigrarReacoes() {
+  const status = document.getElementById('sht-migr-status');
+  if (status) status.textContent = '⏳ Lendo dados…';
+  try {
+    const shorts = lerShorts();
+    const itens  = shorts.itens || [];
+
+    // Lê todas as reações do Firebase
+    const resp = await fetch('https://torneio-sesi-20de0-default-rtdb.firebaseio.com/reacoes.json');
+    const reacoes = resp.ok ? (await resp.json() || {}) : {};
+
+    // Identifica shorts sem id (antigos) e conta quantos têm id (novos)
+    const novos = itens.filter(s => !!s.id).length;
+    const antigos = itens.map((s, i) => ({ s, i })).filter(({ s }) => !s.id);
+
+    if (antigos.length === 0) {
+      if (status) status.textContent = '✅ Nenhum short antigo encontrado. Nada a migrar.';
+      return;
+    }
+
+    // Mapeamento: short antigo no índice i do array tem chave antiga short_{i - novos}
+    const migracoes = [];
+    for (const { s, i } of antigos) {
+      const chaveAntiga = `short_${i - novos}`;
+      const chaveNova   = `short_${s.ts || i}`;
+      const dadosAntigos = reacoes[chaveAntiga];
+      if (dadosAntigos && chaveAntiga !== chaveNova) {
+        migracoes.push({ chaveAntiga, chaveNova, dados: dadosAntigos, legenda: s.legenda || '(sem legenda)' });
+      }
+    }
+
+    if (migracoes.length === 0) {
+      if (status) status.textContent = '✅ Nenhuma reação antiga a migrar (ou já foram migradas).';
+      return;
+    }
+
+    // Mostra o que será feito e pede confirmação
+    const resumo = migracoes.map(m =>
+      `"${m.legenda}": ${m.chaveAntiga} → ${m.chaveNova} (${Object.entries(m.dados).map(([k,v]) => `${k}:${v}`).join(', ')})`
+    ).join('\n');
+    if (!confirm(`Migrar reações?\n\n${resumo}\n\nAs reações antigas serão copiadas para as novas chaves estáveis.`)) {
+      if (status) status.textContent = 'Cancelado.';
+      return;
+    }
+
+    // Aplica a migração: escreve novas chaves e apaga antigas
+    let ok = 0;
+    for (const m of migracoes) {
+      // Mescla com reações existentes na chave nova (se houver)
+      const existentes = reacoes[m.chaveNova] || {};
+      const merged = {};
+      for (const [k, v] of Object.entries({ ...existentes })) merged[k] = v;
+      for (const [k, v] of Object.entries(m.dados)) merged[k] = Math.max(merged[k] || 0, v);
+
+      // Salva na chave nova
+      await fetch(`https://torneio-sesi-20de0-default-rtdb.firebaseio.com/reacoes/${m.chaveNova}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(merged)
+      });
+      // Remove a chave antiga
+      await fetch(`https://torneio-sesi-20de0-default-rtdb.firebaseio.com/reacoes/${m.chaveAntiga}.json`, {
+        method: 'DELETE'
+      });
+      ok++;
+    }
+
+    if (status) status.textContent = `✅ ${ok} short(s) migrado(s) com sucesso! Recarregue a página para ver as reações restauradas.`;
+  } catch (e) {
+    if (status) status.textContent = '❌ Erro: ' + e.message;
+  }
 }
