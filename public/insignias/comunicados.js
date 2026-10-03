@@ -212,7 +212,7 @@ function renderInicio(dados) {
     { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
     { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
     { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
-    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} item${boletim.length !== 1 ? 's' : ''}`,  cor: '#2E9E4F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} ${_langCom === 'pt' ? (boletim.length !== 1 ? 'itens' : 'item') : (boletim.length !== 1 ? 'items' : 'item')}`,  cor: '#2E9E4F' },
     { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
   ];
 
@@ -302,7 +302,7 @@ function renderInicio(dados) {
       <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
         <span class="com-inicio-boletim-emoji">🎬</span>
         <div class="com-inicio-boletim-info">
-          <div class="com-inicio-boletim-titulo">${boletim.length} item${boletim.length !== 1 ? 's' : ''} no boletim</div>
+          <div class="com-inicio-boletim-titulo">${boletim.length} ${boletim.length !== 1 ? 'itens' : 'item'} no boletim</div>
           <div class="com-inicio-boletim-sub">${tc('inicio_ver_boletim')}</div>
         </div>
         <span class="com-inicio-boletim-arrow">›</span>
