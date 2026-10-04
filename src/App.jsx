@@ -1989,10 +1989,21 @@ function KahootMonitorView({ forceLocal = false }) {
                   </button>
                 ))}
               </div>
-              <button onClick={pular} className="w-full mt-2 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.7)" }}>
-                Pular / equipe não respondeu
-              </button>
+              <div className="flex gap-2 mt-2">
+                <button onClick={pular} className="flex-1 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.7)" }}>
+                  Pular / equipe não respondeu
+                </button>
+                <button onClick={async () => {
+                  await Promise.all([kDel("kahoot_buzz"), kSet("kahoot_active", true)]);
+                  setBuzz(null);
+                  setActive(true);
+                  prevBuzzId.current = null;
+                }} className="flex-1 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ background: "rgba(255,165,0,0.3)", color: "#ffd580", border: "1px solid rgba(255,165,0,0.4)" }}>
+                  ↺ Contestar — reiniciar
+                </button>
+              </div>
             </div>
           )}
           {/* Resultado da resposta */}
