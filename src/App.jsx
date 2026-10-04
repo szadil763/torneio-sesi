@@ -2594,19 +2594,6 @@ export default function App() {
   const [page, setPage] = useState("home");  // "home" | "propulsao" | "ponte" | "kahoot"
   const [mode, setMode] = useState("monitor"); // "monitor" | "telao"
 
-  // Modo offline do Kahoot English (servidor local, ginásio sem internet)
-  const [kahootOffline, setKahootOffline] = useState(() => {
-    if (isLocalMode) return true;
-    try { return localStorage.getItem("kahoot-mode") === "offline"; } catch { return false; }
-  });
-
-  const toggleKahootMode = () => {
-    setKahootOffline((prev) => {
-      const next = !prev;
-      try { localStorage.setItem("kahoot-mode", next ? "offline" : "online"); } catch {}
-      return next;
-    });
-  };
 
   const pageLabel = page === "home"      ? "🏠 Início"
     : page === "propulsao" ? "🌀 Lançador de Spinner"
@@ -2673,29 +2660,6 @@ export default function App() {
               </button>
             ))}
           </div>
-          {/* Linha 3: toggle online/offline — só na aba Kahoot */}
-          {page === "kahoot" && !isLocalMode && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-white text-opacity-60" style={{ color: "rgba(255,255,255,0.55)" }}>
-                Kahoot:
-              </span>
-              <button
-                onClick={toggleKahootMode}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all"
-                style={{
-                  backgroundColor: kahootOffline ? "#16a34a" : "rgba(255,255,255,0.15)",
-                  color: "#fff",
-                  border: kahootOffline ? "1.5px solid #4ade80" : "1.5px solid rgba(255,255,255,0.25)",
-                }}>
-                {kahootOffline ? "📴 Offline — servidor local" : "📶 Online — Firebase"}
-              </button>
-              {kahootOffline && (
-                <span className="text-xs font-semibold" style={{ color: "#4ade80" }}>
-                  ← ginásio sem internet
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -2704,8 +2668,8 @@ export default function App() {
       {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
       {page === "kahoot"    && (
         mode === "monitor"
-          ? <KahootMonitorView forceLocal={kahootOffline} />
-          : <KahootTelaoView  forceLocal={kahootOffline} />
+          ? <KahootMonitorView />
+          : <KahootTelaoView  />
       )}
     </div>
   );
