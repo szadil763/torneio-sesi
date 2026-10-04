@@ -2111,15 +2111,14 @@ function KahootMonitorView({ forceLocal = false }) {
           <div className="px-4 py-3 flex items-center justify-between" style={{ background: AZUL }}>
             <span className="font-bold text-white text-sm">Banco de Questões</span>
             <div className="flex gap-2">
-              {questoes.length === 0 && (
-                <button onClick={async () => {
-                  await kSet("kahoot_questoes", QUESTOES_DEFAULT);
-                  setQuestoes(QUESTOES_DEFAULT);
-                }}
-                  className="px-3 py-1 rounded-xl text-xs font-bold bg-yellow-400" style={{ color: '#1e3a5f' }}>
-                  ⬇ Importar 20 questões
-                </button>
-              )}
+              <button onClick={async () => {
+                if (questoes.length > 0 && !window.confirm("Substituir todas as questões pelo banco padrão?")) return;
+                await kSet("kahoot_questoes", QUESTOES_DEFAULT);
+                setQuestoes(QUESTOES_DEFAULT);
+              }}
+                className="px-3 py-1 rounded-xl text-xs font-bold bg-yellow-400" style={{ color: '#1e3a5f' }}>
+                ⬇ {questoes.length === 0 ? "Importar 20 questões" : "Restaurar padrão"}
+              </button>
               <button onClick={() => abrirEdicao(null)}
                 className="px-3 py-1 rounded-xl text-xs font-bold bg-white" style={{ color: AZUL }}>
                 + Nova
