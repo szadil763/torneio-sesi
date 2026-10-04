@@ -1426,11 +1426,17 @@ function renderAbaFotos(galeria) {
   secao.innerHTML = `
     <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
     <div class="galeria-mosaic">
-      ${fotos.map((f, i) => `
-        <div class="galeria-foto" onclick="abrirFotoModal(${i})" role="button" tabindex="0">
-          <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-img" loading="lazy">
-          ${f.legenda ? `<div class="galeria-caption">${f.legenda}</div>` : ''}
-        </div>`).join('')}
+      ${fotos.map((f, i) => {
+        const fotoId = `foto_${f.ts || i}`;
+        return `
+        <div class="galeria-foto" role="button" tabindex="0">
+          <div class="galeria-foto-img-wrap" onclick="abrirFotoModal(${i})">
+            <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-img" loading="lazy">
+            ${f.legenda ? `<div class="galeria-caption">${f.legenda}</div>` : ''}
+          </div>
+          <div onclick="event.stopPropagation()">${_reacoesBar(fotoId)}</div>
+        </div>`;
+      }).join('')}
     </div>`;
   getMountEl().appendChild(secao);
   window._fotosDataCom = fotos;
@@ -1440,6 +1446,7 @@ function abrirFotoModal(idx) {
   const fotos = window._fotosDataCom || [];
   const f = fotos[idx];
   if (!f) return;
+  const fotoId = `foto_${f.ts || idx}`;
   const existing = document.getElementById('galeria-modal-overlay');
   if (existing) existing.remove();
   const overlay = document.createElement('div');
@@ -1451,6 +1458,7 @@ function abrirFotoModal(idx) {
       <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-modal-img">
       ${f.legenda   ? `<div class="galeria-modal-caption">${f.legenda}</div>`    : ''}
       ${f.reporter  ? `<div class="galeria-modal-reporter">${f.reporter}</div>`  : ''}
+      ${_reacoesBar(fotoId)}
     </div>`;
   overlay.addEventListener('click', () => overlay.remove());
   document.body.appendChild(overlay);
