@@ -1378,16 +1378,20 @@ function playBuzzSound(teamId) {
 function KahootBuzzerView() {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz] = useState(null);
+  const [errou, setErrou] = useState(null); // teamId que errou primeiro
   const [pressed, setPressed] = useState(false);
   const prevBuzzRef = useRef(null);
   const pollRef = useRef(null);
 
   const fetchState = useCallback(async () => {
-    const a = await safeGet("kahoot_active");
-    const b = await safeGet("kahoot_buzz");
+    const [a, b, err] = await Promise.all([
+      safeGet("kahoot_active"),
+      safeGet("kahoot_buzz"),
+      safeGet("kahoot_errou"),
+    ]);
     setActive(!!a);
+    setErrou(err ?? null);
     setBuzz((prev) => {
-      // toca som quando o buzz chega do servidor (outro dispositivo ou confirmação)
       if (!prevBuzzRef.current && b?.teamId) {
         playBuzzSound(b.teamId);
       }
@@ -1403,9 +1407,9 @@ function KahootBuzzerView() {
   }, [fetchState]);
 
   const handlePress = async (teamId) => {
-    if (!active || buzz) return;
+    if (!active || buzz || errou === teamId) return;
     setPressed(true);
-    playBuzzSound(teamId); // feedback imediato local
+    playBuzzSound(teamId);
     const existing = await safeGet("kahoot_buzz");
     if (!existing) {
       await safeSet("kahoot_buzz", { teamId, ts: Date.now() });
@@ -1421,12 +1425,17 @@ function KahootBuzzerView() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0d1018" }}>
       <div className="text-center py-6 px-4">
         <div className="text-white font-extrabold text-2xl mb-1">🎓 Kahoot English</div>
-        {!active && !buzz && (
+        {!active && !buzz && !errou && (
           <div className="text-gray-400 text-sm">Aguardando a próxima pergunta…</div>
+        )}
+        {errou && !buzz && !active && (
+          <div className="text-orange-400 font-bold text-base">
+            ⏳ Segunda chance — aguardando mediador…
+          </div>
         )}
         {active && !buzz && (
           <div className="text-yellow-400 font-bold text-lg animate-pulse">
-            ⚡ Aperte o botão da sua equipe!
+            ⚡ {errou ? "Segunda chance! Aperte!" : "Aperte o botão da sua equipe!"}
           </div>
         )}
         {buzz && winner && (
@@ -1438,13 +1447,15 @@ function KahootBuzzerView() {
 
       <div className="flex-1 grid grid-cols-2 gap-3 p-4 pb-8">
         {TEAMS_KAHOOT.map((t) => {
-          const isWinner = buzz?.teamId === t.id;
-          const isLoser = buzz && !isWinner;
+          const isWinner   = buzz?.teamId === t.id;
+          const isErrou    = errou === t.id;
+          const isDisabled = isErrou || (!active && !isWinner) || !!buzz;
+          const isLoser    = (buzz && !isWinner) || (isErrou && !buzz);
           return (
             <button
               key={t.id}
               onClick={() => handlePress(t.id)}
-              disabled={!active || !!buzz}
+              disabled={isDisabled}
               className="rounded-3xl font-extrabold text-3xl flex items-center justify-center transition-all"
               style={{
                 backgroundColor: isLoser ? "#333" : t.color,
@@ -1453,16 +1464,17 @@ function KahootBuzzerView() {
                 transform: isWinner ? "scale(1.04)" : "scale(1)",
                 boxShadow: isWinner ? `0 0 32px ${t.color}88` : "none",
                 minHeight: "120px",
-                border: isWinner ? `3px solid #fff` : "3px solid transparent",
+                border: isWinner ? `3px solid #fff` : isErrou ? "3px solid #ef4444" : "3px solid transparent",
               }}
             >
-              {isWinner ? "✓ " : ""}{t.label}
+              {isWinner ? "✓ " : isErrou ? "✗ " : ""}{t.label}
+              {isErrou && <span style={{ fontSize: 14, display: "block", opacity: 0.6 }}>errou</span>}
             </button>
           );
         })}
       </div>
 
-      {!active && !buzz && (
+      {!active && !buzz && !errou && (
         <div className="text-center text-gray-600 text-xs pb-6">
           {pressed ? "Registrado — aguarde a próxima pergunta" : "Botoeira bloqueada"}
         </div>
@@ -1598,9 +1610,10 @@ function KahootMonitorView({ forceLocal = false }) {
   const [flash, setFlash] = useState(false);
   const [questoes, setQuestoes]     = useState([]);
   const [questaoIdx, setQuestaoIdx] = useState(-1);
-  const [timerStart, setTimerStart] = useState(null); // ms timestamp or null
-  const [timeLeft, setTimeLeft]     = useState(0);    // ms remaining
-  const [answer, setAnswer]         = useState(null); // { alt, correto, teamId } or null
+  const [timerStart, setTimerStart] = useState(null);
+  const [timeLeft, setTimeLeft]     = useState(0);
+  const [answer, setAnswer]         = useState(null);
+  const [errou, setErrou]           = useState(null); // teamId da equipe que errou primeiro
   const [showQuestoes, setShowQuestoes] = useState(false);
   const [editIdx, setEditIdx]   = useState(undefined);
   const [editForm, setEditForm] = useState(FORM_VAZIO);
@@ -1614,7 +1627,7 @@ function KahootMonitorView({ forceLocal = false }) {
   const kDel = useCallback((k) => kahootDelete(k, forceLocal), [forceLocal]);
 
   const fetchState = useCallback(async () => {
-    const [a, b, p, q, qi, ts, ans] = await Promise.all([
+    const [a, b, p, q, qi, ts, ans, err] = await Promise.all([
       kGet("kahoot_active"),
       kGet("kahoot_buzz"),
       kGet("kahoot_pts"),
@@ -1622,6 +1635,7 @@ function KahootMonitorView({ forceLocal = false }) {
       kGet("kahoot_questao_idx"),
       kGet("kahoot_timer_start"),
       kGet("kahoot_answer"),
+      kGet("kahoot_errou"),
     ]);
     const newBuzz = b ?? null;
     const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
@@ -1639,6 +1653,7 @@ function KahootMonitorView({ forceLocal = false }) {
     setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
     setTimerStart(ts ? Number(ts) : null);
     setAnswer(ans ?? null);
+    setErrou(err ?? null);
   }, [kGet]);
 
   useEffect(() => {
@@ -1653,6 +1668,13 @@ function KahootMonitorView({ forceLocal = false }) {
     setActive(true);
     setTimerStart(null);
     setTimeLeft(0);
+  }, [kSet, kDel]);
+
+  const reativarOutrasBotoeiras = useCallback(async () => {
+    await Promise.all([kSet("kahoot_active", true), kDel("kahoot_buzz")]);
+    setActive(true);
+    setBuzz(null);
+    prevBuzzId.current = null;
   }, [kSet, kDel]);
 
   useEffect(() => {
@@ -1681,6 +1703,7 @@ function KahootMonitorView({ forceLocal = false }) {
       kDel("kahoot_buzz"),
       kDel("kahoot_active"),
       kDel("kahoot_answer"),
+      kDel("kahoot_errou"),
       kSet("kahoot_timer_start", now),
       ...(len > 0 ? [kSet("kahoot_questao_idx", nextIdx)] : []),
     ]);
@@ -1688,6 +1711,7 @@ function KahootMonitorView({ forceLocal = false }) {
     setBuzz(null);
     setActive(false);
     setAnswer(null);
+    setErrou(null);
     setTimerStart(now);
     prevBuzzId.current = null;
   };
@@ -1711,16 +1735,46 @@ function KahootMonitorView({ forceLocal = false }) {
   const darResposta = async (alt) => {
     if (!buzz || !questaoAtualRef.current) return;
     const correto = alt === questaoAtualRef.current.correta;
-    const ansObj  = { alt, correto, teamId: buzz.teamId };
-    const ops     = [kSet("kahoot_answer", ansObj), kDel("kahoot_active"), kDel("kahoot_buzz"), kDel("kahoot_timer_start")];
+
     if (correto) {
+      // Resposta correta: dá ponto, mostra gabarito, encerra rodada
+      const ansObj = { alt, correto: true, teamId: buzz.teamId };
       const newPts = { ...pts, [buzz.teamId]: (pts[buzz.teamId] || 0) + 1 };
-      ops.push(kSet("kahoot_pts", newPts));
+      await Promise.all([
+        kSet("kahoot_answer", ansObj),
+        kSet("kahoot_pts", newPts),
+        kDel("kahoot_active"),
+        kDel("kahoot_buzz"),
+        kDel("kahoot_timer_start"),
+        kDel("kahoot_errou"),
+      ]);
       setPts(newPts);
+      setAnswer(ansObj);
+      playSoundCorreto();
+    } else if (!errou) {
+      // Primeiro erro: salva equipe que errou, NÃO mostra gabarito
+      const firstWrong = buzz.teamId;
+      await Promise.all([
+        kSet("kahoot_errou", firstWrong),
+        kDel("kahoot_active"),
+        kDel("kahoot_buzz"),
+        kDel("kahoot_timer_start"),
+      ]);
+      setErrou(firstWrong);
+      playSoundErrado();
+    } else {
+      // Segundo erro: encerra rodada, agora mostra gabarito
+      const ansObj = { alt, correto: false, teamId: buzz.teamId, final: true };
+      await Promise.all([
+        kSet("kahoot_answer", ansObj),
+        kDel("kahoot_active"),
+        kDel("kahoot_buzz"),
+        kDel("kahoot_timer_start"),
+        kDel("kahoot_errou"),
+      ]);
+      setAnswer(ansObj);
+      playSoundErrado();
     }
-    await Promise.all(ops);
-    setAnswer(ansObj);
-    if (correto) playSoundCorreto(); else playSoundErrado();
     setActive(false);
     setBuzz(null);
     setTimerStart(null);
@@ -1728,11 +1782,12 @@ function KahootMonitorView({ forceLocal = false }) {
   };
 
   const pular = async () => {
-    await Promise.all([kDel("kahoot_active"), kDel("kahoot_buzz"), kDel("kahoot_timer_start"), kDel("kahoot_answer")]);
+    await Promise.all([kDel("kahoot_active"), kDel("kahoot_buzz"), kDel("kahoot_timer_start"), kDel("kahoot_answer"), kDel("kahoot_errou")]);
     setActive(false);
     setBuzz(null);
     setTimerStart(null);
     setAnswer(null);
+    setErrou(null);
     prevBuzzId.current = null;
   };
 
@@ -1740,7 +1795,8 @@ function KahootMonitorView({ forceLocal = false }) {
     if (!window.confirm("Zerar toda a pontuação do Kahoot English?")) return;
     await Promise.all([
       kDel("kahoot_pts"), kDel("kahoot_buzz"), kDel("kahoot_active"),
-      kDel("kahoot_timer_start"), kDel("kahoot_answer"), kSet("kahoot_questao_idx", -1),
+      kDel("kahoot_timer_start"), kDel("kahoot_answer"), kDel("kahoot_errou"),
+      kSet("kahoot_questao_idx", -1),
     ]);
     setPts({});
     setBuzz(null);
@@ -1748,6 +1804,7 @@ function KahootMonitorView({ forceLocal = false }) {
     setQuestaoIdx(-1);
     setTimerStart(null);
     setAnswer(null);
+    setErrou(null);
     prevBuzzId.current = null;
   };
 
@@ -1790,6 +1847,7 @@ function KahootMonitorView({ forceLocal = false }) {
   const pct      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
 
   /* ── cores de fundo do cabeçalho ── */
+  const errouTeam = errou ? TEAMS_KAHOOT.find(t => t.id === errou) : null;
   const headerBg = winner
     ? winner.color
     : contando
@@ -1798,6 +1856,8 @@ function KahootMonitorView({ forceLocal = false }) {
     ? LARANJA
     : answer
     ? (answer.correto ? "#15803d" : "#dc2626")
+    : errou
+    ? "#92400e"
     : "#1e293b";
 
   return (
@@ -1918,7 +1978,7 @@ function KahootMonitorView({ forceLocal = false }) {
           {answer && !winner && !contando && !active && (
             <div>
               <div className="font-black text-white text-2xl">
-                {answer.correto ? "✅ Correto! +1 pt" : "❌ Errado!"}
+                {answer.correto ? "✅ Correto! +1 pt" : "❌ Errado! Encerrado."}
               </div>
               <div className="text-white/80 text-sm mt-1">
                 {TEAMS_KAHOOT.find(t => t.id === answer.teamId)?.label} respondeu {ALT_LABELS[answer.alt]}
@@ -1926,8 +1986,25 @@ function KahootMonitorView({ forceLocal = false }) {
               </div>
             </div>
           )}
+          {/* Primeiro erro — aguardando mediador reativar */}
+          {errou && !winner && !active && !answer && !contando && (
+            <div>
+              <div className="font-black text-white text-xl mb-1">
+                ❌ {errouTeam?.label} errou
+              </div>
+              <div className="text-white/70 text-sm mb-3">
+                Reative as outras 3 botoeiras para segunda chance
+              </div>
+              <button
+                onClick={reativarOutrasBotoeiras}
+                className="w-full py-2.5 rounded-xl font-bold text-sm"
+                style={{ background: LARANJA, color: "#fff", boxShadow: `0 4px 14px ${LARANJA}88` }}>
+                ⚡ Reativar outras 3 botoeiras
+              </button>
+            </div>
+          )}
           {/* Aguardando */}
-          {!contando && !active && !winner && !answer && (
+          {!contando && !active && !winner && !answer && !errou && (
             <div className="text-white/60 font-semibold text-sm tracking-wide">
               Pronto — pressione "Nova Pergunta"
             </div>
@@ -1938,9 +2015,10 @@ function KahootMonitorView({ forceLocal = false }) {
       {/* ── Botoeiras virtuais 2×2 ── */}
       <div className="grid grid-cols-2 gap-3">
         {TEAMS_KAHOOT.map((t) => {
-          const isWinner = winner?.id === t.id;
-          const isLoser  = !!winner && !isWinner;
-          const canPress = active && !buzz;
+          const isWinner  = winner?.id === t.id;
+          const isErrou   = errou === t.id;
+          const isLoser   = (!!winner && !isWinner) || (!!errou && !buzz && isErrou);
+          const canPress  = active && !buzz && !isErrou;
           return (
             <button
               key={t.id}
@@ -1982,7 +2060,7 @@ function KahootMonitorView({ forceLocal = false }) {
       </div>
 
       {/* ── Nova Pergunta ── */}
-      {!contando && !active && !winner && (
+      {!contando && !active && !winner && !errou && (
         <button
           onClick={novaPergunta}
           className="w-full py-3 rounded-2xl font-bold text-lg text-white"
@@ -2157,11 +2235,12 @@ function KahootTelaoView({ forceLocal = false }) {
   const [timerStart, setTimerStart] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [answer, setAnswer] = useState(null);
+  const [errou, setErrou] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
   const timerRefT = useRef(null);
 
   const fetchAll = useCallback(async () => {
-    const [p, b, a, q, qi, ts, ans] = await Promise.all([
+    const [p, b, a, q, qi, ts, ans, err] = await Promise.all([
       kahootGet("kahoot_pts", forceLocal),
       kahootGet("kahoot_buzz", forceLocal),
       kahootGet("kahoot_active", forceLocal),
@@ -2169,6 +2248,7 @@ function KahootTelaoView({ forceLocal = false }) {
       kahootGet("kahoot_questao_idx", forceLocal),
       kahootGet("kahoot_timer_start", forceLocal),
       kahootGet("kahoot_answer", forceLocal),
+      kahootGet("kahoot_errou", forceLocal),
     ]);
     setPts(p ?? {});
     setBuzz(b ?? null);
@@ -2177,6 +2257,7 @@ function KahootTelaoView({ forceLocal = false }) {
     setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
     setTimerStart(ts ? Number(ts) : null);
     setAnswer(ans ?? null);
+    setErrou(err ?? null);
     setLastUpdate(new Date());
   }, [forceLocal]);
 
@@ -2204,11 +2285,15 @@ function KahootTelaoView({ forceLocal = false }) {
   const secsLeftT = Math.ceil(timeLeft / 1000);
   const pctT      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
 
+  const errouTeamT = errou ? TEAMS_KAHOOT.find(t => t.id === errou) : null;
+
   // Fase atual do telão
   const fase = buzz ? 'buzz'
     : answer ? 'resposta'
+    : active && errou ? 'ativo_segunda'
     : contandoT ? 'countdown'
     : active ? 'ativo'
+    : errou ? 'errou'
     : 'idle';
 
   return (
@@ -2365,6 +2450,69 @@ function KahootTelaoView({ forceLocal = false }) {
                   {t.label}
                 </div>
               ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: errou — primeira equipe errou, aguardando mediador */}
+        {fase === 'errou' && errouTeamT && questaoAtual && (
+          <>
+            <div className="rounded-3xl flex flex-col items-center justify-center py-8"
+              style={{ background: "#7f1d1d", boxShadow: "0 0 40px #ef444488" }}>
+              <div className="font-black text-white text-4xl mb-2">
+                ❌ {errouTeamT.label} errou!
+              </div>
+              <div className="text-white/70 font-semibold text-lg">
+                Aguardando segunda chance…
+              </div>
+            </div>
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug text-center" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* FASE: ativo_segunda — segunda chance, equipe que errou bloqueada */}
+        {fase === 'ativo_segunda' && questaoAtual && (
+          <>
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: LARANJA }}>
+                Segunda chance — Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => (
+                <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4"
+                  style={{ background: ALT_CORES[alt] }}>
+                  <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                  <span className="font-bold text-white text-base leading-tight">{questaoAtual[alt]}</span>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => {
+                const isBlocked = t.id === errou;
+                return (
+                  <div key={t.id}
+                    className="rounded-2xl flex items-center justify-center gap-2 font-extrabold"
+                    style={{
+                      background: isBlocked ? "#333" : t.color,
+                      height: 68,
+                      fontSize: 17,
+                      color: isBlocked ? "#555" : (t.dark ? "#1a1a1a" : "#fff"),
+                      opacity: isBlocked ? 0.3 : 1,
+                      animation: isBlocked ? "none" : "pulseScale 1s ease-in-out infinite",
+                      boxShadow: isBlocked ? "none" : `0 0 28px ${t.color}99`,
+                    }}>
+                    {isBlocked ? "✗" : "🔔"} {t.label}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
