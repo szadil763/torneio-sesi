@@ -1479,6 +1479,30 @@ function KahootBuzzerView() {
           {pressed ? "Registrado — aguarde a próxima pergunta" : "Botoeira bloqueada"}
         </div>
       )}
+
+      {/* Botão de contestação — aparece após uma equipe ser detectada */}
+      {buzz && !active && (
+        <div className="text-center pb-8 px-4">
+          <button
+            onClick={async () => {
+              if (!window.confirm("Contestar resultado e reiniciar as botoeiras?")) return;
+              await safeDelete("kahoot_buzz");
+              setBuzz(null);
+              setPressed(false);
+              prevBuzzRef.current = null;
+            }}
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1.5px solid rgba(255,255,255,0.2)",
+              borderRadius: 12, padding: "10px 24px",
+              color: "rgba(255,255,255,0.6)", fontSize: 14,
+              fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            ↺ Contestar / Reiniciar botoeiras
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2236,6 +2260,7 @@ function KahootTelaoView({ forceLocal = false }) {
   const [answer, setAnswer] = useState(null);
   const [errou, setErrou] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const timerRefT = useRef(null);
 
   const fetchAll = useCallback(async () => {
@@ -2296,7 +2321,24 @@ function KahootTelaoView({ forceLocal = false }) {
     : 'idle';
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: AZUL_ESCURO }}>
+    <div className="min-h-screen flex flex-col" style={{
+      background: AZUL_ESCURO,
+      ...(expanded ? { position: "fixed", inset: 0, zIndex: 9999, overflow: "auto" } : {}),
+    }}>
+
+      {/* ── Botão expandir/recolher ── */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        title={expanded ? "Recolher" : "Expandir tela cheia"}
+        style={{
+          position: "absolute", top: 10, right: 10, zIndex: 10000,
+          background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+          borderRadius: 8, padding: "4px 9px", color: "#fff", cursor: "pointer",
+          fontSize: 18, lineHeight: 1,
+        }}
+      >
+        {expanded ? "⤡" : "⛶"}
+      </button>
 
       {/* ── Cabeçalho fixo ── */}
       <div className="flex items-center justify-between px-6 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
