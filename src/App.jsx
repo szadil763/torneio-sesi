@@ -1578,7 +1578,7 @@ function playSoundErrado() {
 const ALT_CORES  = { a: '#ef4444', b: '#3b82f6', c: '#22c55e', d: '#f59e0b' };
 const ALT_LABELS = { a: 'A', b: 'B', c: 'C', d: 'D' };
 const FORM_VAZIO = { texto: '', a: '', b: '', c: '', d: '', correta: 'a' };
-const TIMER_MS   = 10000;
+const TIMER_MS   = 30000;
 
 const QUESTOES_DEFAULT = [
   { texto: '1º ANO — HOW MANY LETTERS ARE THERE IN THE WORD S-W-A-N?', a: '4', b: '3', c: '6', d: '5', correta: 'a' },
