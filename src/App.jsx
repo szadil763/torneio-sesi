@@ -1569,10 +1569,10 @@ const FORM_VAZIO = { texto: '', a: '', b: '', c: '', d: '', correta: 'a' };
 const TIMER_MS   = 10000;
 
 const QUESTOES_DEFAULT = [
-  { texto: '1º ANO — HOW MANY LETTERS ARE THERE IN THE WORD "DUCKLING"?', a: '6', b: '7', c: '8', d: '9', correta: 'b' },
-  { texto: '1º ANO — WHICH WORD RHYMES WITH "DUCK"?', a: 'Tree', b: 'Truck', c: 'Bird', d: 'Swan', correta: 'b' },
-  { texto: '1º ANO — WHICH LETTER COMES FIRST IN THE WORD "SWAN"?', a: 'S', b: 'W', c: 'A', d: 'N', correta: 'a' },
-  { texto: '1º ANO — WHICH WORD STARTS WITH THE SAME SOUND AS "DUCK"?', a: 'Dog', b: 'Swan', c: 'Nest', d: 'Egg', correta: 'a' },
+  { texto: '1º ANO — HOW MANY LETTERS ARE THERE IN THE WORD S-W-A-N?', a: '4', b: '3', c: '6', d: '5', correta: 'a' },
+  { texto: '1º ANO — THE DUCKLINGS ARE:', a: 'Green', b: 'Yellow', c: 'Blue', d: 'Pink', correta: 'b' },
+  { texto: '1º ANO — WHAT DID THE UGLY DUCKLING SEE?', a: 'Many Frogs', b: 'Many Dogs', c: 'Beautiful Swans', d: 'Many Hens', correta: 'c' },
+  { texto: '1º ANO — WHAT CAME OUT FROM THE LAST EGG?', a: 'A little butterfly', b: 'A big and gray duckling', c: 'A goose', d: 'An alligator', correta: 'b' },
   { texto: '2º ANO — WHICH WORD BEGINS WITH THE SAME SOUND AS "SWAN"?', a: 'Swim', b: 'Tree', c: 'Cat', d: 'Pond', correta: 'a' },
   { texto: '2º ANO — WHICH WORD IS HIDDEN INSIDE "DUCKLING"?', a: 'Duck', b: 'Lake', c: 'Wing', d: 'Nest', correta: 'a' },
   { texto: '2º ANO — WHICH WORD ENDS WITH THE SAME SOUND AS "NEST"?', a: 'Best', b: 'Duck', c: 'Swan', d: 'Pond', correta: 'a' },
