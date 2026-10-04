@@ -1481,7 +1481,7 @@ async function galeriaAdicionarFotos() {
   const legenda  = (document.getElementById('gal-legenda')?.value  || '').trim();
   const reporter = (document.getElementById('gal-reporter')?.value || '').trim();
   try {
-    const galeria = lerGaleria();
+    const galeria = await carregarGaleria();
     galeria.itens = galeria.itens || [];
     for (const dataUrl of _galPendingDataUrls) {
       galeria.itens.unshift({ dataUrl, legenda, reporter, ts: Date.now() });
@@ -1496,7 +1496,7 @@ async function galeriaAdicionarFotos() {
 
 async function galeriaRemoverFoto(idx) {
   if (!confirm('Remover esta foto?')) return;
-  const galeria = lerGaleria();
+  const galeria = await carregarGaleria();
   galeria.itens = galeria.itens || [];
   galeria.itens.splice(idx, 1);
   await salvarGaleria(galeria);
@@ -1579,7 +1579,7 @@ async function shortsAdicionarVideo() {
     const ext      = _shtPendingBlob.type.includes('mp4') ? 'mp4' : 'webm';
     const filename = `short_${Date.now()}.${ext}`;
     const url      = await uploadVideoStorage(_shtPendingBlob, filename);
-    const shorts   = lerShorts();
+    const shorts   = await carregarShorts();
     shorts.itens   = shorts.itens || [];
     shorts.itens.unshift({ id: `sht_${Date.now()}`, url, legenda, reporter, ts: Date.now() });
     await salvarShorts(shorts);
@@ -1594,7 +1594,7 @@ async function shortsAdicionarVideo() {
 
 async function shortsRemoverVideo(idx) {
   if (!confirm('Remover este short?')) return;
-  const shorts = lerShorts();
+  const shorts = await carregarShorts();
   shorts.itens  = shorts.itens || [];
   const item    = shorts.itens[idx];
   shorts.itens.splice(idx, 1);
