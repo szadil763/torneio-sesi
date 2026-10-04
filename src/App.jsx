@@ -1439,8 +1439,28 @@ function KahootBuzzerView() {
           </div>
         )}
         {buzz && winner && (
-          <div className="text-white font-extrabold text-xl mt-2">
-            🏆 <span style={{ color: winner.color }}>{winner.label}</span> foi primeiro!
+          <div className="mt-2">
+            <div className="text-white font-extrabold text-xl mb-3">
+              🏆 <span style={{ color: winner.color }}>{winner.label}</span> foi primeiro!
+            </div>
+            <button
+              onClick={async () => {
+                if (!window.confirm("Contestar resultado e reiniciar as botoeiras?")) return;
+                await safeDelete("kahoot_buzz");
+                setBuzz(null);
+                setPressed(false);
+                prevBuzzRef.current = null;
+              }}
+              style={{
+                background: "rgba(255,255,255,0.10)",
+                border: "1.5px solid rgba(255,255,255,0.25)",
+                borderRadius: 12, padding: "8px 20px",
+                color: "rgba(255,255,255,0.65)", fontSize: 13,
+                fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              ↺ Contestar / Reiniciar botoeiras
+            </button>
           </div>
         )}
       </div>
@@ -1480,29 +1500,6 @@ function KahootBuzzerView() {
         </div>
       )}
 
-      {/* Botão de contestação — aparece após uma equipe ser detectada */}
-      {buzz && (
-        <div className="text-center pb-8 px-4">
-          <button
-            onClick={async () => {
-              if (!window.confirm("Contestar resultado e reiniciar as botoeiras?")) return;
-              await safeDelete("kahoot_buzz");
-              setBuzz(null);
-              setPressed(false);
-              prevBuzzRef.current = null;
-            }}
-            style={{
-              background: "rgba(255,255,255,0.08)",
-              border: "1.5px solid rgba(255,255,255,0.2)",
-              borderRadius: 12, padding: "10px 24px",
-              color: "rgba(255,255,255,0.6)", fontSize: 14,
-              fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            ↺ Contestar / Reiniciar botoeiras
-          </button>
-        </div>
-      )}
     </div>
   );
 }
