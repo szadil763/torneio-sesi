@@ -1481,7 +1481,7 @@ function KahootBuzzerView() {
       )}
 
       {/* Botão de contestação — aparece após uma equipe ser detectada */}
-      {buzz && !active && (
+      {buzz && (
         <div className="text-center pb-8 px-4">
           <button
             onClick={async () => {
