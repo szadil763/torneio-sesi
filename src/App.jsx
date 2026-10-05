@@ -142,6 +142,7 @@ function MonitorView() {
   const [saveError, setSaveError] = useState(false);
   const [existing, setExisting] = useState(null);
   const [allRounds, setAllRounds] = useState({});
+  const [spinnerPublicLiberado, setSpinnerPublicLiberado] = useState(false);
 
   const montagemTickRef = useRef(null);
   const giroTickRef = useRef(null);
@@ -149,7 +150,10 @@ function MonitorView() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const data = await safeGet(keyFor(round, teamId));
+      const [data, lib] = await Promise.all([
+        safeGet(keyFor(round, teamId)),
+        safeGet("spinner_liberado"),
+      ]);
       if (!cancelled) {
         setExisting(data);
         setMontagemFinal(data?.montagem ?? null);
@@ -158,6 +162,7 @@ function MonitorView() {
         setGiroElapsed(data?.giro ?? 0);
         setSaved(false);
         setSaveError(false);
+        setSpinnerPublicLiberado(lib === true);
       }
 
       const hist = {};
@@ -432,6 +437,24 @@ function MonitorView() {
       <div className="text-center text-xs text-gray-400 pb-2">
         Mesa: {team.label} · Rodada {round} — os tempos são enviados ao telão
         automaticamente após salvar.
+      </div>
+
+      {/* Acesso público */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🌐 Acesso público</div>
+        <button
+          onClick={async () => {
+            const novo = !spinnerPublicLiberado;
+            await safeSet("spinner_liberado", novo);
+            setSpinnerPublicLiberado(novo);
+          }}
+          className="w-full py-2 rounded-xl text-sm font-bold"
+          style={{ backgroundColor: spinnerPublicLiberado ? "#16A34A" : "#F3F4F6", color: spinnerPublicLiberado ? "#fff" : "#374151" }}>
+          {spinnerPublicLiberado ? "🔓 Ranking público: LIBERADO" : "🔒 Liberar ranking para o público"}
+        </button>
+        <div className="text-xs text-gray-400 mt-2 text-center">
+          {spinnerPublicLiberado ? "Pais e alunos podem ver o ranking ao vivo" : "Botão bloqueado na página pública"}
+        </div>
       </div>
 
       <div className="border-t border-gray-200 pt-3 pb-4">
@@ -740,17 +763,22 @@ function PonteMonitorView() {
   const [allRounds, setAllRounds] = useState({});
   const [monitorEstado, setMonitorEstado] = useState("aguardando");
   const [comentarioInput, setComentarioInput] = useState("");
+  const [pontePublicLiberado, setPontePublicLiberado] = useState(false);
 
   const tickRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const est  = await safeGet("ponte_estado");
-      const comt = await safeGet("ponte_comentario");
+      const [est, comt, lib] = await Promise.all([
+        safeGet("ponte_estado"),
+        safeGet("ponte_comentario"),
+        safeGet("ponte_liberado"),
+      ]);
       if (!cancelled) {
         setMonitorEstado(est ?? "aguardando");
         setComentarioInput(comt ?? "");
+        setPontePublicLiberado(lib === true);
       }
     })();
     return () => { cancelled = true; };
@@ -1044,6 +1072,24 @@ function PonteMonitorView() {
             🏆 "Novo Recorde!" — {team.label} {formatTime(tempoFinal)}
           </button>
         )}
+      </div>
+
+      {/* Acesso público */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🌐 Acesso público</div>
+        <button
+          onClick={async () => {
+            const novo = !pontePublicLiberado;
+            await safeSet("ponte_liberado", novo);
+            setPontePublicLiberado(novo);
+          }}
+          className="w-full py-2 rounded-xl text-sm font-bold"
+          style={{ backgroundColor: pontePublicLiberado ? "#16A34A" : "#F3F4F6", color: pontePublicLiberado ? "#fff" : "#374151" }}>
+          {pontePublicLiberado ? "🔓 Ranking público: LIBERADO" : "🔒 Liberar ranking para o público"}
+        </button>
+        <div className="text-xs text-gray-400 mt-2 text-center">
+          {pontePublicLiberado ? "Pais e alunos podem ver o ranking ao vivo" : "Botão bloqueado na página pública"}
+        </div>
       </div>
 
       <div className="border-t border-gray-200 pt-3 pb-4">

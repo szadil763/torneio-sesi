@@ -44,6 +44,17 @@
   opacity: .7;
   flex-shrink: 0;
 }
+.pr-live-banner-locked {
+  background: linear-gradient(90deg, #374151 0%, #4B5563 100%);
+  box-shadow: none;
+  opacity: .7;
+  cursor: default !important;
+  pointer-events: none;
+}
+.pr-live-banner-locked .pr-live-banner-dot {
+  animation: none;
+  background: #9CA3AF;
+}
 
 /* ── Banner de novo conteúdo (Opção B) ──────────────────────────── */
 .com-novo-banner {

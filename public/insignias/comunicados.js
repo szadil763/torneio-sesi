@@ -321,6 +321,25 @@ function _iniciarPonteVotacao() {
   _ponteVotacaoInterval = setInterval(_fetchPonteEstado, 6000);
 }
 
+function _atualizarBannerRanking(id, liberado, url, subLiberado) {
+  const el = document.getElementById(`pr-banner-${id}`);
+  if (!el) return;
+  const sub = document.getElementById(`pr-banner-${id}-sub`);
+  const seta = el.querySelector('.pr-live-banner-seta');
+  if (liberado) {
+    el.className = 'pr-live-banner';
+    el.style.cursor = 'pointer';
+    el.onclick = () => { location.href = url; };
+    if (sub) sub.textContent = subLiberado;
+    if (seta) seta.textContent = '›';
+  } else {
+    el.className = 'pr-live-banner pr-live-banner-locked';
+    el.style.cursor = 'default';
+    el.onclick = null;
+    if (seta) seta.textContent = '🔒';
+  }
+}
+
 // ── Aba Início ────────────────────────────────────────────────────
 function renderInicio(dados) {
   // Countdown sempre no topo
@@ -347,19 +366,42 @@ function renderInicio(dados) {
   getMountEl().appendChild(divVoto);
   _iniciarPonteVotacao();
 
-  // Banner "Ranking ao vivo" — Ponte de Da Vinci
-  const divRankingBanner = document.createElement('div');
-  divRankingBanner.className = 'com-secao';
-  divRankingBanner.innerHTML = `
-    <a href="/ponte-ranking.html" class="pr-live-banner" style="text-decoration:none;display:block">
+  // Banners "Ranking ao vivo" — Ponte e Spinner
+  const divRankingBanners = document.createElement('div');
+  divRankingBanners.id = 'pr-live-banners';
+  divRankingBanners.className = 'com-secao';
+  divRankingBanners.innerHTML = `
+    <div id="pr-banner-ponte" class="pr-live-banner pr-live-banner-locked" aria-disabled="true">
       <div class="pr-live-banner-dot"></div>
       <div class="pr-live-banner-body">
         <div class="pr-live-banner-titulo">🌉 Ponte de Da Vinci</div>
-        <div class="pr-live-banner-sub">Acompanhe o ranking ao vivo</div>
+        <div id="pr-banner-ponte-sub" class="pr-live-banner-sub">Ranking disponível durante a prova</div>
       </div>
-      <div class="pr-live-banner-seta">›</div>
-    </a>`;
-  getMountEl().appendChild(divRankingBanner);
+      <div class="pr-live-banner-seta">🔒</div>
+    </div>
+    <div style="height:8px"></div>
+    <div id="pr-banner-spinner" class="pr-live-banner pr-live-banner-locked" aria-disabled="true">
+      <div class="pr-live-banner-dot"></div>
+      <div class="pr-live-banner-body">
+        <div class="pr-live-banner-titulo">🌀 Lançador de Spinner</div>
+        <div id="pr-banner-spinner-sub" class="pr-live-banner-sub">Ranking disponível durante a prova</div>
+      </div>
+      <div class="pr-live-banner-seta">🔒</div>
+    </div>`;
+  getMountEl().appendChild(divRankingBanners);
+
+  // Atualiza banners com base no Firebase (async — não bloqueia render)
+  (async () => {
+    try {
+      const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
+      const [rp, rs] = await Promise.all([
+        fetch(`${RTDB}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
+      ]);
+      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   'Acompanhe o ranking ao vivo');
+      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', 'Acompanhe o ranking ao vivo');
+    } catch (_) {}
+  })();
 
   const noticias = _coletarNoticias(dados);
   const cards = [
