@@ -1,6 +1,17 @@
 {
   "rules": {
-    ".read": "auth != null",
+    "stats":      { ".read": true, ".write": true },
+    "buzzer":     { ".read": true, ".write": true },
+    "reacoes":    { ".read": true, ".write": true },
+    "insignias":  { ".read": true, ".write": true },
+    "boletim":    { ".read": true, ".write": true },
+    "bol-videos": { ".read": true, ".write": true },
+    "recados":    { ".read": true, ".write": true },
+    "dicas":      { ".read": true, ".write": true },
+    "galeria":    { ".read": true, ".write": true },
+    "shorts":     { ".read": true, ".write": true },
+    "fcm-tokens": { ".read": true, ".write": true },
+    ".read":  "auth != null",
     ".write": "auth != null"
   }
 }
