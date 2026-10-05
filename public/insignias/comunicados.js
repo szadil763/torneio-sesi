@@ -1444,31 +1444,60 @@ function renderAbaFotos(galeria) {
 
 function abrirFotoModal(idx) {
   const fotos = window._fotosDataCom || [];
-  const f = fotos[idx];
-  if (!f) return;
-  const fotoId = `foto_${f.ts || idx}`;
+  if (!fotos[idx]) return;
   const existing = document.getElementById('galeria-modal-overlay');
   if (existing) existing.remove();
   const overlay = document.createElement('div');
   overlay.id = 'galeria-modal-overlay';
   overlay.className = 'galeria-modal-overlay';
-  overlay.innerHTML = `
-    <div class="galeria-modal-inner" onclick="event.stopPropagation()">
-      <button class="galeria-modal-fechar" onclick="document.getElementById('galeria-modal-overlay').remove()">✕</button>
-      <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-modal-img">
-      ${f.legenda   ? `<div class="galeria-modal-caption">${f.legenda}</div>`    : ''}
-      ${f.reporter  ? `<div class="galeria-modal-reporter">${f.reporter}</div>`  : ''}
-      ${_reacoesBar(fotoId)}
-    </div>`;
   overlay.addEventListener('click', () => overlay.remove());
+
+  function renderModal(i) {
+    const f = fotos[i];
+    if (!f) return;
+    const fotoId = `foto_${f.ts || i}`;
+    overlay.innerHTML = `
+      <div class="galeria-modal-inner" onclick="event.stopPropagation()">
+        <button class="galeria-modal-fechar" onclick="document.getElementById('galeria-modal-overlay').remove()">✕</button>
+        ${fotos.length > 1 ? `
+        <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navFotoModal(${i},-1)">&#8249;</button>
+        <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navFotoModal(${i},1)">&#8250;</button>` : ''}
+        <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-modal-img">
+        ${f.legenda  ? `<div class="galeria-modal-caption">${f.legenda}</div>`   : ''}
+        ${f.reporter ? `<div class="galeria-modal-reporter">${f.reporter}</div>` : ''}
+        ${_reacoesBar(fotoId)}
+      </div>`;
+  }
+
+  renderModal(idx);
   document.body.appendChild(overlay);
+}
+
+function _navFotoModal(currentIdx, delta) {
+  const fotos = window._fotosDataCom || [];
+  const next = (currentIdx + delta + fotos.length) % fotos.length;
+  abrirFotoModal(next);
 }
 
 // ── Aba Shorts ────────────────────────────────────────────────────
 let _shortsObserver = null;
 
+function _totalReacoesItem(itemId) {
+  if (!_reacoesCache) return 0;
+  const item = _reacoesCache[itemId];
+  if (!item) return 0;
+  return Object.values(item).reduce((acc, v) => acc + (v || 0), 0);
+}
+
 function renderAbaShorts(shorts) {
-  const itens = (shorts && shorts.itens) ? shorts.itens : [];
+  const itensRaw = (shorts && shorts.itens) ? shorts.itens : [];
+  // Ordena por engajamento (mais reações primeiro); empate mantém ordem original
+  const itens = itensRaw
+    .map((s, i) => ({ ...s, _origIdx: i, _stableId: s.id || s.ts || i }))
+    .sort((a, b) =>
+      _totalReacoesItem(`short_${b._stableId}`) - _totalReacoesItem(`short_${a._stableId}`)
+    );
+
   const secao = document.createElement('div');
   secao.className = 'com-secao';
 
@@ -1491,11 +1520,13 @@ function renderAbaShorts(shorts) {
             <div class="short-play-overlay" id="short-play-${i}">
               <span class="short-play-icon">▶</span>
             </div>
-            <button class="short-mute-btn" id="short-mute-${i}" onclick="event.stopPropagation();toggleShortMute(${i})" title="Ativar/silenciar som">🔇</button>
+            <button class="short-mute-btn short-mute-ativo" id="short-mute-${i}" onclick="event.stopPropagation();toggleShortMute(${i})" title="Toque para ativar o som">
+              🔇<span class="short-mute-label">som</span>
+            </button>
           </div>
           ${s.legenda  ? `<div class="short-caption">${s.legenda}</div>`   : ''}
           ${s.reporter ? `<div class="short-reporter">${s.reporter}</div>` : ''}
-          ${_reacoesBar(`short_${s.id || s.ts || i}`)}
+          ${_reacoesBar(`short_${s._stableId}`)}
         </div>`).join('')}
     </div>`;
   getMountEl().appendChild(secao);
@@ -1538,5 +1569,17 @@ function toggleShortMute(idx) {
   const btn = document.getElementById(`short-mute-${idx}`);
   if (!vid) return;
   vid.muted = !vid.muted;
-  if (btn) btn.textContent = vid.muted ? '🔇' : '🔊';
+  if (btn) {
+    btn.classList.toggle('short-mute-ativo', vid.muted);
+    const label = btn.querySelector('.short-mute-label');
+    if (vid.muted) {
+      btn.childNodes[0].textContent = '🔇';
+      if (label) label.textContent = 'som';
+      btn.title = 'Toque para ativar o som';
+    } else {
+      btn.childNodes[0].textContent = '🔊';
+      if (label) label.textContent = '';
+      btn.title = 'Silenciar';
+    }
+  }
 }
