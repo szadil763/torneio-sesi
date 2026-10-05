@@ -549,6 +549,11 @@ async function salvarGaleria(dados) {
   });
 }
 
+// ── Ponte ao vivo — estado / votação / comentário ─────────────────
+const RTDB_PONTE_ESTADO_URL    = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_estado.json";
+const RTDB_PONTE_VOTACAO_URL   = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_votacao.json";
+const RTDB_PONTE_COMENTARIO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_comentario.json";
+
 // ── Shorts ────────────────────────────────────────────────────────
 const RTDB_SHORTS_URL      = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/shorts.json";
 const CLOUDINARY_CLOUD     = "zimtzbbg";

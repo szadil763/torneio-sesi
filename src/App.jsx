@@ -738,8 +738,23 @@ function PonteMonitorView() {
   const [saveError, setSaveError] = useState(false);
   const [existing, setExisting] = useState(null);
   const [allRounds, setAllRounds] = useState({});
+  const [monitorEstado, setMonitorEstado] = useState("aguardando");
+  const [comentarioInput, setComentarioInput] = useState("");
 
   const tickRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const est  = await safeGet("ponte_estado");
+      const comt = await safeGet("ponte_comentario");
+      if (!cancelled) {
+        setMonitorEstado(est ?? "aguardando");
+        setComentarioInput(comt ?? "");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -835,6 +850,25 @@ function PonteMonitorView() {
     setSaved(false);
     setSaveError(false);
     setAllRounds({});
+  };
+
+  const handleSetEstado = async (estado) => {
+    await safeSet("ponte_estado", estado);
+    setMonitorEstado(estado);
+  };
+
+  const handlePublicarComentario = async () => {
+    await safeSet("ponte_comentario", comentarioInput || null);
+  };
+
+  const handleLimparComentario = async () => {
+    setComentarioInput("");
+    await safeSet("ponte_comentario", null);
+  };
+
+  const handleMarcarRecorde = async () => {
+    if (!tempoFinal || !team) return;
+    await safeSet("ponte_recorde", { ts: Date.now(), texto: `${team.label} — ${formatTime(tempoFinal)}` });
   };
 
   const team = TEAMS_1ANO.find((t) => t.id === teamId);
@@ -974,6 +1008,44 @@ function PonteMonitorView() {
         Mesa: {team.label} · Rodada {round} — tempo enviado ao telão após salvar.
       </div>
 
+      {/* Controles do Telão */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🎬 Controles do Telão</div>
+        <div className="text-xs font-semibold text-gray-600 mb-2">Estado da tela</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { id: "aguardando", label: "⏳ Aguardando" },
+            { id: "suspense",   label: "🎭 Suspense"   },
+            { id: "revelado",   label: "🎉 Revelar"     },
+          ].map(e => (
+            <button key={e.id} onClick={() => handleSetEstado(e.id)}
+              className="py-2 rounded-xl text-xs font-bold"
+              style={{ backgroundColor: monitorEstado === e.id ? AZUL : "#F3F4F6", color: monitorEstado === e.id ? "#fff" : "#374151" }}>
+              {e.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs font-semibold text-gray-600 mb-1">Comentário no telão</div>
+        <div className="flex gap-2 mb-2">
+          <input value={comentarioInput} onChange={ev => setComentarioInput(ev.target.value)}
+            onKeyDown={ev => { if (ev.key === "Enter") handlePublicarComentario(); }}
+            placeholder="Mensagem para aparecer no telão..."
+            className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none" />
+          <button onClick={handlePublicarComentario}
+            className="px-3 py-2 rounded-xl text-white text-xs font-bold shrink-0"
+            style={{ backgroundColor: AZUL }}>Publicar</button>
+          <button onClick={handleLimparComentario}
+            className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500 shrink-0">✕</button>
+        </div>
+        {tempoFinal !== null && !running && (
+          <button onClick={handleMarcarRecorde}
+            className="w-full py-2 rounded-xl text-sm font-bold text-white"
+            style={{ backgroundColor: LARANJA }}>
+            🏆 "Novo Recorde!" — {team.label} {formatTime(tempoFinal)}
+          </button>
+        )}
+      </div>
+
       <div className="border-t border-gray-200 pt-3 pb-4">
         <button onClick={handleResetAll}
           className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
@@ -989,6 +1061,12 @@ function PonteTelaoView() {
   const [data, setData] = useState({});
   const [liveKeys, setLiveKeys] = useState({});
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [provaEstado, setProvaEstado] = useState("aguardando");
+  const [comentario, setComentario] = useState("");
+  const [recorde, setRecorde] = useState(null);
+  const [votacao, setVotacao] = useState({});
+  const [celebrando, setCelebrando] = useState(false);
+  const prevRecordeTsRef = useRef(null);
 
   const fetchAll = useCallback(async () => {
     const entries = {};
@@ -1004,6 +1082,23 @@ function PonteTelaoView() {
     setData(entries);
     setLiveKeys(live);
     setLastUpdate(new Date());
+    const [est, comt, rec, vot] = await Promise.all([
+      safeGet("ponte_estado"),
+      safeGet("ponte_comentario"),
+      safeGet("ponte_recorde"),
+      safeGet("ponte_votacao"),
+    ]);
+    setProvaEstado(est ?? "aguardando");
+    setComentario(comt ?? "");
+    setVotacao(vot ?? {});
+    if (rec?.ts && rec.ts !== prevRecordeTsRef.current) {
+      if (prevRecordeTsRef.current !== null) {
+        setCelebrando(true);
+        setTimeout(() => setCelebrando(false), 5000);
+      }
+      prevRecordeTsRef.current = rec?.ts ?? null;
+    }
+    setRecorde(rec ?? null);
   }, []);
 
   useEffect(() => {
@@ -1043,7 +1138,78 @@ function PonteTelaoView() {
   const maxTotal = Math.max(1, ...TEAMS_1ANO.map((t) => totals[t.id]));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
+    <>
+    <style>{`
+      @keyframes suspensePulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.7} }
+      @keyframes recordeBoom { 0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)} }
+      @keyframes recordeText { 0%{transform:translateY(24px);opacity:0}100%{transform:translateY(0);opacity:1} }
+      @keyframes slideUp { 0%{transform:translateY(100%)}100%{transform:translateY(0)} }
+      @keyframes rankEnter { from{opacity:0.4;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)} }
+      @keyframes votaFlash { 0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)} }
+    `}</style>
+
+    {/* Suspense overlay */}
+    {provaEstado === "suspense" && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+        style={{ background: "linear-gradient(135deg,#001830 0%,#003580 100%)" }}>
+        <div style={{ fontSize: 88, animation: "suspensePulse 1.8s ease-in-out infinite" }}>⏳</div>
+        <div className="font-extrabold text-white mt-6 tracking-widest text-center"
+          style={{ fontSize: "clamp(28px,6vw,64px)" }}>CALCULANDO...</div>
+        <div className="mt-3 font-semibold tracking-wide" style={{ color: "#93C5FD", fontSize: "clamp(14px,3vw,24px)" }}>
+          resultado em breve
+        </div>
+      </div>
+    )}
+
+    {/* Novo Recorde! celebration overlay */}
+    {celebrando && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center pointer-events-none"
+        style={{ background: "rgba(0,0,0,0.65)" }}>
+        <div style={{ animation: "recordeBoom 0.6s cubic-bezier(.22,1,.36,1)", fontSize: "clamp(64px,12vw,128px)" }}>🏆</div>
+        <div className="font-extrabold text-center mt-4" style={{
+          color: LARANJA, fontSize: "clamp(32px,7vw,96px)",
+          animation: "recordeText 0.5s ease-out 0.2s both",
+          textShadow: "0 4px 24px rgba(0,0,0,0.8)",
+        }}>NOVO RECORDE!</div>
+        {recorde?.texto && (
+          <div className="font-bold text-white text-center mt-3"
+            style={{ fontSize: "clamp(16px,3vw,32px)", textShadow: "0 2px 12px rgba(0,0,0,0.7)", animation: "recordeText 0.5s ease-out 0.4s both" }}>
+            {recorde.texto}
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Comment bar */}
+    {comentario && (
+      <div className="fixed bottom-0 left-0 right-0 z-40 py-4 px-6 text-center font-bold text-white"
+        style={{ background: "rgba(0,40,100,0.92)", animation: "slideUp 0.35s ease-out", fontSize: "clamp(14px,2.5vw,22px)", backdropFilter: "blur(4px)" }}>
+        💬 {comentario}
+      </div>
+    )}
+
+    {/* Votação — audience votes */}
+    {Object.keys(votacao).length > 0 && provaEstado === "aguardando" && (
+      <div className="fixed top-4 right-4 z-30 bg-white rounded-2xl shadow-lg p-3 min-w-[160px]"
+        style={{ border: `2px solid ${AZUL}` }}>
+        <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar?</div>
+        {TEAMS_1ANO.map(t => {
+          const v = votacao[t.id] || 0;
+          const total = Object.values(votacao).reduce((a,b) => a + b, 0) || 1;
+          return (
+            <div key={t.id} className="flex items-center gap-2 mb-1">
+              <div className="text-xs font-semibold w-12 shrink-0" style={{ color: t.color }}>{t.label}</div>
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "#F3F4F6" }}>
+                <div className="h-full rounded-full" style={{ width: `${(v/total)*100}%`, background: t.color, transition: "width 0.5s ease" }} />
+              </div>
+              <div className="text-xs font-bold w-6 text-right" style={{ color: t.color }}>{v}</div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8" style={{ paddingBottom: comentario ? "80px" : undefined }}>
       <div>
         <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
           SESI — TORNEIO INFANTIL
@@ -1059,8 +1225,8 @@ function PonteTelaoView() {
         {ranking.map((t, idx) => {
           const isLive = ROUNDS.some((r) => liveKeys[`${r}_${t.id}`]);
           return (
-            <div key={t.id} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
-              style={{ backgroundColor: t.color }}>
+            <div key={`${t.id}-${idx}`} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
+              style={{ backgroundColor: t.color, animation: "rankEnter 0.5s ease-out" }}>
               <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
                 style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
                 {idx + 1}º
@@ -1192,6 +1358,7 @@ function PonteTelaoView() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

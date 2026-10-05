@@ -1184,3 +1184,67 @@
 .galeria-modal-nav:hover { background: rgba(0,0,0,.75); }
 .galeria-modal-prev { left: 8px; }
 .galeria-modal-next { right: 8px; }
+
+/* ── Ponte ao vivo — votação ──────────────────────────────────── */
+.ponte-voto-card {
+  background: linear-gradient(135deg, #001F4D 0%, #003580 100%);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 12px 0;
+  color: #fff;
+}
+.ponte-voto-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 12px;
+  letter-spacing: .03em;
+}
+.ponte-voto-opcoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ponte-voto-btn {
+  background: rgba(255,255,255,.12);
+  border: 2px solid rgba(255,255,255,.2);
+  border-radius: 10px;
+  padding: 10px 8px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background .15s, transform .1s;
+}
+.ponte-voto-btn:not(:disabled):hover { background: rgba(255,255,255,.22); transform: scale(1.03); }
+.ponte-voto-btn:disabled { cursor: default; }
+.ponte-voto-btn.meu-voto { border-color: var(--vc); background: rgba(255,255,255,.18); }
+.ponte-voto-label { font-size: 13px; }
+.ponte-voto-barra-wrap {
+  width: 100%;
+  height: 5px;
+  background: rgba(255,255,255,.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ponte-voto-barra {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+.ponte-voto-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.7);
+  align-self: flex-end;
+}
+.ponte-voto-total {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  margin-top: 10px;
+}

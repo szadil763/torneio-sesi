@@ -237,6 +237,90 @@ function _fecharBannerNovidades() {
   if (el) { el.style.transition = 'opacity .25s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); }
 }
 
+// ── Ponte ao vivo — votação pública ───────────────────────────────
+const _PONTE_VOTO_KEY = 'torneio-ponte-voto:v1';
+let _ponteEstadoAtual = null;
+let _ponteVotacaoAtual = {};
+let _ponteVotoUsuario = null;
+let _ponteVotacaoInterval = null;
+
+function _lerVotoUsuario() {
+  try { return JSON.parse(localStorage.getItem(_PONTE_VOTO_KEY)) || null; } catch (_) { return null; }
+}
+function _salvarVotoUsuario(v) {
+  try { localStorage.setItem(_PONTE_VOTO_KEY, JSON.stringify(v)); } catch (_) {}
+}
+
+async function _fetchPonteEstado() {
+  try {
+    const [re, rv] = await Promise.all([
+      fetch(RTDB_PONTE_ESTADO_URL).then(r => r.ok ? r.json() : null),
+      fetch(RTDB_PONTE_VOTACAO_URL).then(r => r.ok ? r.json() : null),
+    ]);
+    _ponteEstadoAtual = re ?? null;
+    _ponteVotacaoAtual = rv ?? {};
+    _renderPonteWidget();
+  } catch (_) {}
+}
+
+async function _votar(teamId) {
+  if (_ponteVotoUsuario) return;
+  _ponteVotoUsuario = teamId;
+  _salvarVotoUsuario(teamId);
+  const url = `https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_votacao/${teamId}.json`;
+  try {
+    const current = await fetch(url).then(r => r.ok ? r.json() : 0).then(v => (typeof v === 'number' ? v : 0));
+    await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current + 1) });
+    await _fetchPonteEstado();
+  } catch (_) {}
+  _renderPonteWidget();
+}
+
+function _renderPonteWidget() {
+  const el = document.getElementById('ponte-voto-widget');
+  if (!el) return;
+  const estado = _ponteEstadoAtual;
+  if (!estado || estado === 'revelado') { el.innerHTML = ''; return; }
+
+  const total = Object.values(_ponteVotacaoAtual).reduce((a, b) => a + (b || 0), 0) || 1;
+  const jaVotou = !!_ponteVotoUsuario;
+
+  const TEAMS_1ANO_CORES = [
+    { id: '1A', label: '1º A', color: '#D92B2B' },
+    { id: '1B', label: '1º B', color: '#004B8D' },
+    { id: '1C', label: '1º C', color: '#2E9E4F' },
+    { id: '1D', label: '1º D', color: '#F0B800' },
+  ];
+
+  el.innerHTML = `
+    <div class="ponte-voto-card">
+      <div class="ponte-voto-titulo">🗳️ Quem vai ganhar a Ponte?</div>
+      <div class="ponte-voto-opcoes">
+        ${TEAMS_1ANO_CORES.map(t => {
+          const votos = _ponteVotacaoAtual[t.id] || 0;
+          const pct   = Math.round((votos / total) * 100);
+          const eu    = _ponteVotoUsuario === t.id;
+          return `
+            <button class="ponte-voto-btn${jaVotou ? ' votado' : ''}${eu ? ' meu-voto' : ''}"
+              onclick="_votar('${t.id}')"
+              ${jaVotou ? 'disabled' : ''}
+              style="--vc:${t.color}">
+              <span class="ponte-voto-label">${t.label}${eu ? ' ✓' : ''}</span>
+              ${jaVotou ? `<div class="ponte-voto-barra-wrap"><div class="ponte-voto-barra" style="width:${pct}%;background:${t.color}"></div></div><span class="ponte-voto-pct">${pct}%</span>` : ''}
+            </button>`;
+        }).join('')}
+      </div>
+      ${jaVotou ? `<div class="ponte-voto-total">${total} voto${total !== 1 ? 's' : ''}</div>` : ''}
+    </div>`;
+}
+
+function _iniciarPonteVotacao() {
+  _ponteVotoUsuario = _lerVotoUsuario();
+  _fetchPonteEstado();
+  clearInterval(_ponteVotacaoInterval);
+  _ponteVotacaoInterval = setInterval(_fetchPonteEstado, 6000);
+}
+
 // ── Aba Início ────────────────────────────────────────────────────
 function renderInicio(dados) {
   // Countdown sempre no topo
@@ -256,6 +340,12 @@ function renderInicio(dados) {
         acc + AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length, 0);
     } catch (_) { return 0; }
   })();
+
+  // Widget de votação da ponte
+  const divVoto = document.createElement('div');
+  divVoto.id = 'ponte-voto-widget';
+  getMountEl().appendChild(divVoto);
+  _iniciarPonteVotacao();
 
   const noticias = _coletarNoticias(dados);
   const cards = [
