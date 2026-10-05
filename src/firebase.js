@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, get, set, remove } from 'firebase/database';
-import { getAuth, signInAnonymously } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB4Z2xoYedpMmH49RGFVN00WR_gn4R5LSI",
@@ -14,8 +13,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const auth = getAuth(app);
-signInAnonymously(auth).catch(() => {});
 
 // Detecta se está rodando no servidor local (porta 3000)
 const IS_LOCAL = typeof window !== 'undefined' && window.location.port === '3000';
