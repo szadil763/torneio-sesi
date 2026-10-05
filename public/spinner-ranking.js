@@ -32,6 +32,9 @@ function fmtGiro(rpm) {
   if (rpm === null || rpm === undefined) return "—";
   return rpm.toFixed(1) + "s";
 }
+function fmtElapsed(sec) {
+  return sec.toFixed(1) + "s";
+}
 
 // ── Scoring (mirrors App.jsx rankPoints) ─────────────────────
 function rankPoints(items, higherBetter) {
@@ -63,13 +66,30 @@ function countGiroFirsts(roundResults, teamId) {
 
 // ── State ─────────────────────────────────────────────────────
 let _data    = {};
-let _live    = {};
+let _live    = {};   // { "1_2A": { montagemRunning, giroRunning, startTs_montagem, startTs_giro }, ... }
 let _estado  = "aguardando";
 let _comt    = "";
 let _recorde = null;
 let _prevRecordeTs = undefined;
 let _celebrando    = false;
 let _celebTimer    = null;
+let _liveTimerRaf  = null;
+let _pollInterval  = null;
+
+// ── Live timer loop ───────────────────────────────────────────
+function startLiveTimer() {
+  if (_liveTimerRaf) return;
+  function tick() {
+    const hasLive = Object.keys(_live).length > 0;
+    if (!hasLive) { _liveTimerRaf = null; return; }
+    renderLiveSection();
+    _liveTimerRaf = requestAnimationFrame(tick);
+  }
+  _liveTimerRaf = requestAnimationFrame(tick);
+}
+function stopLiveTimer() {
+  if (_liveTimerRaf) { cancelAnimationFrame(_liveTimerRaf); _liveTimerRaf = null; }
+}
 
 // ── Poll ──────────────────────────────────────────────────────
 async function poll() {
@@ -114,6 +134,16 @@ async function poll() {
   }
   _recorde = rec ?? null;
 
+  const isLive = Object.keys(_live).length > 0;
+  const targetInterval = isLive ? 2000 : 4000;
+  if (_pollInterval && _pollInterval.__interval !== targetInterval) {
+    clearInterval(_pollInterval.__id);
+    _pollInterval.__id = setInterval(poll, targetInterval);
+    _pollInterval.__interval = targetInterval;
+  }
+
+  if (isLive) startLiveTimer(); else stopLiveTimer();
+
   render();
 }
 
@@ -137,7 +167,56 @@ function computeRounds() {
   });
 }
 
-// ── Render ────────────────────────────────────────────────────
+// ── Render live section (called by RAF for smooth timer) ──────
+function renderLiveSection() {
+  const liveEl = document.getElementById("live-section");
+  if (!liveEl) return;
+
+  const liveEntries = [];
+  for (const [key, val] of Object.entries(_live)) {
+    const [round, teamId] = key.split("_");
+    const team = TEAMS.find(t => t.id === teamId);
+    if (!team) continue;
+    const montagemElapsed = (val.montagemRunning && val.startTs_montagem)
+      ? (Date.now() - val.startTs_montagem) / 1000 : null;
+    const giroElapsed = (val.giroRunning && val.startTs_giro)
+      ? (Date.now() - val.startTs_giro) / 1000 : null;
+    liveEntries.push({ round: parseInt(round), team, val, montagemElapsed, giroElapsed });
+  }
+
+  if (!liveEntries.length) { liveEl.hidden = true; return; }
+  liveEl.hidden = false;
+
+  liveEl.innerHTML = liveEntries.map(entry => {
+    const textColor = entry.team.dark ? "#3A3000" : "#fff";
+    let phaseLabel = "", timerVal = null;
+    if (entry.val.montagemRunning) {
+      phaseLabel = "Montagem";
+      timerVal = entry.montagemElapsed;
+    } else if (entry.val.giroRunning) {
+      phaseLabel = "Lançamento";
+      timerVal = entry.giroElapsed;
+    } else {
+      phaseLabel = "Preparando";
+    }
+    const timerHtml = timerVal !== null
+      ? `<div class="lv-timer">${fmtElapsed(timerVal)}</div>`
+      : `<div class="lv-timer lv-timer-blink">● AO VIVO</div>`;
+    return `
+      <div class="lv-card" style="background:${entry.team.color}">
+        <div class="lv-content">
+          <div class="lv-label" style="color:${textColor}">
+            <span class="lv-dot">●</span> AO VIVO · Rodada ${entry.round}
+          </div>
+          <div class="lv-team" style="color:${textColor}">${entry.team.label}</div>
+          ${timerHtml}
+          <div class="lv-sub" style="color:${textColor}88">${phaseLabel}</div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+// ── Full render ───────────────────────────────────────────────
 function render() {
   const roundResults = computeRounds();
 
@@ -159,7 +238,7 @@ function render() {
   // Suspense
   document.getElementById("suspense-overlay").hidden = (_estado !== "suspense");
 
-  // Novo Recorde overlay
+  // Recorde overlay
   const recEl = document.getElementById("recorde-overlay");
   recEl.hidden = !_celebrando;
   if (_celebrando && _recorde?.texto) {
@@ -195,6 +274,9 @@ function render() {
     badgeEl.hidden = true;
   }
 
+  // Live section (static; RAF updates timer)
+  renderLiveSection();
+
   // Ranking list
   const rankEl = document.getElementById("ranking-list");
   if (!hasAnyResult) {
@@ -226,7 +308,7 @@ function render() {
     }).join("");
   }
 
-  // Rounds — melhor por rodada
+  // Rounds grid
   const roundsSec = document.getElementById("rounds-section");
   roundsSec.hidden = !hasAnyResult;
   if (hasAnyResult) {
@@ -304,4 +386,4 @@ function render() {
 
 // ── Start ─────────────────────────────────────────────────────
 poll();
-setInterval(poll, 4000);
+_pollInterval = { __id: setInterval(poll, 4000), __interval: 4000 };

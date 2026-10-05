@@ -180,11 +180,15 @@ function MonitorView() {
   useEffect(() => {
     const isLive = montagemRunning || giroRunning;
     if (isLive) {
-      safeSet(liveKeyFor(round, teamId), { montagemRunning, giroRunning });
+      safeSet(liveKeyFor(round, teamId), {
+        montagemRunning, giroRunning,
+        startTs_montagem: montagemRunning ? montagemStart : null,
+        startTs_giro: giroRunning ? giroStart : null,
+      });
     } else {
       safeDelete(liveKeyFor(round, teamId));
     }
-  }, [montagemRunning, giroRunning, round, teamId]);
+  }, [montagemRunning, giroRunning, montagemStart, giroStart, round, teamId]);
 
   useEffect(() => {
     if (montagemRunning) {
@@ -809,7 +813,7 @@ function PonteMonitorView() {
 
   useEffect(() => {
     if (running) {
-      safeSet(ponteLiveKeyFor(round, teamId), { running: true });
+      safeSet(ponteLiveKeyFor(round, teamId), { running: true, startTs });
       tickRef.current = setInterval(() => {
         setElapsed((Date.now() - startTs) / 1000);
       }, 100);

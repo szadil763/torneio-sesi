@@ -383,6 +383,57 @@ html, body {
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* ── Live section ─────────────────────────────────────────────── */
+.pr-live-section { display: flex; flex-direction: column; gap: 10px; }
+
+.lv-card {
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  position: relative;
+  overflow: hidden;
+  animation: rankEnter .35s ease-out;
+}
+
+.lv-content { position: relative; z-index: 2; }
+
+.lv-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: .9;
+}
+.lv-dot {
+  animation: pulse 1s ease-in-out infinite;
+  color: #ff4444;
+}
+.lv-team {
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+.lv-timer {
+  font-size: 44px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+  line-height: 1;
+  margin-top: 8px;
+}
+.lv-timer-blink { animation: pulse 1s ease-in-out infinite; }
+.lv-sub {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 4px;
+}
+
 /* ── Comentário bar ───────────────────────────────────────────── */
 #comentario-bar {
   position: fixed;
