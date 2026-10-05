@@ -1493,7 +1493,6 @@ function _navFotoModal(currentIdx, delta) {
 }
 
 // ── Aba Shorts ────────────────────────────────────────────────────
-let _shortsObserver = null;
 
 function _totalReacoesItem(itemId) {
   if (!_reacoesCache) return 0;
@@ -1512,12 +1511,20 @@ function _scoreShort(s) {
   return reacoes + bonus;
 }
 
+function _cloudinaryThumb(url) {
+  if (!url || !url.includes('cloudinary.com')) return '';
+  return url
+    .replace('/video/upload/', '/video/upload/so_0,w_400,c_fill,ar_9:16/')
+    .replace(/\.(mp4|webm|mov)$/i, '.jpg');
+}
+
 function renderAbaShorts(shorts) {
   const itensRaw = (shorts && shorts.itens) ? shorts.itens : [];
-  // Ordena por score = reações + bônus de recência (decai em 24 h)
   const itens = itensRaw
     .map((s, i) => ({ ...s, _origIdx: i, _stableId: s.id || s.ts || i }))
     .sort((a, b) => _scoreShort(b) - _scoreShort(a));
+
+  window._shortsDataCom = itens;
 
   const secao = document.createElement('div');
   secao.className = 'com-secao';
@@ -1532,62 +1539,76 @@ function renderAbaShorts(shorts) {
 
   secao.innerHTML = `
     <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
-    <div class="shorts-list">
-      ${itens.map((s, i) => `
-        <div class="short-item" id="short-item-${i}">
-          <div class="short-video-wrap" onclick="toggleShortPlay(${i})">
-            <video class="short-video" id="short-vid-${i}"
-                   src="${s.url || ''}" muted playsinline preload="metadata" loop></video>
-            <div class="short-play-overlay" id="short-play-${i}">
-              <span class="short-play-icon">▶</span>
-            </div>
-            <button class="short-mute-btn short-mute-ativo" id="short-mute-${i}" onclick="event.stopPropagation();toggleShortMute(${i})" title="Toque para ativar o som">
-              🔇<span class="short-mute-label">som</span>
-            </button>
+    <div class="shorts-mosaic">
+      ${itens.map((s, i) => {
+        const thumb = _cloudinaryThumb(s.url);
+        return `
+        <div class="short-thumb" onclick="abrirShortModal(${i})">
+          <div class="short-thumb-wrap">
+            ${thumb
+              ? `<img src="${thumb}" class="short-thumb-img" alt="${s.legenda || ''}" loading="lazy">`
+              : `<video class="short-thumb-img" src="${s.url || ''}" preload="metadata" muted playsinline></video>`}
+            <div class="short-thumb-overlay"><span class="short-thumb-play">▶</span></div>
           </div>
-          ${s.legenda  ? `<div class="short-caption">${s.legenda}</div>`   : ''}
-          ${s.reporter ? `<div class="short-reporter">${s.reporter}</div>` : ''}
-          ${_reacoesBar(`short_${s._stableId}`)}
-        </div>`).join('')}
+          ${s.legenda ? `<div class="short-thumb-caption">${s.legenda}</div>` : ''}
+          <div onclick="event.stopPropagation()">${_reacoesBar(`short_${s._stableId}`)}</div>
+        </div>`;
+      }).join('')}
     </div>`;
   getMountEl().appendChild(secao);
+}
 
-  // Autoplay via IntersectionObserver
+function abrirShortModal(idx) {
+  const itens = window._shortsDataCom || [];
+  if (!itens[idx]) return;
+  const existing = document.getElementById('short-modal-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'short-modal-overlay';
+  overlay.className = 'short-modal-overlay';
+  overlay.addEventListener('click', () => overlay.remove());
+
+  function renderShortModal(i) {
+    const s = itens[i];
+    if (!s) return;
+    overlay.innerHTML = `
+      <div class="short-modal-inner" onclick="event.stopPropagation()">
+        <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove()">✕</button>
+        ${itens.length > 1 ? `
+        <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${i},-1)">&#8249;</button>
+        <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${i},1)">&#8250;</button>` : ''}
+        <div class="short-modal-video-wrap">
+          <video id="short-modal-vid" class="short-modal-video"
+                 src="${s.url || ''}" playsinline loop muted autoplay></video>
+          <button class="short-mute-btn short-mute-ativo" id="short-modal-mute"
+                  onclick="toggleShortModalMute()" title="Toque para ativar o som">
+            🔇<span class="short-mute-label">som</span>
+          </button>
+        </div>
+        ${s.legenda  ? `<div class="short-modal-caption">${s.legenda}</div>`   : ''}
+        ${s.reporter ? `<div class="short-modal-reporter">${s.reporter}</div>` : ''}
+        ${_reacoesBar(`short_${s._stableId}`)}
+      </div>`;
+  }
+
+  renderShortModal(idx);
+  document.body.appendChild(overlay);
   requestAnimationFrame(() => {
-    if (_shortsObserver) { _shortsObserver.disconnect(); _shortsObserver = null; }
-    _shortsObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        const vid = entry.target;
-        const overlay = vid.parentElement?.querySelector('.short-play-overlay');
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-          vid.play().catch(() => {});
-          if (overlay) overlay.style.opacity = '0';
-        } else {
-          vid.pause();
-          if (overlay) overlay.style.opacity = '1';
-        }
-      });
-    }, { threshold: 0.6 });
-    document.querySelectorAll('.short-video').forEach(v => _shortsObserver.observe(v));
+    const vid = document.getElementById('short-modal-vid');
+    if (vid) vid.play().catch(() => {});
   });
 }
 
-function toggleShortPlay(idx) {
-  const vid = document.getElementById(`short-vid-${idx}`);
-  const overlay = document.getElementById(`short-play-${idx}`);
-  if (!vid) return;
-  if (vid.paused) {
-    vid.play().catch(() => {});
-    if (overlay) overlay.style.opacity = '0';
-  } else {
-    vid.pause();
-    if (overlay) overlay.style.opacity = '1';
-  }
+function _navShortModal(currentIdx, delta) {
+  const itens = window._shortsDataCom || [];
+  const next = (currentIdx + delta + itens.length) % itens.length;
+  abrirShortModal(next);
 }
 
-function toggleShortMute(idx) {
-  const vid = document.getElementById(`short-vid-${idx}`);
-  const btn = document.getElementById(`short-mute-${idx}`);
+function toggleShortModalMute() {
+  const vid = document.getElementById('short-modal-vid');
+  const btn = document.getElementById('short-modal-mute');
   if (!vid) return;
   vid.muted = !vid.muted;
   if (btn) {
@@ -1604,3 +1625,4 @@ function toggleShortMute(idx) {
     }
   }
 }
+
