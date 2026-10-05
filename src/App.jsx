@@ -1662,7 +1662,6 @@ function KahootMonitorView({ forceLocal = false }) {
     const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
     if (newId && newId !== prevBuzzId.current) {
       prevBuzzId.current = newId;
-      playBuzzerSound();
       setFlash(true);
       setTimeout(() => setFlash(false), 700);
     }
@@ -1748,7 +1747,6 @@ function KahootMonitorView({ forceLocal = false }) {
     const existing = await kGet("kahoot_buzz");
     if (!existing) {
       await kSet("kahoot_buzz", { teamId, ts: Date.now() });
-      playBuzzerSound();
     }
     await fetchState();
   };
@@ -1771,7 +1769,6 @@ function KahootMonitorView({ forceLocal = false }) {
       ]);
       setPts(newPts);
       setAnswer(ansObj);
-      playSoundCorreto();
     } else if (!errou) {
       // Primeiro erro: salva equipe que errou, NÃO mostra gabarito
       const firstWrong = buzz.teamId;
@@ -1782,7 +1779,6 @@ function KahootMonitorView({ forceLocal = false }) {
         kDel("kahoot_timer_start"),
       ]);
       setErrou(firstWrong);
-      playSoundErrado();
     } else {
       // Segundo erro: encerra rodada, agora mostra gabarito
       const ansObj = { alt, correto: false, teamId: buzz.teamId, final: true };
@@ -1794,7 +1790,6 @@ function KahootMonitorView({ forceLocal = false }) {
         kDel("kahoot_errou"),
       ]);
       setAnswer(ansObj);
-      playSoundErrado();
     }
     setActive(false);
     setBuzz(null);
@@ -2270,6 +2265,8 @@ function KahootTelaoView({ forceLocal = false }) {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const timerRefT = useRef(null);
+  const prevBuzzIdT = useRef(null);
+  const prevAnswerKeyT = useRef(null);
 
   const fetchAll = useCallback(async () => {
     const [p, b, a, q, qi, ts, ans, err] = await Promise.all([
@@ -2282,6 +2279,20 @@ function KahootTelaoView({ forceLocal = false }) {
       kahootGet("kahoot_answer", forceLocal),
       kahootGet("kahoot_errou", forceLocal),
     ]);
+    // Sons: detecta mudanças de estado
+    const newBuzzId = b ? (b.teamId + (b.ts || "")) : null;
+    if (newBuzzId && newBuzzId !== prevBuzzIdT.current) {
+      prevBuzzIdT.current = newBuzzId;
+      playBuzzerSound();
+    }
+    if (!b) prevBuzzIdT.current = null;
+    const newAnswerKey = ans ? (ans.alt + (ans.teamId || "") + (ans.correto ? "1" : "0")) : null;
+    if (newAnswerKey && newAnswerKey !== prevAnswerKeyT.current) {
+      prevAnswerKeyT.current = newAnswerKey;
+      if (ans.correto) playSoundCorreto(); else playSoundErrado();
+    }
+    if (!ans) prevAnswerKeyT.current = null;
+
     setPts(p ?? {});
     setBuzz(b ?? null);
     setActive(!!a);
