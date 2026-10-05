@@ -1558,6 +1558,18 @@ function renderAbaShorts(shorts) {
   getMountEl().appendChild(secao);
 }
 
+let _shortModalMuted = true; // persiste entre navegações
+
+function _applyShortMuteBtn(muted) {
+  const btn = document.getElementById('short-modal-mute');
+  if (!btn) return;
+  btn.classList.toggle('short-mute-ativo', muted);
+  const label = btn.querySelector('.short-mute-label');
+  btn.childNodes[0].textContent = muted ? '🔇' : '🔊';
+  if (label) label.textContent = muted ? 'som' : '';
+  btn.title = muted ? 'Toque para ativar o som' : 'Silenciar';
+}
+
 function abrirShortModal(idx) {
   const itens = window._shortsDataCom || [];
   if (!itens[idx]) return;
@@ -1567,32 +1579,33 @@ function abrirShortModal(idx) {
   const overlay = document.createElement('div');
   overlay.id = 'short-modal-overlay';
   overlay.className = 'short-modal-overlay';
-  overlay.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', () => { overlay.remove(); _shortModalMuted = true; });
 
-  function renderShortModal(i) {
-    const s = itens[i];
-    if (!s) return;
-    overlay.innerHTML = `
-      <div class="short-modal-inner" onclick="event.stopPropagation()">
-        <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove()">✕</button>
-        <div class="short-modal-video-wrap">
-          <video id="short-modal-vid" class="short-modal-video"
-                 src="${s.url || ''}" playsinline loop muted autoplay></video>
-          ${itens.length > 1 ? `
-          <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${i},-1)">&#8249;</button>
-          <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${i},1)">&#8250;</button>` : ''}
-          <button class="short-mute-btn short-mute-ativo" id="short-modal-mute"
-                  onclick="toggleShortModalMute()" title="Toque para ativar o som">
-            🔇<span class="short-mute-label">som</span>
-          </button>
-        </div>
-        ${s.legenda  ? `<div class="short-modal-caption">${s.legenda}</div>`   : ''}
-        ${s.reporter ? `<div class="short-modal-reporter">${s.reporter}</div>` : ''}
-        ${_reacoesBar(`short_${s._stableId}`)}
-      </div>`;
-  }
+  const s = itens[idx];
+  const muteClass = _shortModalMuted ? 'short-mute-ativo' : '';
+  const muteIcon  = _shortModalMuted ? '🔇' : '🔊';
+  const muteLabel = _shortModalMuted ? 'som' : '';
+  const muteTitle = _shortModalMuted ? 'Toque para ativar o som' : 'Silenciar';
 
-  renderShortModal(idx);
+  overlay.innerHTML = `
+    <div class="short-modal-inner" onclick="event.stopPropagation()">
+      <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove();_shortModalMuted=true;">✕</button>
+      <div class="short-modal-video-wrap">
+        <video id="short-modal-vid" class="short-modal-video"
+               src="${s.url || ''}" playsinline loop ${_shortModalMuted ? 'muted' : ''} autoplay></video>
+        ${itens.length > 1 ? `
+        <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${idx},-1)">&#8249;</button>
+        <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${idx},1)">&#8250;</button>` : ''}
+        <button class="short-mute-btn ${muteClass}" id="short-modal-mute"
+                onclick="toggleShortModalMute()" title="${muteTitle}">
+          ${muteIcon}<span class="short-mute-label">${muteLabel}</span>
+        </button>
+      </div>
+      ${s.legenda  ? `<div class="short-modal-caption">${s.legenda}</div>`   : ''}
+      ${s.reporter ? `<div class="short-modal-reporter">${s.reporter}</div>` : ''}
+      ${_reacoesBar(`short_${s._stableId}`)}
+    </div>`;
+
   document.body.appendChild(overlay);
   requestAnimationFrame(() => {
     const vid = document.getElementById('short-modal-vid');
@@ -1608,21 +1621,10 @@ function _navShortModal(currentIdx, delta) {
 
 function toggleShortModalMute() {
   const vid = document.getElementById('short-modal-vid');
-  const btn = document.getElementById('short-modal-mute');
   if (!vid) return;
   vid.muted = !vid.muted;
-  if (btn) {
-    btn.classList.toggle('short-mute-ativo', vid.muted);
-    const label = btn.querySelector('.short-mute-label');
-    if (vid.muted) {
-      btn.childNodes[0].textContent = '🔇';
-      if (label) label.textContent = 'som';
-      btn.title = 'Toque para ativar o som';
-    } else {
-      btn.childNodes[0].textContent = '🔊';
-      if (label) label.textContent = '';
-      btn.title = 'Silenciar';
-    }
-  }
+  _shortModalMuted = vid.muted;
+  _applyShortMuteBtn(vid.muted);
+  if (!vid.muted) vid.play().catch(() => {});
 }
 
