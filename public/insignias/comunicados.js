@@ -1489,14 +1489,22 @@ function _totalReacoesItem(itemId) {
   return Object.values(item).reduce((acc, v) => acc + (v || 0), 0);
 }
 
+const _SHORTS_RECENCIA_BONUS  = 3;    // pontos extras para vídeo novo
+const _SHORTS_RECENCIA_JANELA = 24;   // horas até o bônus zerar
+
+function _scoreShort(s) {
+  const reacoes = _totalReacoesItem(`short_${s._stableId}`);
+  const idadeH  = s.ts ? (Date.now() - s.ts) / 3_600_000 : _SHORTS_RECENCIA_JANELA;
+  const bonus   = Math.max(0, _SHORTS_RECENCIA_BONUS * (1 - idadeH / _SHORTS_RECENCIA_JANELA));
+  return reacoes + bonus;
+}
+
 function renderAbaShorts(shorts) {
   const itensRaw = (shorts && shorts.itens) ? shorts.itens : [];
-  // Ordena por engajamento (mais reações primeiro); empate mantém ordem original
+  // Ordena por score = reações + bônus de recência (decai em 24 h)
   const itens = itensRaw
     .map((s, i) => ({ ...s, _origIdx: i, _stableId: s.id || s.ts || i }))
-    .sort((a, b) =>
-      _totalReacoesItem(`short_${b._stableId}`) - _totalReacoesItem(`short_${a._stableId}`)
-    );
+    .sort((a, b) => _scoreShort(b) - _scoreShort(a));
 
   const secao = document.createElement('div');
   secao.className = 'com-secao';
