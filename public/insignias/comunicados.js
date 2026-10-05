@@ -1410,8 +1410,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ── Aba Galeria de Fotos ──────────────────────────────────────────
+function _scoreFoto(f) {
+  const fotoId  = `foto_${f._stableId}`;
+  const reacoes = _totalReacoesItem(fotoId);
+  const idadeH  = f.ts ? (Date.now() - f.ts) / 3_600_000 : _SHORTS_RECENCIA_JANELA;
+  const bonus   = Math.max(0, _SHORTS_RECENCIA_BONUS * (1 - idadeH / _SHORTS_RECENCIA_JANELA));
+  return reacoes + bonus;
+}
+
 function renderAbaFotos(galeria) {
-  const fotos = (galeria && galeria.itens) ? galeria.itens : [];
+  const fotosRaw = (galeria && galeria.itens) ? galeria.itens : [];
+  // Ordena por score = reações + bônus de recência (decai em 24 h)
+  const fotos = fotosRaw
+    .map((f, i) => ({ ...f, _origIdx: i, _stableId: f.ts || i }))
+    .sort((a, b) => _scoreFoto(b) - _scoreFoto(a));
+
   const secao = document.createElement('div');
   secao.className = 'com-secao';
 
@@ -1427,7 +1440,7 @@ function renderAbaFotos(galeria) {
     <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
     <div class="galeria-mosaic">
       ${fotos.map((f, i) => {
-        const fotoId = `foto_${f.ts || i}`;
+        const fotoId = `foto_${f._stableId}`;
         return `
         <div class="galeria-foto" role="button" tabindex="0">
           <div class="galeria-foto-img-wrap" onclick="abrirFotoModal(${i})">
