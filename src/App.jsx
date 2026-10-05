@@ -1066,7 +1066,7 @@ function PonteTelaoView() {
   const [recorde, setRecorde] = useState(null);
   const [votacao, setVotacao] = useState({});
   const [celebrando, setCelebrando] = useState(false);
-  const prevRecordeTsRef = useRef(null);
+  const prevRecordeTsRef = useRef(undefined);
 
   const fetchAll = useCallback(async () => {
     const entries = {};
@@ -1092,11 +1092,11 @@ function PonteTelaoView() {
     setComentario(comt ?? "");
     setVotacao(vot ?? {});
     if (rec?.ts && rec.ts !== prevRecordeTsRef.current) {
-      if (prevRecordeTsRef.current !== null) {
+      if (prevRecordeTsRef.current !== undefined) {
         setCelebrando(true);
         setTimeout(() => setCelebrando(false), 5000);
       }
-      prevRecordeTsRef.current = rec?.ts ?? null;
+      prevRecordeTsRef.current = rec.ts;
     }
     setRecorde(rec ?? null);
   }, []);
@@ -1145,6 +1145,7 @@ function PonteTelaoView() {
       @keyframes recordeText { 0%{transform:translateY(24px);opacity:0}100%{transform:translateY(0);opacity:1} }
       @keyframes slideUp { 0%{transform:translateY(100%)}100%{transform:translateY(0)} }
       @keyframes rankEnter { from{opacity:0.4;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)} }
+      .rank-row { animation: rankEnter 0.5s ease-out; }
       @keyframes votaFlash { 0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)} }
     `}</style>
 
@@ -1225,8 +1226,8 @@ function PonteTelaoView() {
         {ranking.map((t, idx) => {
           const isLive = ROUNDS.some((r) => liveKeys[`${r}_${t.id}`]);
           return (
-            <div key={`${t.id}-${idx}`} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
-              style={{ backgroundColor: t.color, animation: "rankEnter 0.5s ease-out" }}>
+            <div key={`${t.id}-${idx}`} className="rank-row flex items-center gap-4 rounded-2xl p-4 shadow-sm"
+              style={{ backgroundColor: t.color }}>
               <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
                 style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
                 {idx + 1}º
