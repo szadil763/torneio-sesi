@@ -1503,7 +1503,7 @@ function _totalReacoesItem(itemId) {
 }
 
 const _SHORTS_RECENCIA_BONUS  = 3;    // pontos extras para vídeo novo
-const _SHORTS_RECENCIA_JANELA = 24;   // horas até o bônus zerar
+const _SHORTS_RECENCIA_JANELA = 96;   // horas até o bônus zerar (4 dias)
 
 function _scoreShort(s) {
   const reacoes = _totalReacoesItem(`short_${s._stableId}`);
