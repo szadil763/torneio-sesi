@@ -1,0 +1,406 @@
+/* ── Ponte — Ranking ao Vivo (página pública standalone) ──────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --azul:   #004B8D;
+  --azul-e: #002B52;
+  --laranja: #F5821F;
+  --bg:     #F0F4F8;
+  --card:   #fff;
+  --fg:     #1a1a2e;
+  --fg-sub: #6B7280;
+  --border: #E5E7EB;
+  --radius: 16px;
+}
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+#app { position: relative; min-height: 100vh; }
+
+/* ── Header ──────────────────────────────────────────────────── */
+.pr-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--azul-e);
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+
+.pr-back {
+  color: rgba(255,255,255,.8);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background .15s;
+}
+.pr-back:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+.pr-header-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.pr-header-sup {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--laranja);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+.pr-header-titulo {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.pr-estado-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.pr-estado-badge.ao-vivo {
+  background: #D92B2B;
+  color: #fff;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.pr-estado-badge.revelado {
+  background: var(--laranja);
+  color: #fff;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
+/* ── Main content ─────────────────────────────────────────────── */
+#main-content {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Ranking cards ────────────────────────────────────────────── */
+.pr-ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pr-rank-card {
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  animation: rankEnter .45s ease-out;
+}
+@keyframes rankEnter {
+  from { opacity: .3; transform: translateX(-14px); }
+  to   { opacity: 1;  transform: translateX(0); }
+}
+
+.pr-rank-pos {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.pr-rank-info {
+  flex: 1;
+  min-width: 0;
+}
+.pr-rank-label {
+  font-size: 20px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pr-live-dot {
+  font-size: 10px;
+  font-weight: 700;
+  background: #D92B2B;
+  color: #fff;
+  border-radius: 100px;
+  padding: 2px 7px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.pr-rank-bar-wrap {
+  height: 6px;
+  border-radius: 100px;
+  background: rgba(255,255,255,.28);
+  margin-top: 6px;
+  overflow: hidden;
+}
+.pr-rank-bar {
+  height: 100%;
+  border-radius: 100px;
+  background: rgba(255,255,255,.8);
+  transition: width .7s ease;
+}
+
+.pr-rank-pts {
+  font-size: 24px;
+  font-weight: 900;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.pr-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--fg-sub);
+}
+.pr-empty-icon { font-size: 48px; margin-bottom: 12px; }
+.pr-empty-txt  { font-size: 15px; }
+
+/* ── Section headings ─────────────────────────────────────────── */
+.pr-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--azul);
+  margin-bottom: 10px;
+}
+
+/* ── Rounds — mais rápido por rodada ─────────────────────────── */
+.pr-rounds-section {}
+
+.pr-rounds-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+@media (max-width: 380px) {
+  .pr-rounds-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.pr-round-card {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.pr-round-header {
+  background: var(--azul);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 4px;
+}
+.pr-round-header .parcial {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  opacity: .75;
+}
+.pr-round-body {
+  padding: 8px 6px;
+  text-align: center;
+}
+.pr-round-winner-icon { font-size: 18px; }
+.pr-round-winner-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--azul);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+.pr-round-winner-time {
+  font-size: 10px;
+  color: var(--fg-sub);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.pr-round-pending {
+  font-size: 20px;
+  color: #D1D5DB;
+  padding: 6px 0;
+}
+
+/* ── Detalhe por rodada ───────────────────────────────────────── */
+.pr-detail-section {}
+.pr-detail-list { display: flex; flex-direction: column; gap: 10px; }
+
+.pr-detail-round {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--card);
+}
+.pr-detail-round-header {
+  background: var(--azul);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pr-detail-round-header .parcial {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: .8;
+}
+
+.pr-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.pr-detail-table thead tr { background: #EAF2FB; }
+.pr-detail-table th,
+.pr-detail-table td {
+  padding: 6px 10px;
+  text-align: center;
+}
+.pr-detail-table th { font-weight: 700; font-size: 11px; color: var(--fg-sub); }
+.pr-detail-table td:first-child { text-align: left; font-weight: 600; }
+.pr-detail-table tr + tr { border-top: 1px solid var(--border); }
+.pr-detail-table td .carga-ok  { color: #2E9E4F; font-weight: 700; }
+.pr-detail-table td .carga-no  { color: #D92B2B; font-weight: 700; }
+
+/* ── Last update ──────────────────────────────────────────────── */
+.pr-last-update {
+  text-align: center;
+  font-size: 11px;
+  color: var(--fg-sub);
+}
+
+/* ── Suspense overlay ─────────────────────────────────────────── */
+#suspense-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: linear-gradient(135deg, #001830 0%, #003580 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#suspense-overlay[hidden] { display: none; }
+
+.suspense-icon {
+  font-size: clamp(64px, 14vw, 96px);
+  animation: suspensePulse 1.8s ease-in-out infinite;
+}
+@keyframes suspensePulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.15); opacity: .7; }
+}
+.suspense-titulo {
+  color: #fff;
+  font-size: clamp(22px, 6vw, 52px);
+  font-weight: 900;
+  letter-spacing: .1em;
+  margin-top: 20px;
+}
+.suspense-sub {
+  color: #93C5FD;
+  font-size: clamp(13px, 3vw, 20px);
+  font-weight: 600;
+  margin-top: 8px;
+  letter-spacing: .05em;
+}
+
+/* ── Novo Recorde overlay ─────────────────────────────────────── */
+#recorde-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0,0,0,.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+#recorde-overlay[hidden] { display: none; }
+
+.recorde-trofeu {
+  font-size: clamp(56px, 12vw, 110px);
+  animation: recordeBoom .6s cubic-bezier(.22,1,.36,1);
+}
+@keyframes recordeBoom {
+  0%   { transform: scale(0); }
+  60%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.recorde-texto {
+  color: var(--laranja);
+  font-size: clamp(28px, 7vw, 80px);
+  font-weight: 900;
+  text-align: center;
+  margin-top: 12px;
+  animation: recordeSlide .5s ease-out .2s both;
+  text-shadow: 0 4px 24px rgba(0,0,0,.8);
+}
+.recorde-detalhe {
+  color: #fff;
+  font-size: clamp(14px, 3vw, 26px);
+  font-weight: 600;
+  text-align: center;
+  margin-top: 8px;
+  animation: recordeSlide .5s ease-out .4s both;
+  text-shadow: 0 2px 12px rgba(0,0,0,.7);
+}
+@keyframes recordeSlide {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Comentário bar ───────────────────────────────────────────── */
+#comentario-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: rgba(0,40,100,.92);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: clamp(13px, 2.5vw, 18px);
+  font-weight: 700;
+  padding: 14px 20px;
+  text-align: center;
+  animation: slideUp .35s ease-out;
+}
+#comentario-bar[hidden] { display: none; }
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}

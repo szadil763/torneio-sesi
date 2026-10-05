@@ -347,6 +347,20 @@ function renderInicio(dados) {
   getMountEl().appendChild(divVoto);
   _iniciarPonteVotacao();
 
+  // Banner "Ranking ao vivo" — Ponte de Da Vinci
+  const divRankingBanner = document.createElement('div');
+  divRankingBanner.className = 'com-secao';
+  divRankingBanner.innerHTML = `
+    <a href="/ponte-ranking.html" class="pr-live-banner" style="text-decoration:none;display:block">
+      <div class="pr-live-banner-dot"></div>
+      <div class="pr-live-banner-body">
+        <div class="pr-live-banner-titulo">🌉 Ponte de Da Vinci</div>
+        <div class="pr-live-banner-sub">Acompanhe o ranking ao vivo</div>
+      </div>
+      <div class="pr-live-banner-seta">›</div>
+    </a>`;
+  getMountEl().appendChild(divRankingBanner);
+
   const noticias = _coletarNoticias(dados);
   const cards = [
     { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },

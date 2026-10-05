@@ -1,5 +1,50 @@
 /* ── Comunicados — página pública pais/alunos ──────────────────── */
 
+/* ── Banner "Ranking ao vivo — Ponte" ──────────────────────────── */
+.pr-live-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #002B52 0%, #004B8D 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 16px rgba(0,43,82,.35);
+  cursor: pointer;
+  transition: filter .15s;
+}
+.pr-live-banner:hover { filter: brightness(1.1); }
+
+.pr-live-banner-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #F5821F;
+  flex-shrink: 0;
+  animation: prDotPulse 1.4s ease-in-out infinite;
+}
+@keyframes prDotPulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .5; transform: scale(.7); }
+}
+.pr-live-banner-body { flex: 1; min-width: 0; }
+.pr-live-banner-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.pr-live-banner-sub {
+  font-size: 12px;
+  opacity: .82;
+  margin-top: 2px;
+}
+.pr-live-banner-seta {
+  font-size: 22px;
+  font-weight: 900;
+  opacity: .7;
+  flex-shrink: 0;
+}
+
 /* ── Banner de novo conteúdo (Opção B) ──────────────────────────── */
 .com-novo-banner {
   display: flex;
