@@ -1575,12 +1575,12 @@ function abrirShortModal(idx) {
     overlay.innerHTML = `
       <div class="short-modal-inner" onclick="event.stopPropagation()">
         <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove()">✕</button>
-        ${itens.length > 1 ? `
-        <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${i},-1)">&#8249;</button>
-        <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${i},1)">&#8250;</button>` : ''}
         <div class="short-modal-video-wrap">
           <video id="short-modal-vid" class="short-modal-video"
                  src="${s.url || ''}" playsinline loop muted autoplay></video>
+          ${itens.length > 1 ? `
+          <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${i},-1)">&#8249;</button>
+          <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${i},1)">&#8250;</button>` : ''}
           <button class="short-mute-btn short-mute-ativo" id="short-modal-mute"
                   onclick="toggleShortModalMute()" title="Toque para ativar o som">
             🔇<span class="short-mute-label">som</span>

@@ -1125,12 +1125,8 @@
 .short-modal-inner .com-reacao-btn.ativo {
   background: rgba(255,255,255,.28);
 }
-.short-modal-inner .galeria-modal-prev { left: -46px; }
-.short-modal-inner .galeria-modal-next { right: -46px; }
-@media (max-width: 560px) {
-  .short-modal-inner .galeria-modal-prev { left: 2px; }
-  .short-modal-inner .galeria-modal-next { right: 2px; }
-}
+.short-modal-video-wrap .galeria-modal-prev { left: 6px; }
+.short-modal-video-wrap .galeria-modal-next { right: 6px; }
 /* Mute button (reutilizado no modal e no grid antigo) */
 .short-mute-btn {
   position: absolute;
