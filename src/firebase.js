@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, get, set, remove } from 'firebase/database';
+import { getDatabase, ref, get, set, remove, onValue, serverTimestamp } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB4Z2xoYedpMmH49RGFVN00WR_gn4R5LSI",
@@ -13,6 +13,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+// Offset entre relógio local e servidor Firebase — atualizado automaticamente.
+// serverNow() retorna o tempo do servidor em ms, igual em todos os dispositivos.
+let _serverOffset = 0;
+onValue(ref(db, '.info/serverTimeOffset'), snap => { _serverOffset = snap.val() ?? 0; });
+export const serverNow = () => Date.now() + _serverOffset;
+export { serverTimestamp };
 
 // Detecta se está rodando no servidor local (porta 3000)
 const IS_LOCAL = typeof window !== 'undefined' && window.location.port === '3000';

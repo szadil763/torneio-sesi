@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { safeGet, safeSet, safeDelete, isLocalMode, kahootGet, kahootSet, kahootDelete } from "./firebase.js";
+import { safeGet, safeSet, safeDelete, isLocalMode, kahootGet, kahootSet, kahootDelete, serverNow, serverTimestamp } from "./firebase.js";
 import { QRCodeSVG } from "qrcode.react";
 
 const TEAMS = [
@@ -1703,7 +1703,7 @@ function KahootMonitorView({ forceLocal = false }) {
     activatedRef.current = false;
     if (!timerStart) { setTimeLeft(0); return; }
     const tick = () => {
-      const left = Math.max(0, TIMER_MS - (Date.now() - timerStart));
+      const left = Math.max(0, TIMER_MS - (serverNow() - timerStart));
       setTimeLeft(left);
       if (left <= 0 && !activatedRef.current) {
         activatedRef.current = true;
@@ -1719,13 +1719,13 @@ function KahootMonitorView({ forceLocal = false }) {
   const novaPergunta = async () => {
     const len = questoes.length;
     const nextIdx = len > 0 ? (questaoIdx < 0 ? 0 : Math.min(questaoIdx + 1, len - 1)) : -1;
-    const now = Date.now();
+    const now = serverNow();
     await Promise.all([
       kDel("kahoot_buzz"),
       kDel("kahoot_active"),
       kDel("kahoot_answer"),
       kDel("kahoot_errou"),
-      kSet("kahoot_timer_start", now),
+      kSet("kahoot_timer_start", serverTimestamp()),
       ...(len > 0 ? [kSet("kahoot_questao_idx", nextIdx)] : []),
     ]);
     if (len > 0) setQuestaoIdx(nextIdx);
@@ -1865,7 +1865,7 @@ function KahootMonitorView({ forceLocal = false }) {
 
   const contando = timerStart !== null && timeLeft > 0;
   const secsLeft = Math.ceil(timeLeft / 1000);
-  const pct      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
+  const pct      = timerStart ? Math.min(100, ((serverNow() - timerStart) / TIMER_MS) * 100) : 0;
 
   /* ── cores de fundo do cabeçalho ── */
   const errouTeam = errou ? TEAMS_KAHOOT.find(t => t.id === errou) : null;
@@ -2297,7 +2297,7 @@ function KahootTelaoView({ forceLocal = false }) {
   useEffect(() => {
     clearInterval(timerRefT.current);
     if (!timerStart) { setTimeLeft(0); return; }
-    const tick = () => setTimeLeft(Math.max(0, TIMER_MS - (Date.now() - timerStart)));
+    const tick = () => setTimeLeft(Math.max(0, TIMER_MS - (serverNow() - timerStart)));
     tick();
     timerRefT.current = setInterval(tick, 100);
     return () => clearInterval(timerRefT.current);
@@ -2315,7 +2315,7 @@ function KahootTelaoView({ forceLocal = false }) {
   const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
   const contandoT = timerStart !== null && timeLeft > 0;
   const secsLeftT = Math.ceil(timeLeft / 1000);
-  const pctT      = timerStart ? Math.min(100, ((Date.now() - timerStart) / TIMER_MS) * 100) : 0;
+  const pctT      = timerStart ? Math.min(100, ((serverNow() - timerStart) / TIMER_MS) * 100) : 0;
 
   const errouTeamT = errou ? TEAMS_KAHOOT.find(t => t.id === errou) : null;
 
