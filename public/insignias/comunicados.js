@@ -212,7 +212,7 @@ function renderConteudoAba(dados) {
 }
 
 // ── Banner de novidades ───────────────────────────────────────────
-const BANNER_NOVIDADES_KEY = 'torneio-banner-ao-vivo:v1';
+const BANNER_NOVIDADES_KEY = 'torneio-banner-ao-vivo:v2';
 
 function _renderBannerNovidades() {
   try { if (localStorage.getItem(BANNER_NOVIDADES_KEY)) return; } catch (_) {}
@@ -222,7 +222,7 @@ function _renderBannerNovidades() {
     <button class="com-banner-fechar" onclick="_fecharBannerNovidades()" aria-label="Fechar">✕</button>
     <div class="com-banner-novo-tag">📡 AO VIVO</div>
     <div class="com-banner-titulo">Acompanhe as provas em tempo real!</div>
-    <div class="com-banner-desc">Durante a <strong>Prova da Ponte de Da Vinci</strong> e o <strong>Lançador de Spinner</strong>, os resultados aparecerão ao vivo. Use os botões abaixo para acompanhar!</div>`;
+    <div class="com-banner-desc">No dia <strong>09/10 a partir das 9h</strong>, durante a <strong>Prova da Ponte de Da Vinci</strong> e o <strong>Lançador de Spinner</strong>, os resultados aparecerão ao vivo. Use os botões abaixo para acompanhar!</div>`;
   getMountEl().appendChild(div);
 }
 
@@ -370,7 +370,7 @@ function renderInicio(dados) {
       <div class="pr-live-banner-dot"></div>
       <div class="pr-live-banner-body">
         <div class="pr-live-banner-titulo">🌉 Ponte de Da Vinci</div>
-        <div id="pr-banner-ponte-sub" class="pr-live-banner-sub">Ranking disponível durante a prova</div>
+        <div id="pr-banner-ponte-sub" class="pr-live-banner-sub">09/10 às 9h · Ranking ao vivo durante a prova</div>
       </div>
       <div class="pr-live-banner-seta">🔒</div>
     </div>
@@ -379,7 +379,7 @@ function renderInicio(dados) {
       <div class="pr-live-banner-dot"></div>
       <div class="pr-live-banner-body">
         <div class="pr-live-banner-titulo">🌀 Lançador de Spinner</div>
-        <div id="pr-banner-spinner-sub" class="pr-live-banner-sub">Ranking disponível durante a prova</div>
+        <div id="pr-banner-spinner-sub" class="pr-live-banner-sub">09/10 às 9h · Ranking ao vivo durante a prova</div>
       </div>
       <div class="pr-live-banner-seta">🔒</div>
     </div>`;
