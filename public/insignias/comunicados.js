@@ -180,10 +180,13 @@ function trocarAba(id) {
     btn.setAttribute('aria-selected', ativo);
   });
 
-  // Re-renderiza conteúdo
+  // Re-renderiza conteúdo com animação de transição
   const content = document.getElementById('com-content');
   if (content) {
     content.innerHTML = '';
+    content.classList.remove('com-content-area');
+    void content.offsetWidth; // força reflow para re-disparar animação
+    content.classList.add('com-content-area');
     renderConteudoAba(_dadosCache);
     content.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -209,7 +212,7 @@ function renderConteudoAba(dados) {
 }
 
 // ── Banner de novidades ───────────────────────────────────────────
-const BANNER_NOVIDADES_KEY = 'torneio-banner-novidades-fotos-shorts:v1';
+const BANNER_NOVIDADES_KEY = 'torneio-banner-ao-vivo:v1';
 
 function _renderBannerNovidades() {
   try { if (localStorage.getItem(BANNER_NOVIDADES_KEY)) return; } catch (_) {}
@@ -217,17 +220,9 @@ function _renderBannerNovidades() {
   div.className = 'com-banner-novidades';
   div.innerHTML = `
     <button class="com-banner-fechar" onclick="_fecharBannerNovidades()" aria-label="Fechar">✕</button>
-    <div class="com-banner-novo-tag">✨ NOVIDADE</div>
-    <div class="com-banner-titulo">Confira as novas seções!</div>
-    <div class="com-banner-desc">Agora você pode acompanhar fotos e vídeos curtos do torneio em tempo real.</div>
-    <div class="com-banner-btns">
-      <button class="com-banner-btn com-banner-btn-fotos" onclick="trocarAba('fotos')">
-        📷 Ver Fotos
-      </button>
-      <button class="com-banner-btn com-banner-btn-shorts" onclick="trocarAba('shorts')">
-        ▶️ Ver Shorts
-      </button>
-    </div>`;
+    <div class="com-banner-novo-tag">📡 AO VIVO</div>
+    <div class="com-banner-titulo">Acompanhe as provas em tempo real!</div>
+    <div class="com-banner-desc">Durante a <strong>Prova da Ponte de Da Vinci</strong> e o <strong>Lançador de Spinner</strong>, os resultados aparecerão ao vivo. Use os botões abaixo para acompanhar!</div>`;
   getMountEl().appendChild(div);
 }
 
@@ -561,9 +556,6 @@ function _mostrarAberturaVideo() {
         : `<div class="contador-abertura-link-pendente">📺 Transmissão em breve</div>`}
     </div>`;
 
-  // Confete
-  try { dispararConfeteCom('#F5821F'); } catch(_) {}
-  try { setTimeout(() => dispararConfeteCom('#004B8D'), 600); } catch(_) {}
 }
 
 // ── Contador regressivo ───────────────────────────────────────────
