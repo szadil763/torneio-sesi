@@ -1482,8 +1482,19 @@ async function renderComunicados() {
 
   _renderBotaoPush(document.getElementById('com-push-wrap'));
 
-  // Carrega reações e registra visita em paralelo com os dados
-  const [, recados, dicas, boletim,, galeria, shorts] = await Promise.all([
+  // ── Fase 1: renderiza imediatamente com dados do localStorage ─────
+  const dadosLocal = {
+    recados: lerRecados(),
+    dicas:   lerDicas(),
+    boletim: lerBoletim(),
+    galeria: lerGaleria(),
+    shorts:  lerShorts(),
+  };
+  _dadosCache = dadosLocal;
+  renderConteudoAba(dadosLocal);
+
+  // ── Fase 2: busca Firebase em segundo plano, atualiza se mudou ────
+  Promise.all([
     carregarInsignias(),
     carregarRecados(),
     carregarDicas(),
@@ -1491,19 +1502,18 @@ async function renderComunicados() {
     carregarTodasReacoes().catch(() => {}),
     carregarGaleria().catch(() => ({ itens: [] })),
     carregarShorts().catch(() => ({ itens: [] }))
-  ]);
-  if (!_testeSecs) registrarVisita().catch(() => {});
+  ]).then(([, recados, dicas, boletim,, galeria, shorts]) => {
+    if (!_testeSecs) registrarVisita().catch(() => {});
+    _dadosCache = { recados, dicas, boletim, galeria, shorts };
+    _verificarNovosConteudos(_dadosCache);
+    renderConteudoAba(_dadosCache);
 
-  _dadosCache = { recados, dicas, boletim, galeria, shorts };
-  _verificarNovosConteudos(_dadosCache);
-  renderConteudoAba(_dadosCache);
-
-  // Atualiza rodapé com visitantes únicos após carregar stats
-  carregarStats().then(stats => {
-    const el = document.getElementById('com-stats-visitors');
-    if (el && stats['visitantes-unicos']) {
-      el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
-    }
+    carregarStats().then(stats => {
+      const el = document.getElementById('com-stats-visitors');
+      if (el && stats['visitantes-unicos']) {
+        el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
+      }
+    }).catch(() => {});
   }).catch(() => {});
 }
 
