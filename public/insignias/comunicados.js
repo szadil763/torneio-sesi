@@ -2,7 +2,7 @@
 // Sem token, acessível a todos. Dados do Firebase RTDB.
 
 const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
-const MEET_LINK = 'https://youtu.be/MceiO4L-cHc';
+const MEET_LINK = 'https://youtu.be/lRHbkba_tOQ';
 
 // Modo de teste:
 //   ?teste=65  → contador termina em 65 s (bip começa em ~5 s)
