@@ -1312,3 +1312,17 @@
   color: rgba(255,255,255,.5);
   margin-top: 10px;
 }
+
+/* ── Spinner de carregamento (aguardando Firebase) ─────────────────── */
+.com-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border, rgba(0,0,0,.12));
+  border-top-color: var(--accent, #004B8D);
+  border-radius: 50%;
+  animation: com-spin .8s linear infinite;
+  margin: 24px auto;
+}
+@keyframes com-spin {
+  to { transform: rotate(360deg); }
+}

@@ -114,6 +114,12 @@ function tc(key) {
   return (STRINGS_COM[_langCom] || STRINGS_COM.pt)[key] || key;
 }
 
+// Retorna spinner se ainda aguardando Firebase, ou a mensagem de vazio.
+function _vazioOuSpinner(msg) {
+  if (_carregandoFirebase) return '<div class="com-loading-spinner"></div>';
+  return `<div class="com-vazio">${msg}</div>`;
+}
+
 function alternarIdiomaCom() {
   _langCom = _langCom === 'pt' ? 'en' : 'pt';
   try { localStorage.setItem('torneio-lang', _langCom); } catch (_) {}
@@ -126,6 +132,7 @@ let _countdownInterval = null;
 // ── Abas ──────────────────────────────────────────────────────────
 let _abaAtiva  = 'inicio';
 let _dadosCache = null; // { recados, dicas, boletim, galeria, shorts }
+let _carregandoFirebase = false; // true enquanto a fase 2 (fetch) ainda não terminou
 
 const ABAS_CONFIG = [
   { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
@@ -969,7 +976,7 @@ function renderRecados(recados) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">${tc('recados_vazio')}</div>`
+      ? _vazioOuSpinner(tc('recados_vazio'))
       : itens.map(r => {
           const id = `rec-${r.ts || Math.random().toString(36).slice(2)}`;
           return `
@@ -1012,7 +1019,7 @@ function renderNoticias(dados) {
 
   secao.innerHTML = `<div class="com-secao-titulo">${tc('noticias_titulo')}</div>`;
   if (visiveis.length === 0) {
-    secao.innerHTML += `<div class="com-vazio">${tc('noticias_vazio')}</div>`;
+    secao.innerHTML += _vazioOuSpinner(tc('noticias_vazio'));
   } else {
     const lista = document.createElement('div');
     lista.className = 'com-noticias-lista';
@@ -1050,7 +1057,7 @@ function renderDicas(dicas) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">${tc('dicas_vazio')}</div>`
+      ? _vazioOuSpinner(tc('dicas_vazio'))
       : `<div class="com-dicas-lista">
           ${itens.map(d => {
             const id = `dic-${d.ts || Math.random().toString(36).slice(2)}`;
@@ -1126,7 +1133,7 @@ function renderBoletimCom(boletim) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">${tc('boletim_vazio')}</div>`
+      ? _vazioOuSpinner(tc('boletim_vazio'))
       : `<div class="boletim-galeria">${itens.map(_renderBoletimItem).join('')}</div>`;
     secao.appendChild(lista);
   }
@@ -1483,8 +1490,9 @@ async function renderComunicados() {
   _renderBotaoPush(document.getElementById('com-push-wrap'));
 
   // ── Fase 1: renderiza imediatamente com dados do localStorage ─────
-  // Só usa o cache se pelo menos uma seção tem conteúdo real; caso
-  // contrário (primeira visita ou cache limpo) aguarda o Firebase.
+  // Spinner aparece em abas sem cache; mensagens de vazio só aparecem
+  // após o Firebase responder (_carregandoFirebase = false).
+  _carregandoFirebase = true;
   const dadosLocal = {
     recados: lerRecados(),
     dicas:   lerDicas(),
@@ -1513,6 +1521,7 @@ async function renderComunicados() {
     carregarGaleria().catch(() => ({ itens: [] })),
     carregarShorts().catch(() => ({ itens: [] }))
   ]).then(([, recados, dicas, boletim,, galeria, shorts]) => {
+    _carregandoFirebase = false;
     if (!_testeSecs) registrarVisita().catch(() => {});
     _dadosCache = { recados, dicas, boletim, galeria, shorts };
     _verificarNovosConteudos(_dadosCache);
@@ -1589,7 +1598,7 @@ function renderAbaFotos(galeria) {
   if (fotos.length === 0) {
     secao.innerHTML = `
       <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
-      <p class="com-vazio">${tc('fotos_vazio')}</p>`;
+      ${_vazioOuSpinner(tc('fotos_vazio'))}`;
     getMountEl().appendChild(secao);
     return;
   }
@@ -1690,7 +1699,7 @@ function renderAbaShorts(shorts) {
   if (itens.length === 0) {
     secao.innerHTML = `
       <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
-      <p class="com-vazio">${tc('shorts_vazio')}</p>`;
+      ${_vazioOuSpinner(tc('shorts_vazio'))}`;
     getMountEl().appendChild(secao);
     return;
   }
