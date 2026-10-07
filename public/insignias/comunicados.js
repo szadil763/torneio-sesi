@@ -1483,6 +1483,8 @@ async function renderComunicados() {
   _renderBotaoPush(document.getElementById('com-push-wrap'));
 
   // ── Fase 1: renderiza imediatamente com dados do localStorage ─────
+  // Só usa o cache se pelo menos uma seção tem conteúdo real; caso
+  // contrário (primeira visita ou cache limpo) aguarda o Firebase.
   const dadosLocal = {
     recados: lerRecados(),
     dicas:   lerDicas(),
@@ -1490,8 +1492,16 @@ async function renderComunicados() {
     galeria: lerGaleria(),
     shorts:  lerShorts(),
   };
-  _dadosCache = dadosLocal;
-  renderConteudoAba(dadosLocal);
+  const _temCacheLocal =
+    dadosLocal.recados.itens.length > 0 ||
+    dadosLocal.dicas.itens.length   > 0 ||
+    dadosLocal.boletim.itens.length > 0 ||
+    dadosLocal.galeria.itens.length > 0 ||
+    dadosLocal.shorts.itens.length  > 0;
+  if (_temCacheLocal) {
+    _dadosCache = dadosLocal;
+    renderConteudoAba(dadosLocal);
+  }
 
   // ── Fase 2: busca Firebase em segundo plano, atualiza se mudou ────
   Promise.all([
