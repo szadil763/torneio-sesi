@@ -407,13 +407,13 @@ function renderInicio(dados) {
 
   const noticias = _coletarNoticias(dados);
   const cards = [
-    { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
+    { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: (_carregandoFirebase && noticias.length === 0) ? '…' : `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
     { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
-    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
-    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')}`,  cor: '#2E9E4F' },
-    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
-    { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: `${((dados.galeria && dados.galeria.itens) || []).length} foto${((dados.galeria && dados.galeria.itens) || []).length !== 1 ? 's' : ''}`, cor: '#D97706' },
-    { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: `${((dados.shorts && dados.shorts.itens) || []).length} short${((dados.shorts && dados.shorts.itens) || []).length !== 1 ? 's' : ''}`, cor: '#DC2626' },
+    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: (_carregandoFirebase && recados.length === 0) ? '…' : `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: (_carregandoFirebase && boletim.length === 0) ? '…' : `${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')}`,  cor: '#2E9E4F' },
+    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: (() => { const n = ((dados.dicas && dados.dicas.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} dica${n !== 1 ? 's' : ''}`; })(), cor: '#7C3AED' },
+    { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: (() => { const n = ((dados.galeria && dados.galeria.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} foto${n !== 1 ? 's' : ''}`; })(), cor: '#D97706' },
+    { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: (() => { const n = ((dados.shorts && dados.shorts.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} short${n !== 1 ? 's' : ''}`; })(), cor: '#DC2626' },
   ];
 
   const divCards = document.createElement('div');
