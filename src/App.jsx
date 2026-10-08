@@ -257,6 +257,11 @@ function MonitorView() {
       const newData = { montagem: montagemFinal, giro: giroFinal };
       setExisting(newData);
       setAllRounds((prev) => ({ ...prev, [round]: newData }));
+      // Auto-libera o ranking público na primeira gravação
+      if (!spinnerPublicLiberado) {
+        await safeSet("spinner_liberado", true);
+        setSpinnerPublicLiberado(true);
+      }
     } else {
       setSaveError(true);
     }
@@ -478,19 +483,18 @@ function MonitorView() {
       {/* Acesso público */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🌐 Acesso público</div>
+        <div className={`w-full py-2 rounded-xl text-sm font-bold text-center mb-2 ${spinnerPublicLiberado ? "text-green-700 bg-green-50" : "text-gray-400 bg-gray-50"}`}>
+          {spinnerPublicLiberado ? "🔓 Ranking visível — liberado automaticamente ao salvar" : "🔒 Será liberado automaticamente ao salvar o primeiro resultado"}
+        </div>
         <button
           onClick={async () => {
             const novo = !spinnerPublicLiberado;
             await safeSet("spinner_liberado", novo);
             setSpinnerPublicLiberado(novo);
           }}
-          className="w-full py-2 rounded-xl text-sm font-bold"
-          style={{ backgroundColor: spinnerPublicLiberado ? "#16A34A" : "#F3F4F6", color: spinnerPublicLiberado ? "#fff" : "#374151" }}>
-          {spinnerPublicLiberado ? "🔓 Ranking público: LIBERADO" : "🔒 Liberar ranking para o público"}
+          className="w-full py-1 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500">
+          {spinnerPublicLiberado ? "Clique para bloquear manualmente" : "Clique para liberar agora manualmente"}
         </button>
-        <div className="text-xs text-gray-400 mt-2 text-center">
-          {spinnerPublicLiberado ? "Pais e alunos podem ver o ranking ao vivo" : "Botão bloqueado na página pública"}
-        </div>
       </div>
 
       <div className="border-t border-gray-200 pt-3 pb-4">
@@ -863,6 +867,11 @@ function PonteMonitorView() {
     setTempoFinal(null);
     setSaved(false);
     setSaveError(false);
+    // Auto-estado: sinaliza "aguardando" no telão ao iniciar o cronômetro
+    if (monitorEstado !== "aguardando") {
+      safeSet("ponte_estado", "aguardando");
+      setMonitorEstado("aguardando");
+    }
   };
 
   const stop = () => {
@@ -881,6 +890,11 @@ function PonteMonitorView() {
       setSaved(true);
       setExisting({ tempo: tempoFinal, carga: cargaOk });
       setAllRounds((prev) => ({ ...prev, [round]: { tempo: tempoFinal, carga: cargaOk } }));
+      // Auto-libera o ranking público na primeira gravação
+      if (!pontePublicLiberado) {
+        await safeSet("ponte_liberado", true);
+        setPontePublicLiberado(true);
+      }
     } else {
       setSaveError(true);
     }
@@ -1129,19 +1143,18 @@ function PonteMonitorView() {
       {/* Acesso público */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🌐 Acesso público</div>
+        <div className={`w-full py-2 rounded-xl text-sm font-bold text-center mb-2 ${pontePublicLiberado ? "text-green-700 bg-green-50" : "text-gray-400 bg-gray-50"}`}>
+          {pontePublicLiberado ? "🔓 Ranking visível — liberado automaticamente ao salvar" : "🔒 Será liberado automaticamente ao salvar o primeiro resultado"}
+        </div>
         <button
           onClick={async () => {
             const novo = !pontePublicLiberado;
             await safeSet("ponte_liberado", novo);
             setPontePublicLiberado(novo);
           }}
-          className="w-full py-2 rounded-xl text-sm font-bold"
-          style={{ backgroundColor: pontePublicLiberado ? "#16A34A" : "#F3F4F6", color: pontePublicLiberado ? "#fff" : "#374151" }}>
-          {pontePublicLiberado ? "🔓 Ranking público: LIBERADO" : "🔒 Liberar ranking para o público"}
+          className="w-full py-1 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500">
+          {pontePublicLiberado ? "Clique para bloquear manualmente" : "Clique para liberar agora manualmente"}
         </button>
-        <div className="text-xs text-gray-400 mt-2 text-center">
-          {pontePublicLiberado ? "Pais e alunos podem ver o ranking ao vivo" : "Botão bloqueado na página pública"}
-        </div>
       </div>
 
       <div className="border-t border-gray-200 pt-3 pb-4">
