@@ -871,8 +871,9 @@ function _injectPreviewData() {
     "r4_2D": { montagem: 10.1, giro:  8.5 },
   };
 
-  // 3º/4º/5º Ano — ainda não publicados (aguardando)
-  ST.terceiroAno.resultado = null;
+  // 3º Ano — resultado publicado
+  ST.terceiroAno.resultado = { ranking: ["vermelho", "verde", "amarelo", "azul"], ts: 1 };
+  // 4º/5º Ano — ainda não publicados (aguardando)
   ST.quartoAno.resultado   = null;
   ST.quintoAno.resultado   = null;
 
