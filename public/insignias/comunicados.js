@@ -1699,6 +1699,9 @@ function _cloudinaryThumb(url) {
     .replace(/\.(mp4|webm|mov)$/i, '.jpg');
 }
 
+// Alias local — função principal em areas-data.js (carregado antes)
+const _cloudinaryVideoUrl = cloudinaryVideoUrl;
+
 function renderAbaShorts(shorts) {
   const itensRaw = (shorts && shorts.itens) ? shorts.itens : [];
   const itens = itensRaw
@@ -1728,7 +1731,7 @@ function renderAbaShorts(shorts) {
           <div class="short-thumb-wrap">
             ${thumb
               ? `<img src="${thumb}" class="short-thumb-img" alt="${s.legenda || ''}" loading="lazy">`
-              : `<video class="short-thumb-img" src="${s.url || ''}" preload="metadata" muted playsinline></video>`}
+              : `<video class="short-thumb-img" src="${_cloudinaryVideoUrl(s.url || '')}" preload="metadata" muted playsinline></video>`}
             <div class="short-thumb-overlay"><span class="short-thumb-play">▶</span></div>
           </div>
           ${s.legenda ? `<div class="short-thumb-caption">${s.legenda}</div>` : ''}
@@ -1773,7 +1776,7 @@ function abrirShortModal(idx) {
       <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove();_shortModalMuted=true;">✕</button>
       <div class="short-modal-video-wrap">
         <video id="short-modal-vid" class="short-modal-video"
-               src="${s.url || ''}" playsinline loop ${_shortModalMuted ? 'muted' : ''} autoplay></video>
+               src="${_cloudinaryVideoUrl(s.url || '')}" playsinline loop ${_shortModalMuted ? 'muted' : ''} autoplay></video>
         ${itens.length > 1 ? `
         <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${idx},-1)">&#8249;</button>
         <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${idx},1)">&#8250;</button>` : ''}

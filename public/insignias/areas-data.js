@@ -416,6 +416,15 @@ async function carregarStats() {
   return {};
 }
 
+// Converte URL Cloudinary para MP4/H.264, garantindo compatibilidade com Chrome/Firefox no desktop.
+// Vídeos gravados no iPhone chegam como .mov, que só funciona em Safari/iOS.
+function cloudinaryVideoUrl(url) {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  return url
+    .replace('/video/upload/', '/video/upload/f_mp4,vc_h264/')
+    .replace(/\.(mov|webm|avi|mkv|3gp|m4v)(\?|$)/i, '.mp4$2');
+}
+
 function detectarTipoMidia(url) {
   if (/youtu\.be\/|youtube\.com\/(watch|shorts|embed)/.test(url)) return 'youtube';
   if (/^data:video\//.test(url)) return 'video';

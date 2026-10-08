@@ -1601,7 +1601,7 @@ function renderAbaShortsAdmin() {
         ${itens.length === 0 ? '<p style="color:var(--muted);font-size:13px">Nenhum short ainda.</p>' : ''}
         ${itens.map((s, i) => `
           <div class="bol-item" style="display:flex;gap:12px;align-items:center">
-            <video src="${s.url || ''}" style="width:50px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0"
+            <video src="${cloudinaryVideoUrl(s.url || '')}" style="width:50px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0"
                    muted preload="metadata"></video>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.legenda || '(sem legenda)'}</div>
