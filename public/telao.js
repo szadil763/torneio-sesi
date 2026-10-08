@@ -83,9 +83,9 @@ const ST = {
     recorde: null, prevRecordeTs: undefined, celebrando: false, celebTimer: null,
     resultado: null, prevResultadoTs: undefined, resultadoTimer: null,
   },
-  terceiroAno: {
-    resultado: null, prevTs: undefined,
-  },
+  terceiroAno: { resultado: null, prevTs: undefined },
+  quartoAno:   { resultado: null, prevTs: undefined },
+  quintoAno:   { resultado: null, prevTs: undefined },
 };
 
 let _raf    = null;   // requestAnimationFrame para timers ao vivo
@@ -131,7 +131,7 @@ async function poll() {
     }
   }
 
-  const [metaPonte, metaSpinner, prova3ano, all] = await Promise.all([
+  const [metaPonte, metaSpinner, prova3ano, prova4ano, prova5ano, all] = await Promise.all([
     Promise.all([
       dbGet("ponte_estado"),
       dbGet("ponte_comentario"),
@@ -145,6 +145,8 @@ async function poll() {
       dbGet("spinner_resultado_final"),
     ]),
     dbGet("prova_3ano"),
+    dbGet("prova_4ano"),
+    dbGet("prova_5ano"),
     Promise.all(fetches),
   ]);
 
@@ -160,14 +162,10 @@ async function poll() {
   checkRecorde(ST.spinner, metaSpinner[2]);
   checkResultado(ST.spinner, metaSpinner[3], "spinner", "Lançador de Spinner — 2º Ano", SPINNER_TEAMS);
 
-  // 3º Ano
-  if (prova3ano?.ts && prova3ano.ts !== ST.terceiroAno.prevTs) {
-    ST.terceiroAno.prevTs = prova3ano.ts;
-    ST.terceiroAno.resultado = prova3ano;
-    show3AnoOverlay(prova3ano);
-  } else if (!prova3ano) {
-    ST.terceiroAno.resultado = null;
-  }
+  // 3º / 4º / 5º Ano
+  checkProvaAno(ST.terceiroAno, prova3ano, 3);
+  checkProvaAno(ST.quartoAno,   prova4ano, 4);
+  checkProvaAno(ST.quintoAno,   prova5ano, 5);
 
   // Distribuir resultados
   const newPonteData = {}, newPonteLive = {};
@@ -637,24 +635,24 @@ function renderDetalhe(scope, rods) {
     <div class="det-grid">${tabelas}</div>`;
 }
 
-// ── 3º Ano overlay ao publicar ──────────────────────────────────
-function show3AnoOverlay(data) {
-  // Mostra via painel principal; só faz pulse no badge
-  const badge = document.getElementById("tano-badge");
-  if (badge) {
-    badge.textContent = "✅ Publicado";
-    badge.className = "tano-badge publicado";
-    badge.hidden = false;
+// ── Provas por Ano ────────────────────────────────────────────────
+function checkProvaAno(st, data, ano) {
+  if (data?.ts && data.ts !== st.prevTs) {
+    st.prevTs = data.ts;
+    st.resultado = data;
+    const badge = document.getElementById(`tano-badge-${ano}`);
+    if (badge) { badge.textContent = "✅ Publicado"; badge.className = "tano-badge publicado"; badge.hidden = false; }
+  } else if (!data) {
+    st.resultado = null;
   }
 }
 
-// ── Render 3º Ano ─────────────────────────────────────────────────
-function render3Ano() {
-  const painel = document.getElementById("painel-3ano");
-  const rankEl = document.getElementById("tano-ranking");
+function renderProvaAno(st, ano) {
+  const painel = document.getElementById(`painel-${ano}ano`);
+  const rankEl = document.getElementById(`tano-ranking-${ano}`);
   if (!painel || !rankEl) return;
 
-  const res = ST.terceiroAno.resultado;
+  const res = st.resultado;
   if (!res?.ranking || !Array.isArray(res.ranking)) {
     painel.hidden = true;
     return;
@@ -720,8 +718,10 @@ function render() {
   renderRodadas("spinner", rodsS);
   renderDetalhe("spinner", rodsS);
 
-  // 3º Ano
-  render3Ano();
+  // Provas por Ano
+  renderProvaAno(ST.terceiroAno, 3);
+  renderProvaAno(ST.quartoAno,   4);
+  renderProvaAno(ST.quintoAno,   5);
 
   // Rodapé
   const up = document.getElementById("footer-update");

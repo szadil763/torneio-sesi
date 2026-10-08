@@ -20,8 +20,10 @@ const TEAMS_3ANO = [
   { id: "verde",    label: "Verde",    color: "#2E9E4F" },
   { id: "amarelo",  label: "Amarelo",  color: "#F0B800", dark: true },
 ];
-const SCORES_3ANO = [10, 7, 5, 3];
+const SCORES_ANO = [10, 7, 5, 3];
 const RTDB_3ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_3ano.json";
+const RTDB_4ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_4ano.json";
+const RTDB_5ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_5ano.json";
 
 const TEAMS_KAHOOT = [
   { id: "A", label: "Equipe A", color: "#E5484D" },
@@ -1849,27 +1851,24 @@ function QRPrintModal({ onClose }) {
   );
 }
 
-function TerceiroAnoMonitorView() {
+function ProvaAnoMonitorView({ ano, rtdbUrl, fbKey }) {
   const [ranking, setRanking] = useState([null, null, null, null]);
   const [publicado, setPublicado] = useState(null);
   const [publicando, setPublicando] = useState(false);
-  const [limpar, setLimpar] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const data = await safeGet("prova_3ano");
+      const data = await safeGet(fbKey);
       if (data?.ranking) setPublicado(data);
     })();
-  }, []);
+  }, [fbKey]);
 
   function selecionarEquipe(posIdx, teamId) {
     setRanking(prev => {
       const next = [...prev];
-      // Remove esse time de outras posições
       for (let i = 0; i < 4; i++) {
         if (next[i] === teamId) next[i] = null;
       }
-      // Alterna (clicou no mesmo = desmarca)
       next[posIdx] = prev[posIdx] === teamId ? null : teamId;
       return next;
     });
@@ -1878,12 +1877,9 @@ function TerceiroAnoMonitorView() {
   async function publicarResultado() {
     if (ranking.some(r => r === null)) return;
     setPublicando(true);
-    const payload = {
-      ranking,
-      ts: Date.now(),
-    };
+    const payload = { ranking, ts: Date.now() };
     try {
-      await fetch(RTDB_3ANO, {
+      await fetch(rtdbUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1897,8 +1893,8 @@ function TerceiroAnoMonitorView() {
   }
 
   async function limparResultado() {
-    if (!window.confirm("Limpar resultado publicado do 3º Ano?")) return;
-    await fetch(RTDB_3ANO, { method: "DELETE" });
+    if (!window.confirm(`Limpar resultado publicado do ${ano}º Ano?`)) return;
+    await fetch(rtdbUrl, { method: "DELETE" });
     setPublicado(null);
     setRanking([null, null, null, null]);
   }
@@ -1910,7 +1906,7 @@ function TerceiroAnoMonitorView() {
     <div className="p-4 max-w-lg mx-auto flex flex-col gap-4">
       <div className="rounded-2xl p-4 flex flex-col gap-3"
         style={{ background: "#0F2A45", border: "1.5px solid #1E3A5F" }}>
-        <div className="text-base font-extrabold text-white">🏫 Prova do 3º Ano</div>
+        <div className="text-base font-extrabold text-white">🏫 Prova do {ano}º Ano</div>
         <div className="text-xs font-semibold text-blue-300 opacity-70 uppercase tracking-wider">
           Clique em cada posição para atribuir a equipe
         </div>
@@ -1919,7 +1915,7 @@ function TerceiroAnoMonitorView() {
           {posLabels.map((label, posIdx) => (
             <div key={posIdx} className="rounded-xl p-3 flex flex-col gap-2"
               style={{ background: "#0A1E30", border: "1px solid #1E3550" }}>
-              <div className="text-xs font-bold text-blue-200 opacity-80">{label} · {SCORES_3ANO[posIdx]} pts</div>
+              <div className="text-xs font-bold text-blue-200 opacity-80">{label} · {SCORES_ANO[posIdx]} pts</div>
               <div className="flex gap-2 flex-wrap">
                 {TEAMS_3ANO.map(team => {
                   const selecionado = ranking[posIdx] === team.id;
@@ -1970,7 +1966,7 @@ function TerceiroAnoMonitorView() {
                 style={{ background: team.color + "33" }}>
                 <span className="text-lg">{["🥇","🥈","🥉","🏅"][idx]}</span>
                 <span className="font-extrabold" style={{ color: team.color }}>{team.label}</span>
-                <span className="ml-auto text-xs font-bold text-blue-300 opacity-70">{SCORES_3ANO[idx]} pts</span>
+                <span className="ml-auto text-xs font-bold text-blue-300 opacity-70">{SCORES_ANO[idx]} pts</span>
               </div>
             );
           })}
@@ -1983,6 +1979,10 @@ function TerceiroAnoMonitorView() {
     </div>
   );
 }
+
+function TerceiroAnoMonitorView()  { return <ProvaAnoMonitorView ano={3} rtdbUrl={RTDB_3ANO} fbKey="prova_3ano" />; }
+function QuartoAnoMonitorView()    { return <ProvaAnoMonitorView ano={4} rtdbUrl={RTDB_4ANO} fbKey="prova_4ano" />; }
+function QuintoAnoMonitorView()    { return <ProvaAnoMonitorView ano={5} rtdbUrl={RTDB_5ANO} fbKey="prova_5ano" />; }
 
 function HomeView() {
   const [open, setOpen] = useState(false);
@@ -3435,6 +3435,8 @@ export default function App() {
               { id: "propulsao",   label: "🌀 Spinner" },
               { id: "ponte",       label: "🌉 Ponte" },
               { id: "terceiroano", label: "🏫 3º Ano" },
+              { id: "quartoano",   label: "🏫 4º Ano" },
+              { id: "quintoano",   label: "🏫 5º Ano" },
               { id: "kahoot",      label: "🎓 Kahoot" },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => handleSetPage(id)}
@@ -3455,6 +3457,8 @@ export default function App() {
       {page === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
       {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
       {page === "terceiroano" && <TerceiroAnoMonitorView />}
+      {page === "quartoano"   && <QuartoAnoMonitorView />}
+      {page === "quintoano"   && <QuintoAnoMonitorView />}
       {page === "kahoot"    && (
         mode === "monitor"
           ? <KahootMonitorView />
