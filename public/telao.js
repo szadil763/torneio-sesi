@@ -830,25 +830,50 @@ function updateBadge(scope) {
 // ── Preview mode (?preview=1) ─────────────────────────────────────
 function _injectPreviewData() {
   ST.ponte.estado = "aguardando";
+  // 4 rodadas completas — 1A=Vermelho, 1B=Azul, 1C=Verde, 1D=Amarelo
+  // carga:true = suportou peso; tempo em segundos (menor = melhor)
   ST.ponte.data = {
-    "ponte_r1_1A": { tempo: 12.3, carga: true },
-    "ponte_r1_1B": { tempo: 15.1, carga: true },
+    "ponte_r1_1A": { tempo: 12.3, carga: true  },
+    "ponte_r1_1B": { tempo: 15.1, carga: true  },
     "ponte_r1_1C": { tempo: 18.2, carga: false },
-    "ponte_r1_1D": { tempo: 11.8, carga: true },
-    "ponte_r2_1A": { tempo: 13.0, carga: true },
-    "ponte_r2_1B": { tempo: 14.5, carga: true },
-    "ponte_r2_1C": { tempo: 17.0, carga: true },
-    "ponte_r2_1D": { tempo: 12.5, carga: true },
+    "ponte_r1_1D": { tempo: 11.8, carga: true  },
+    "ponte_r2_1A": { tempo: 13.0, carga: true  },
+    "ponte_r2_1B": { tempo: 14.5, carga: true  },
+    "ponte_r2_1C": { tempo: 17.0, carga: true  },
+    "ponte_r2_1D": { tempo: 12.5, carga: true  },
+    "ponte_r3_1A": { tempo: 11.2, carga: true  },
+    "ponte_r3_1B": { tempo: 16.3, carga: false },
+    "ponte_r3_1C": { tempo: 14.8, carga: true  },
+    "ponte_r3_1D": { tempo: 13.7, carga: true  },
+    "ponte_r4_1A": { tempo: 10.9, carga: true  },
+    "ponte_r4_1B": { tempo: 13.2, carga: true  },
+    "ponte_r4_1C": { tempo: 15.5, carga: true  },
+    "ponte_r4_1D": { tempo: 14.1, carga: true  },
   };
+
   ST.spinner.estado = "aguardando";
+  // 4 rodadas completas — 2A=Vermelho, 2B=Azul, 2C=Verde, 2D=Amarelo
+  // giro em segundos (maior = melhor)
   ST.spinner.data = {
     "r1_2A": { montagem: 8.2,  giro: 12.5 },
     "r1_2B": { montagem: 9.1,  giro: 10.3 },
     "r1_2C": { montagem: 7.8,  giro: 14.2 },
-    "r1_2D": { montagem: 10.5, giro: 9.8  },
+    "r1_2D": { montagem: 10.5, giro:  9.8 },
     "r2_2A": { montagem: 7.9,  giro: 13.1 },
     "r2_2B": { montagem: 8.6,  giro: 11.7 },
+    "r2_2C": { montagem: 8.1,  giro: 15.0 },
+    "r2_2D": { montagem: 9.8,  giro: 10.6 },
+    "r3_2A": { montagem: 7.5,  giro: 14.8 },
+    "r3_2B": { montagem: 8.9,  giro: 12.4 },
+    "r3_2C": { montagem: 7.2,  giro: 16.3 },
+    "r3_2D": { montagem: 9.3,  giro:  9.1 },
+    "r4_2A": { montagem: 8.0,  giro: 13.9 },
+    "r4_2B": { montagem: 9.4,  giro: 11.0 },
+    "r4_2C": { montagem: 7.6,  giro: 15.7 },
+    "r4_2D": { montagem: 10.1, giro:  8.5 },
   };
+
+  // 3º/4º/5º Ano — todas as equipes classificadas (ranking completo)
   ST.terceiroAno.resultado = { ranking: ["vermelho", "azul",    "verde",   "amarelo"], ts: 1 };
   ST.quartoAno.resultado   = { ranking: ["azul",     "vermelho","amarelo", "verde"  ], ts: 2 };
   ST.quintoAno.resultado   = { ranking: ["verde",    "amarelo", "vermelho","azul"   ], ts: 3 };
