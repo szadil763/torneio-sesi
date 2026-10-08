@@ -24,6 +24,14 @@ const SCORES_3ANO = [10, 7, 5, 3];
 
 const ROUNDS = [1, 2, 3, 4];
 
+// Mapeamento cor → IDs nas provas de 1º e 2º Ano
+const COLOR_TEAMS = [
+  { id: "vermelho", label: "Vermelho", color: "#D92B2B", ponteId: "1A", spinnerId: "2A" },
+  { id: "azul",     label: "Azul",     color: "#004B8D", ponteId: "1B", spinnerId: "2B" },
+  { id: "verde",    label: "Verde",    color: "#2E9E4F", ponteId: "1C", spinnerId: "2C" },
+  { id: "amarelo",  label: "Amarelo",  color: "#F0B800", ponteId: "1D", spinnerId: "2D", dark: true },
+];
+
 // ── Firebase REST ────────────────────────────────────────────────
 async function dbGet(key) {
   try {
@@ -163,9 +171,9 @@ async function poll() {
   checkResultado(ST.spinner, metaSpinner[3], "spinner", "Lançador de Spinner — 2º Ano", SPINNER_TEAMS);
 
   // 3º / 4º / 5º Ano
-  checkProvaAno(ST.terceiroAno, prova3ano, 3);
-  checkProvaAno(ST.quartoAno,   prova4ano, 4);
-  checkProvaAno(ST.quintoAno,   prova5ano, 5);
+  checkProvaAno(ST.terceiroAno, prova3ano);
+  checkProvaAno(ST.quartoAno,   prova4ano);
+  checkProvaAno(ST.quintoAno,   prova5ano);
 
   // Distribuir resultados
   const newPonteData = {}, newPonteLive = {};
@@ -396,18 +404,9 @@ function _melhorSpinner(teams, rods) {
   return res;
 }
 
-// ── Render ranking ───────────────────────────────────────────────
-function renderRanking(scope, rods) {
-  const el    = document.getElementById(`${scope}-ranking`);
+// ── Calcular totais por scope ────────────────────────────────────
+function calcTotaisScope(scope, rods) {
   const teams = scope === "ponte" ? PONTE_TEAMS : SPINNER_TEAMS;
-  if (!el) return;
-
-  const hasAny = rods.some(rr => rr.hasAny);
-  if (!hasAny) {
-    el.innerHTML = `<div class="painel-aguardando">⏳<br>Aguardando resultados…</div>`;
-    return;
-  }
-
   const totals = {};
   teams.forEach(t => totals[t.id] = 0);
   rods.forEach(rr => {
@@ -420,6 +419,22 @@ function renderRanking(scope, rods) {
       }
     });
   });
+  return totals;
+}
+
+// ── Render ranking ───────────────────────────────────────────────
+function renderRanking(scope, rods) {
+  const el    = document.getElementById(`${scope}-ranking`);
+  const teams = scope === "ponte" ? PONTE_TEAMS : SPINNER_TEAMS;
+  if (!el) return;
+
+  const hasAny = rods.some(rr => rr.hasAny);
+  if (!hasAny) {
+    el.innerHTML = `<div class="painel-aguardando">⏳<br>Aguardando resultados…</div>`;
+    return;
+  }
+
+  const totals = calcTotaisScope(scope, rods);
 
   const maxPts   = Math.max(1, ...teams.map(t => totals[t.id]));
   const sorted   = [...teams].sort((a, b) => totals[b.id] - totals[a.id]);
@@ -636,12 +651,10 @@ function renderDetalhe(scope, rods) {
 }
 
 // ── Provas por Ano ────────────────────────────────────────────────
-function checkProvaAno(st, data, ano) {
+function checkProvaAno(st, data) {
   if (data?.ts && data.ts !== st.prevTs) {
     st.prevTs = data.ts;
     st.resultado = data;
-    const badge = document.getElementById(`tano-badge-${ano}`);
-    if (badge) { badge.textContent = "✅ Publicado"; badge.className = "tano-badge publicado"; badge.hidden = false; }
   } else if (!data) {
     st.resultado = null;
   }
@@ -660,25 +673,81 @@ function renderProvaAno(st, ano) {
   painel.hidden = false;
 
   const medals = ["🥇","🥈","🥉","🏅"];
-  const cards = res.ranking.map((teamId, idx) => {
+  const rows = res.ranking.map((teamId, idx) => {
     const team = TERCEIRO_ANO_TEAMS.find(t => t.id === teamId);
     if (!team) return "";
     const tc = team.dark ? "#3A3000" : "#fff";
     return `
-      <div class="tano-card" style="background:${team.color}">
-        <div class="tano-medal">${medals[idx] ?? (idx+1)+"º"}</div>
-        <div class="tano-nome" style="color:${tc}">${team.label}</div>
-        <div class="tano-pts" style="color:${tc}cc">${SCORES_3ANO[idx]}<span class="tano-pts-label" style="color:${tc}88">pts</span></div>
+      <div class="tano-row" style="background:${team.color}">
+        <div class="tano-row-medal">${medals[idx] ?? (idx+1)+"º"}</div>
+        <div class="tano-row-nome" style="color:${tc}">${team.label}</div>
+        <div class="tano-row-pts" style="color:${tc}cc">${SCORES_3ANO[idx]}<span class="tano-row-pts-label" style="color:${tc}88">pts</span></div>
       </div>`;
   }).join("");
 
-  rankEl.innerHTML = cards;
+  rankEl.innerHTML = `<div class="tano-list">${rows}</div>`;
+}
+
+// ── Classificação Geral ───────────────────────────────────────────
+function renderGeralRanking(ponteTotals, spinnerTotals) {
+  const painel = document.getElementById("painel-geral");
+  const rankEl = document.getElementById("geral-ranking");
+  if (!painel || !rankEl) return;
+
+  const hasPonte   = Object.values(ponteTotals).some(v => v > 0);
+  const hasSpinner = Object.values(spinnerTotals).some(v => v > 0);
+  const has3       = !!ST.terceiroAno.resultado?.ranking;
+  const has4       = !!ST.quartoAno.resultado?.ranking;
+  const has5       = !!ST.quintoAno.resultado?.ranking;
+
+  if (!hasPonte && !hasSpinner && !has3 && !has4 && !has5) {
+    painel.hidden = true;
+    return;
+  }
+  painel.hidden = false;
+
+  const totals = {};
+  COLOR_TEAMS.forEach(ct => {
+    totals[ct.id] =
+      (ponteTotals[ct.ponteId]   || 0) +
+      (spinnerTotals[ct.spinnerId] || 0);
+  });
+
+  [ST.terceiroAno, ST.quartoAno, ST.quintoAno].forEach(st => {
+    if (!st.resultado?.ranking) return;
+    st.resultado.ranking.forEach((teamId, idx) => {
+      if (totals[teamId] !== undefined) totals[teamId] += SCORES_3ANO[idx];
+    });
+  });
+
+  const maxPts = Math.max(1, ...COLOR_TEAMS.map(ct => totals[ct.id]));
+  const sorted = [...COLOR_TEAMS].sort((a, b) => totals[b.id] - totals[a.id]);
+  const medals = ["🥇","🥈","🥉","🏅"];
+
+  rankEl.innerHTML = sorted.map((ct, idx) => {
+    const pts = totals[ct.id];
+    const tc  = ct.dark ? "#3A3000" : "#fff";
+    const bar = Math.round((pts / maxPts) * 100);
+    return `
+      <div class="geral-card" style="background:${ct.color}">
+        <div class="geral-medal">${medals[idx] ?? (idx+1)+"º"}</div>
+        <div style="flex:1;min-width:0">
+          <div class="geral-nome" style="color:${tc}">${ct.label}</div>
+          <div style="height:4px;border-radius:100px;background:rgba(255,255,255,.2);margin-top:3px;overflow:hidden">
+            <div style="width:${bar}%;height:100%;border-radius:100px;background:rgba(255,255,255,.7);transition:width .8s ease"></div>
+          </div>
+        </div>
+        <div class="geral-pts" style="color:${tc}">${pts}<span class="geral-pts-label" style="color:${tc}88">pts</span></div>
+      </div>`;
+  }).join("");
 }
 
 // ── Render completo ──────────────────────────────────────────────
 function render() {
   const rodsP = calcRodadasPonte();
   const rodsS = calcRodadasSpinner();
+  const ponteTotals   = calcTotaisScope("ponte",   rodsP);
+  const spinnerTotals = calcTotaisScope("spinner", rodsS);
 
   // Suspense (prioridade: ponte, depois spinner)
   const suspense = ST.ponte.estado === "suspense" || ST.spinner.estado === "suspense";
@@ -718,10 +787,19 @@ function render() {
   renderRodadas("spinner", rodsS);
   renderDetalhe("spinner", rodsS);
 
-  // Provas por Ano
+  // Provas por Ano + Geral
   renderProvaAno(ST.terceiroAno, 3);
   renderProvaAno(ST.quartoAno,   4);
   renderProvaAno(ST.quintoAno,   5);
+  renderGeralRanking(ponteTotals, spinnerTotals);
+
+  // Sidebar vazio (placeholder)
+  const sbVazio = document.getElementById("sidebar-vazio");
+  if (sbVazio) {
+    const anyVisible = ["painel-geral","painel-3ano","painel-4ano","painel-5ano"]
+      .some(id => !document.getElementById(id)?.hidden);
+    sbVazio.style.display = anyVisible ? "none" : "flex";
+  }
 
   // Rodapé
   const up = document.getElementById("footer-update");
