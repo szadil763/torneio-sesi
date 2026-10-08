@@ -609,14 +609,16 @@ function renderInicio(dados) {
       </div>
       <div class="pr-live-banner-seta">🔒</div>
     </div>
-    <div style="height:8px"></div>
-    <div id="pr-banner-telao" class="pr-live-banner pr-live-banner-telao" style="cursor:pointer" onclick="location.href='/telao.html'">
-      <div class="pr-live-banner-dot"></div>
-      <div class="pr-live-banner-body">
-        <div class="pr-live-banner-titulo">📺 Telão — As duas provas</div>
-        <div id="pr-banner-telao-sub" class="pr-live-banner-sub">Ponte + Spinner lado a lado · ideal para acompanhar no celular</div>
+    <div id="pr-banner-telao-wrap" hidden>
+      <div style="height:8px"></div>
+      <div id="pr-banner-telao" class="pr-live-banner pr-live-banner-telao" style="cursor:pointer" onclick="location.href='/telao.html'">
+        <div class="pr-live-banner-dot"></div>
+        <div class="pr-live-banner-body">
+          <div class="pr-live-banner-titulo">📺 Telão — As duas provas</div>
+          <div id="pr-banner-telao-sub" class="pr-live-banner-sub">Ponte + Spinner lado a lado · acompanhe os dois rankings</div>
+        </div>
+        <div class="pr-live-banner-seta">›</div>
       </div>
-      <div class="pr-live-banner-seta">›</div>
     </div>`;
   getMountEl().appendChild(divRankingBanners);
 
@@ -633,16 +635,15 @@ function renderInicio(dados) {
       const spinnerAoVivo = rs === true;
       _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   'Acompanhe o ranking ao vivo', ponteAoVivo);
       _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', 'Acompanhe o ranking ao vivo', spinnerAoVivo);
-      // Banner do telão: destaca se pelo menos uma prova estiver ao vivo
-      const telaoEl  = document.getElementById('pr-banner-telao');
-      const telaoSub = document.getElementById('pr-banner-telao-sub');
-      if (telaoEl) {
-        if (ponteAoVivo || spinnerAoVivo) {
+      // Banner do telão: só aparece quando pelo menos uma prova estiver liberada
+      const telaoWrap = document.getElementById('pr-banner-telao-wrap');
+      const telaoEl   = document.getElementById('pr-banner-telao');
+      const telaoSub  = document.getElementById('pr-banner-telao-sub');
+      if (telaoWrap && (rp === true || rs === true)) {
+        telaoWrap.hidden = false;
+        if (telaoEl && (ponteAoVivo || spinnerAoVivo)) {
           telaoEl.className = 'pr-live-banner pr-live-banner-ao-vivo';
           if (telaoSub) telaoSub.textContent = '🔴 Competindo agora · toque para ver as duas provas ao vivo';
-        } else if (rp === true || rs === true) {
-          telaoEl.className = 'pr-live-banner';
-          if (telaoSub) telaoSub.textContent = 'Ponte + Spinner lado a lado · acompanhe os dois rankings';
         }
       }
     } catch (_) {}
