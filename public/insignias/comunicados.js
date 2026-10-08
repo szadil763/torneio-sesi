@@ -1525,6 +1525,12 @@ async function renderComunicados() {
     if (!_testeSecs) registrarVisita().catch(() => {});
     _dadosCache = { recados, dicas, boletim, galeria, shorts };
     _verificarNovosConteudos(_dadosCache);
+
+    // Limpa o conteúdo antes de re-renderizar com dados frescos do Firebase,
+    // evitando que o conteúdo da fase 1 (cache) fique duplicado abaixo.
+    const contentEl = document.getElementById('com-content');
+    if (contentEl) contentEl.innerHTML = '';
+
     renderConteudoAba(_dadosCache);
 
     carregarStats().then(stats => {
@@ -1533,7 +1539,15 @@ async function renderComunicados() {
         el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
       }
     }).catch(() => {});
-  }).catch(() => {});
+  }).catch((err) => {
+    console.error('[comunicados] Falha no carregamento Firebase:', err);
+    _carregandoFirebase = false;
+    const contentEl = document.getElementById('com-content');
+    if (contentEl && !contentEl.hasChildNodes()) {
+      // Só re-renderiza do cache se o conteúdo estiver vazio (sem fase 1)
+      if (_dadosCache) try { renderConteudoAba(_dadosCache); } catch(_) {}
+    }
+  });
 }
 
 // ── Auto-refresh a cada 3 min ─────────────────────────────────────

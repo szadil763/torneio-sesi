@@ -996,8 +996,13 @@ async function boletimAdicionar() {
   try { new URL(url); } catch { if(erro) erro.textContent = 'Link inválido.'; return; }
   const dados = lerBoletim();
   dados.itens.unshift({ id: Date.now().toString(36), url, titulo, legenda, area: area || undefined, inicioAte, ts: Date.now() });
-  await salvarBoletim(dados);
-  renderPainelCom();
+  try {
+    await salvarBoletim(dados);
+    renderPainelCom();
+  } catch(e) {
+    if (erro) erro.textContent = '⚠ Falha ao salvar no servidor. Verifique a conexão e tente novamente.';
+    console.error('[admin] boletimAdicionar falhou:', e);
+  }
 }
 
 async function _mudarModalidade(deMod, idx, paraMod) {
@@ -1073,18 +1078,28 @@ async function boletimSalvarEdicao(idx) {
   else                         { item.titulo    = titulo; item.legenda   = legenda; }
   item.area     = area || undefined;
   item.inicioAte = _calcInicioAte(inicioDias);
-  await salvarBoletim(dados);
-  _editBolIdx = null;
-  renderPainelCom();
+  try {
+    await salvarBoletim(dados);
+    _editBolIdx = null;
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao salvar edição. Verifique a conexão e tente novamente.');
+    console.error('[admin] boletimSalvarEdicao falhou:', e);
+  }
 }
 
 async function boletimRemover(idx) {
   if (!confirm('Remover este item do boletim?')) return;
   const dados = lerBoletim();
   const [removido] = dados.itens.splice(idx, 1);
-  if (removido?.videoId) removerVideoBoletim(removido.videoId); // apaga vídeo separado
-  await salvarBoletim(dados);
-  renderPainelCom();
+  if (removido?.videoId) removerVideoBoletim(removido.videoId);
+  try {
+    await salvarBoletim(dados);
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao remover. Verifique a conexão e tente novamente.');
+    console.error('[admin] boletimRemover falhou:', e);
+  }
 }
 
 async function boletimMover(idx, delta) {
@@ -1092,8 +1107,13 @@ async function boletimMover(idx, delta) {
   const novo  = idx + delta;
   if (novo < 0 || novo >= dados.itens.length) return;
   [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
-  await salvarBoletim(dados);
-  renderPainelCom();
+  try {
+    await salvarBoletim(dados);
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao reordenar. Verifique a conexão e tente novamente.');
+    console.error('[admin] boletimMover falhou:', e);
+  }
 }
 
 // ── Gerador de notícia ────────────────────────────────────────────
@@ -1239,10 +1259,17 @@ async function boletimPublicarNoticia() {
 
   const dados = lerBoletim();
   dados.itens.unshift({ id: Date.now().toString(36), ts: Date.now(), inicioAte, ...editado });
-  await salvarBoletim(dados);
-  window._noticiaRascunho = null;
-  _noticiaFotos = [null, null, null];
-  renderPainelCom();
+  try {
+    await salvarBoletim(dados);
+    window._noticiaRascunho = null;
+    _noticiaFotos = [null, null, null];
+    renderPainelCom();
+  } catch(e) {
+    const erroEl = document.getElementById('not-erro') || document.querySelector('.bol-erro-publicar');
+    if (erroEl) erroEl.textContent = '⚠ Falha ao publicar. Verifique a conexão e tente novamente.';
+    else alert('⚠ Falha ao publicar a notícia. Verifique a conexão e tente novamente.');
+    console.error('[admin] boletimPublicarNoticia falhou:', e);
+  }
 }
 
 // ── Recados ───────────────────────────────────────────────────────
@@ -1258,8 +1285,13 @@ async function recadoAdicionar() {
   if(erro) erro.textContent = '';
   const dados = lerRecados();
   dados.itens.unshift({ id: Date.now().toString(36), titulo, texto, destaque, area: area || undefined, inicioAte, ts: Date.now() });
-  await salvarRecados(dados);
-  renderPainelCom();
+  try {
+    await salvarRecados(dados);
+    renderPainelCom();
+  } catch(e) {
+    if (erro) erro.textContent = '⚠ Falha ao salvar. Verifique a conexão e tente novamente.';
+    console.error('[admin] recadoAdicionar falhou:', e);
+  }
 }
 
 async function recadoSalvarEdicao(idx) {
@@ -1275,17 +1307,27 @@ async function recadoSalvarEdicao(idx) {
   item.area      = area || undefined;
   const inicioDias = document.getElementById('rec-edit-inicio')?.value ?? '0';
   item.inicioAte = _calcInicioAte(inicioDias);
-  await salvarRecados(dados);
-  _editRecadoIdx = null;
-  renderPainelCom();
+  try {
+    await salvarRecados(dados);
+    _editRecadoIdx = null;
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao salvar edição. Verifique a conexão e tente novamente.');
+    console.error('[admin] recadoSalvarEdicao falhou:', e);
+  }
 }
 
 async function recadoRemover(idx) {
   if (!confirm('Remover este recado?')) return;
   const dados = lerRecados();
   dados.itens.splice(idx, 1);
-  await salvarRecados(dados);
-  renderPainelCom();
+  try {
+    await salvarRecados(dados);
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao remover. Verifique a conexão e tente novamente.');
+    console.error('[admin] recadoRemover falhou:', e);
+  }
 }
 
 async function recadoMover(idx, delta) {
@@ -1293,8 +1335,13 @@ async function recadoMover(idx, delta) {
   const novo  = idx + delta;
   if (novo < 0 || novo >= dados.itens.length) return;
   [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
-  await salvarRecados(dados);
-  renderPainelCom();
+  try {
+    await salvarRecados(dados);
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao reordenar. Verifique a conexão e tente novamente.');
+    console.error('[admin] recadoMover falhou:', e);
+  }
 }
 
 // ── Dicas — mídia ────────────────────────────────────────────────
@@ -1344,8 +1391,13 @@ async function dicaAdicionar() {
   delete _dicaMidiaCache['dic-midia'];
   const dados = lerDicas();
   dados.itens.push({ id: Date.now().toString(36), titulo: titulo || undefined, icone, texto, imagem, area: area || undefined, inicioAte });
-  await salvarDicas(dados);
-  renderPainelCom();
+  try {
+    await salvarDicas(dados);
+    renderPainelCom();
+  } catch(e) {
+    if (erro) erro.textContent = '⚠ Falha ao salvar. Verifique a conexão e tente novamente.';
+    console.error('[admin] dicaAdicionar falhou:', e);
+  }
 }
 
 async function dicaSalvarEdicao(idx) {
@@ -1357,7 +1409,6 @@ async function dicaSalvarEdicao(idx) {
   item.titulo  = (document.getElementById('dic-edit-titulo')?.value || '').trim() || undefined;
   item.icone   = (document.getElementById('dic-edit-icone')?.value || '').trim() || item.icone || '💡';
   item.texto   = (document.getElementById('dic-edit-texto')?.value || '').trim();
-  // Atualiza imagem: novo upload > URL digitada > mantém existente (preview vazio = removeu)
   const urlEditVal = (document.getElementById('dic-edit-midia-url')?.value || '').trim();
   const previewVazio = !(document.getElementById('dic-edit-midia-preview')?.firstElementChild);
   if (_dicaMidiaCache['dic-edit-midia']) {
@@ -1372,17 +1423,27 @@ async function dicaSalvarEdicao(idx) {
   item.area    = area || undefined;
   const inicioDias = document.getElementById('dic-edit-inicio')?.value ?? '0';
   item.inicioAte = _calcInicioAte(inicioDias);
-  await salvarDicas(dados);
-  _editDicaIdx = null;
-  renderPainelCom();
+  try {
+    await salvarDicas(dados);
+    _editDicaIdx = null;
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao salvar edição. Verifique a conexão e tente novamente.');
+    console.error('[admin] dicaSalvarEdicao falhou:', e);
+  }
 }
 
 async function dicaRemover(idx) {
   if (!confirm('Remover esta dica?')) return;
   const dados = lerDicas();
   dados.itens.splice(idx, 1);
-  await salvarDicas(dados);
-  renderPainelCom();
+  try {
+    await salvarDicas(dados);
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao remover. Verifique a conexão e tente novamente.');
+    console.error('[admin] dicaRemover falhou:', e);
+  }
 }
 
 async function dicaMover(idx, delta) {
@@ -1390,8 +1451,13 @@ async function dicaMover(idx, delta) {
   const novo  = idx + delta;
   if (novo < 0 || novo >= dados.itens.length) return;
   [dados.itens[idx], dados.itens[novo]] = [dados.itens[novo], dados.itens[idx]];
-  await salvarDicas(dados);
-  renderPainelCom();
+  try {
+    await salvarDicas(dados);
+    renderPainelCom();
+  } catch(e) {
+    alert('⚠ Falha ao reordenar. Verifique a conexão e tente novamente.');
+    console.error('[admin] dicaMover falhou:', e);
+  }
 }
 
 function sairCom() {
