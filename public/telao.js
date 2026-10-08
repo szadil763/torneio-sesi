@@ -873,10 +873,10 @@ function _injectPreviewData() {
     "r4_2D": { montagem: 10.1, giro:  8.5 },
   };
 
-  // 3º/4º/5º Ano — todas as equipes classificadas (ranking completo)
-  ST.terceiroAno.resultado = { ranking: ["vermelho", "azul",    "verde",   "amarelo"], ts: 1 };
-  ST.quartoAno.resultado   = { ranking: ["azul",     "vermelho","amarelo", "verde"  ], ts: 2 };
-  ST.quintoAno.resultado   = { ranking: ["verde",    "amarelo", "vermelho","azul"   ], ts: 3 };
+  // 3º/4º/5º Ano — ainda não publicados (aguardando)
+  ST.terceiroAno.resultado = null;
+  ST.quartoAno.resultado   = null;
+  ST.quintoAno.resultado   = null;
 
   const hdr = document.getElementById("telao-header");
   if (hdr) {
