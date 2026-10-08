@@ -288,6 +288,11 @@ function _calcProvasHtml({ libP, libS, ep, ponteData, spinnerData }) {
     return `<div class="com-secao">
       <div class="com-secao-titulo">🏆 Provas</div>
       <div class="com-vazio">${tc('provas_bloqueado')}</div>
+      <a href="/telao.html?preview=1" target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;padding:10px 18px;background:rgba(147,51,234,.15);border:1px solid rgba(147,51,234,.35);border-radius:12px;color:#c084fc;font-size:13px;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .15s"
+         onmouseover="this.style.background='rgba(147,51,234,.28)'" onmouseout="this.style.background='rgba(147,51,234,.15)'">
+        🧪 Ver simulação do Telão ↗
+      </a>
     </div>`;
   }
 
