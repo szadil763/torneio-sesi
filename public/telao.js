@@ -875,8 +875,8 @@ function _injectPreviewData() {
   ST.terceiroAno.resultado = { ranking: ["vermelho", "verde", "amarelo", "azul"], ts: 1 };
   // 4º Ano — resultado publicado
   ST.quartoAno.resultado   = { ranking: ["azul", "vermelho", "verde", "amarelo"], ts: 2 };
-  // 5º Ano — ainda não publicado (aguardando)
-  ST.quintoAno.resultado   = null;
+  // 5º Ano — resultado publicado
+  ST.quintoAno.resultado   = { ranking: ["verde", "amarelo", "azul", "vermelho"], ts: 3 };
 
   const hdr = document.getElementById("telao-header");
   if (hdr) {
