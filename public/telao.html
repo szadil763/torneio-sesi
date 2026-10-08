@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Telão — SESI Torneio Infantil</title>
-  <link rel="stylesheet" href="telao.css?v=20261008j" />
+  <link rel="stylesheet" href="telao.css?v=20261008k" />
 </head>
 <body>
   <div id="app">
@@ -32,47 +32,47 @@
     <!-- Grid principal: 65% esquerda + 35% sidebar -->
     <div id="telao-grid">
 
-      <!-- Coluna esquerda: Ponte (cima) + Spinner (baixo) -->
-      <div id="coluna-esquerda">
-        <div class="painel" id="painel-ponte">
-          <div id="resultado-overlay-ponte" class="painel-resultado-overlay" hidden></div>
-          <div class="painel-header">
-            <div class="painel-icone">🌉</div>
-            <div class="painel-titulo">Ponte de Da Vinci</div>
-            <div class="painel-series">1º ano</div>
-            <div id="ponte-badge" class="painel-badge" hidden></div>
-          </div>
-          <div id="ponte-live" class="painel-live" hidden></div>
-          <div id="ponte-ranking" class="painel-ranking">
-            <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
-          </div>
-          <div id="ponte-rodadas" class="painel-rodadas" hidden></div>
-          <div id="ponte-detalhe" class="painel-detalhe" hidden></div>
+      <!-- Coluna 1: Ponte de Da Vinci -->
+      <div class="painel" id="painel-ponte">
+        <div id="resultado-overlay-ponte" class="painel-resultado-overlay" hidden></div>
+        <div class="painel-header">
+          <div class="painel-icone">🌉</div>
+          <div class="painel-titulo">Ponte de Da Vinci</div>
+          <div class="painel-series">1º ano</div>
+          <div id="ponte-badge" class="painel-badge" hidden></div>
         </div>
-
-        <div class="col-divisor-h"></div>
-
-        <div class="painel" id="painel-spinner">
-          <div id="resultado-overlay-spinner" class="painel-resultado-overlay" hidden></div>
-          <div class="painel-header">
-            <div class="painel-icone">🌀</div>
-            <div class="painel-titulo">Lançador de Spinner</div>
-            <div class="painel-series">2º ano</div>
-            <div id="spinner-badge" class="painel-badge" hidden></div>
-          </div>
-          <div id="spinner-live" class="painel-live" hidden></div>
-          <div id="spinner-ranking" class="painel-ranking">
-            <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
-          </div>
-          <div id="spinner-rodadas" class="painel-rodadas" hidden></div>
-          <div id="spinner-detalhe" class="painel-detalhe" hidden></div>
+        <div id="ponte-live" class="painel-live" hidden></div>
+        <div id="ponte-ranking" class="painel-ranking">
+          <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
         </div>
+        <div id="ponte-rodadas" class="painel-rodadas" hidden></div>
+        <div id="ponte-detalhe" class="painel-detalhe" hidden></div>
       </div>
 
       <!-- Divisor vertical -->
       <div class="telao-divisor"></div>
 
-      <!-- Coluna direita: Sidebar (Geral + 3º/4º/5º Ano) -->
+      <!-- Coluna 2: Lançador de Spinner -->
+      <div class="painel" id="painel-spinner">
+        <div id="resultado-overlay-spinner" class="painel-resultado-overlay" hidden></div>
+        <div class="painel-header">
+          <div class="painel-icone">🌀</div>
+          <div class="painel-titulo">Lançador de Spinner</div>
+          <div class="painel-series">2º ano</div>
+          <div id="spinner-badge" class="painel-badge" hidden></div>
+        </div>
+        <div id="spinner-live" class="painel-live" hidden></div>
+        <div id="spinner-ranking" class="painel-ranking">
+          <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
+        </div>
+        <div id="spinner-rodadas" class="painel-rodadas" hidden></div>
+        <div id="spinner-detalhe" class="painel-detalhe" hidden></div>
+      </div>
+
+      <!-- Divisor vertical -->
+      <div class="telao-divisor"></div>
+
+      <!-- Coluna 3: Sidebar (Geral + 3º/4º/5º Ano) -->
       <div id="coluna-direita">
 
         <!-- Classificação Geral -->
@@ -117,6 +117,6 @@
     </footer>
 
   </div>
-  <script src="telao.js?v=20261008j"></script>
+  <script src="telao.js?v=20261008k"></script>
 </body>
 </html>
