@@ -117,43 +117,56 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   justify-content: center;
 }
 
-/* Classificação Geral — cards compactos */
+/* ── Classificação Geral — destaque especial ────────────────── */
+#painel-geral {
+  flex: 1.6 1 0;   /* ocupa mais espaço que os painéis de ano */
+  background: linear-gradient(160deg, #1a1200 0%, #0e0d00 60%, #091826 100%);
+  border-bottom: 2px solid #7C5C00;
+  border-left: 3px solid #F0B800;
+}
+#painel-geral .sb-titulo {
+  font-size: clamp(10px, 1vw, 14px);
+  color: #F0B800;
+  letter-spacing: .12em;
+}
+
 #geral-ranking {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 .geral-card {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 7px;
-  border-radius: 8px;
-  padding: 5px 8px;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 6px 10px;
   animation: fadeIn .4s ease-out;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
 }
 .geral-medal {
-  font-size: clamp(12px, 1.3vw, 18px);
+  font-size: clamp(14px, 1.6vw, 22px);
   flex-shrink: 0;
-  width: clamp(18px, 1.8vw, 24px);
+  width: clamp(20px, 2vw, 28px);
   text-align: center;
 }
 .geral-nome {
   flex: 1;
-  font-size: clamp(11px, 1.1vw, 15px);
-  font-weight: 800;
+  font-size: clamp(12px, 1.3vw, 18px);
+  font-weight: 900;
   min-width: 0;
 }
 .geral-pts {
-  font-size: clamp(13px, 1.5vw, 20px);
+  font-size: clamp(15px, 1.9vw, 26px);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 .geral-pts-label {
-  font-size: clamp(6px, 0.65vw, 9px);
+  font-size: clamp(7px, 0.7vw, 10px);
   font-weight: 600;
   margin-left: 2px;
 }
