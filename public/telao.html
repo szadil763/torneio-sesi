@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telão — SESI Torneio Infantil</title>
+  <link rel="stylesheet" href="telao.css?v=20261008a" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Overlays globais -->
+    <div id="suspense-overlay" hidden>
+      <div class="suspense-icon">⏳</div>
+      <div class="suspense-titulo">CALCULANDO…</div>
+      <div class="suspense-sub">resultado em breve</div>
+    </div>
+
+    <div id="recorde-overlay" hidden>
+      <div class="recorde-trofeu">🏆</div>
+      <div class="recorde-texto">NOVO RECORDE!</div>
+      <div id="recorde-detalhe" class="recorde-detalhe"></div>
+    </div>
+
+    <!-- Header -->
+    <header id="telao-header">
+      <div class="telao-header-sup">SESI — TORNEIO INFANTIL 2026</div>
+      <div class="telao-header-titulo">PLACAR AO VIVO</div>
+      <div id="telao-live-badge" class="telao-live-badge" hidden>🔴 AO VIVO</div>
+    </header>
+
+    <!-- Painel duplo -->
+    <div id="telao-grid">
+
+      <!-- Coluna esquerda: Ponte de Da Vinci -->
+      <div class="painel" id="painel-ponte">
+        <div class="painel-header">
+          <div class="painel-icone">🌉</div>
+          <div class="painel-titulo">Ponte de Da Vinci</div>
+          <div class="painel-series">1ª série</div>
+          <div id="ponte-badge" class="painel-badge" hidden></div>
+        </div>
+        <div id="ponte-live" class="painel-live" hidden></div>
+        <div id="ponte-ranking" class="painel-ranking">
+          <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
+        </div>
+        <div id="ponte-rodadas" class="painel-rodadas" hidden></div>
+      </div>
+
+      <!-- Divisor -->
+      <div class="telao-divisor"></div>
+
+      <!-- Coluna direita: Lançador de Spinner -->
+      <div class="painel" id="painel-spinner">
+        <div class="painel-header">
+          <div class="painel-icone">🌀</div>
+          <div class="painel-titulo">Lançador de Spinner</div>
+          <div class="painel-series">2ª série</div>
+          <div id="spinner-badge" class="painel-badge" hidden></div>
+        </div>
+        <div id="spinner-live" class="painel-live" hidden></div>
+        <div id="spinner-ranking" class="painel-ranking">
+          <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
+        </div>
+        <div id="spinner-rodadas" class="painel-rodadas" hidden></div>
+      </div>
+    </div>
+
+    <!-- Rodapé -->
+    <footer id="telao-footer">
+      <span id="footer-update">—</span>
+      <span class="footer-sep">·</span>
+      <a href="ponte-ranking.html" class="footer-link">Ver Ponte completo</a>
+      <span class="footer-sep">·</span>
+      <a href="spinner-ranking.html" class="footer-link">Ver Spinner completo</a>
+    </footer>
+
+  </div>
+  <script src="telao.js?v=20261008a"></script>
+</body>
+</html>
