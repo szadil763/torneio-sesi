@@ -12,7 +12,7 @@ const RTDB   = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com";
 // ── Firebase REST helpers ─────────────────────────────────────
 async function dbGet(key) {
   try {
-    const r = await fetch(`${RTDB}/${encodeURIComponent(key)}.json`);
+    const r = await fetch(`${RTDB}/${encodeURIComponent(key)}.json`, { cache: 'no-store' });
     if (!r.ok) return null;
     const v = await r.json();
     return v === null ? null : v;

@@ -251,9 +251,9 @@ function _provasFmtTempo(s) {
 
 async function _fetchProvasData() {
   const [libP, libS, ep] = await Promise.all([
-    fetch(`${_RTDB_BASE}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
-    fetch(`${_RTDB_BASE}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
-    fetch(`${_RTDB_BASE}/ponte_estado.json`).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/ponte_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/spinner_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/ponte_estado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
   ]);
 
   const ponteData = {};
@@ -263,7 +263,7 @@ async function _fetchProvasData() {
     ...( libP ? _PROVAS_ROUNDS.map(r =>
       Promise.all(_PROVAS_TEAMS_PONTE.map(async t => {
         try {
-          const v = await fetch(`${_RTDB_BASE}/ponte_r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
+          const v = await fetch(`${_RTDB_BASE}/ponte_r${r}_${t.id}.json`, { cache: 'no-store' }).then(x => x.ok ? x.json() : null);
           if (v) ponteData[`${r}_${t.id}`] = v;
         } catch (_) {}
       }))
@@ -271,7 +271,7 @@ async function _fetchProvasData() {
     ...( libS ? _PROVAS_ROUNDS.map(r =>
       Promise.all(_PROVAS_TEAMS_SPINNER.map(async t => {
         try {
-          const v = await fetch(`${_RTDB_BASE}/r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
+          const v = await fetch(`${_RTDB_BASE}/r${r}_${t.id}.json`, { cache: 'no-store' }).then(x => x.ok ? x.json() : null);
           if (v) spinnerData[`${r}_${t.id}`] = v;
         } catch (_) {}
       }))
@@ -475,8 +475,8 @@ function _salvarVotoUsuario(v) {
 async function _fetchPonteEstado() {
   try {
     const [re, rv] = await Promise.all([
-      fetch(RTDB_PONTE_ESTADO_URL).then(r => r.ok ? r.json() : null),
-      fetch(RTDB_PONTE_VOTACAO_URL).then(r => r.ok ? r.json() : null),
+      fetch(RTDB_PONTE_ESTADO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      fetch(RTDB_PONTE_VOTACAO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
     ]);
     _ponteEstadoAtual = re ?? null;
     _ponteVotacaoAtual = rv ?? {};
@@ -490,7 +490,7 @@ async function _votar(teamId) {
   _salvarVotoUsuario(teamId);
   const url = `https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_votacao/${teamId}.json`;
   try {
-    const current = await fetch(url).then(r => r.ok ? r.json() : 0).then(v => (typeof v === 'number' ? v : 0));
+    const current = await fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : 0).then(v => (typeof v === 'number' ? v : 0));
     await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current + 1) });
     await _fetchPonteEstado();
   } catch (_) {}
@@ -627,9 +627,9 @@ function renderInicio(dados) {
     try {
       const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
       const [rp, rs, ep] = await Promise.all([
-        fetch(`${RTDB}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/ponte_estado.json`).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_estado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
       ]);
       const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense');
       const spinnerAoVivo = rs === true;

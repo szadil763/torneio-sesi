@@ -38,7 +38,7 @@ function lerEstadoAreas() {
 // Busca do Firebase e atualiza cache. Chamar no início de cada página.
 async function carregarInsignias() {
   try {
-    const resp = await fetch(RTDB_INSIGNIAS_URL);
+    const resp = await fetch(RTDB_INSIGNIAS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _insigniasCache = (data && data.conquistas) ? data : { conquistas: {} };
@@ -108,7 +108,7 @@ function lerBoletim() {
 // Busca do Firebase e atualiza cache. Sempre chamar antes de exibir o boletim.
 async function carregarBoletim() {
   try {
-    const resp = await fetch(RTDB_BOLETIM_URL);
+    const resp = await fetch(RTDB_BOLETIM_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _boletimCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -243,7 +243,7 @@ function lerRecados() {
 
 async function carregarRecados() {
   try {
-    const resp = await fetch(RTDB_RECADOS_URL);
+    const resp = await fetch(RTDB_RECADOS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _recadosCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -275,7 +275,7 @@ function lerDicas() {
 
 async function carregarDicas() {
   try {
-    const resp = await fetch(RTDB_DICAS_URL);
+    const resp = await fetch(RTDB_DICAS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _dicasCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -317,7 +317,7 @@ function _salvarReacoesLocais(obj) {
 
 async function carregarTodasReacoes() {
   try {
-    const resp = await fetch(RTDB_REACOES_BASE + '.json');
+    const resp = await fetch(RTDB_REACOES_BASE + '.json', { cache: 'no-store' });
     if (resp.ok) { _reacoesCache = (await resp.json()) || {}; return _reacoesCache; }
   } catch (_) {}
   _reacoesCache = {};
@@ -410,7 +410,7 @@ async function _pingOnline(uuid) {
 
 async function carregarStats() {
   try {
-    const resp = await fetch(`${RTDB_STATS_BASE}.json`);
+    const resp = await fetch(`${RTDB_STATS_BASE}.json`, { cache: 'no-store' });
     if (resp.ok) return (await resp.json()) || {};
   } catch (_) {}
   return {};
@@ -537,7 +537,7 @@ function lerGaleria() {
 
 async function carregarGaleria() {
   try {
-    const resp = await fetch(RTDB_GALERIA_URL);
+    const resp = await fetch(RTDB_GALERIA_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _galeriaCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -580,7 +580,7 @@ function lerShorts() {
 
 async function carregarShorts() {
   try {
-    const resp = await fetch(RTDB_SHORTS_URL);
+    const resp = await fetch(RTDB_SHORTS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _shortsCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };

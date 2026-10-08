@@ -19,7 +19,7 @@ const ROUNDS = [1, 2, 3, 4];
 // ── Firebase REST ────────────────────────────────────────────────
 async function dbGet(key) {
   try {
-    const r = await fetch(`${RTDB}/${encodeURIComponent(key)}.json`);
+    const r = await fetch(`${RTDB}/${encodeURIComponent(key)}.json`, { cache: 'no-store' });
     if (!r.ok) return null;
     const v = await r.json();
     return v ?? null;
