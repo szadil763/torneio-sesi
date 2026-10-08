@@ -275,6 +275,35 @@ function renderLive(scope) {
   }).join("");
 }
 
+// ── Melhor resultado acumulado por equipe (para exibir no rank) ──
+function _melhorPonte(teams, rods) {
+  const res = {};
+  teams.forEach(t => {
+    let bestTempo = null;
+    let cargaCount = 0, rodCount = 0;
+    rods.forEach(rr => {
+      const it = rr.items.find(x => x.team === t.id);
+      if (!it) return;
+      if (it.tempo !== null && (bestTempo === null || it.tempo < bestTempo)) bestTempo = it.tempo;
+      if (it.carga !== null) { rodCount++; if (it.carga) cargaCount++; }
+    });
+    res[t.id] = { bestTempo, cargaCount, rodCount };
+  });
+  return res;
+}
+function _melhorSpinner(teams, rods) {
+  const res = {};
+  teams.forEach(t => {
+    let bestGiro = null;
+    rods.forEach(rr => {
+      const it = rr.items.find(x => x.team === t.id);
+      if (it?.giro !== null && it?.giro !== undefined && (bestGiro === null || it.giro > bestGiro)) bestGiro = it.giro;
+    });
+    res[t.id] = { bestGiro };
+  });
+  return res;
+}
+
 // ── Render ranking ───────────────────────────────────────────────
 function renderRanking(scope, rods) {
   const el    = document.getElementById(`${scope}-ranking`);
@@ -300,15 +329,30 @@ function renderRanking(scope, rods) {
     });
   });
 
-  const maxPts = Math.max(1, ...teams.map(t => totals[t.id]));
-  const sorted = [...teams].sort((a, b) => totals[b.id] - totals[a.id]);
-  const medals = ["🥇", "🥈", "🥉", "🏅"];
+  const maxPts  = Math.max(1, ...teams.map(t => totals[t.id]));
+  const sorted  = [...teams].sort((a, b) => totals[b.id] - totals[a.id]);
+  const medals  = ["🥇", "🥈", "🥉", "🏅"];
+  const melhores = scope === "ponte" ? _melhorPonte(teams, rods) : _melhorSpinner(teams, rods);
 
   el.innerHTML = sorted.map((t, idx) => {
     const pts    = totals[t.id];
     const bar    = Math.round((pts / maxPts) * 100);
     const tc     = t.dark ? "#3A3000" : "#fff";
     const isLive = ROUNDS.some(r => ST[scope].live[`${r}_${t.id}`]);
+
+    let subInfo = "";
+    if (scope === "ponte") {
+      const m = melhores[t.id];
+      const tempoStr  = m.bestTempo !== null ? `⏱ ${fmtSeg(m.bestTempo)}` : "";
+      const cargaStr  = m.rodCount > 0
+        ? `· ${m.cargaCount}/${m.rodCount} carga ✓`
+        : "";
+      if (tempoStr || cargaStr) subInfo = `<div class="rank-sub" style="color:${tc}99">${tempoStr}${cargaStr}</div>`;
+    } else {
+      const m = melhores[t.id];
+      if (m.bestGiro !== null) subInfo = `<div class="rank-sub" style="color:${tc}99">🌀 melhor giro: ${fmtSeg(m.bestGiro)}</div>`;
+    }
+
     return `
       <div class="rank-card" style="background:${t.color}">
         <div class="rank-pos" style="color:${tc}">${medals[idx] ?? (idx+1)+"º"}</div>
@@ -317,6 +361,7 @@ function renderRanking(scope, rods) {
             ${t.label}
             ${isLive ? `<span class="rank-live-dot">🔴 ao vivo</span>` : ""}
           </div>
+          ${subInfo}
           <div class="rank-bar-wrap">
             <div class="rank-bar" style="width:${bar}%"></div>
           </div>
@@ -349,10 +394,26 @@ function renderRodadas(scope, rods) {
         else if (p === maxP && p > 0) winners.push(t);
       });
     }
-    const isTie = winners.length > 1;
+    const isTie   = winners.length > 1;
     const winItem = rr.items.find(it => it.team === winners[0]?.id);
-    const extraTempo = (scope === "ponte" && winItem?.tempo != null && !isTie)
-      ? `<div class="rodada-winner-tempo">${fmtSeg(winItem.tempo)}</div>` : "";
+
+    let extra = "";
+    if (!isTie && rr.hasAny && winItem) {
+      if (scope === "ponte") {
+        const tempoStr = winItem.tempo != null ? `⏱ ${fmtSeg(winItem.tempo)}` : "";
+        const cargaStr = winItem.carga === true
+          ? `<span class="carga-ok">✓ carga</span>`
+          : winItem.carga === false
+            ? `<span class="carga-no">✗ sem carga</span>`
+            : "";
+        if (tempoStr || cargaStr) extra = `<div class="rodada-winner-extra">${tempoStr} ${cargaStr}</div>`;
+      } else {
+        const parts = [];
+        if (winItem.montagem != null) parts.push(`mont: ${fmtSeg(winItem.montagem)}`);
+        if (winItem.giro != null)     parts.push(`giro: ${fmtSeg(winItem.giro)}`);
+        if (parts.length) extra = `<div class="rodada-winner-extra">${parts.join(" · ")}</div>`;
+      }
+    }
 
     return `
       <div class="rodada-card">
@@ -364,7 +425,7 @@ function renderRodadas(scope, rods) {
           <div class="rodada-body" style="background:${(winners[0]?.color ?? "#ccc")}22">
             <div class="rodada-winner-icon">${isTie ? "🤝" : "🏆"}</div>
             <div class="rodada-winner-nome">${isTie ? winners.map(w => w.label).join("·") : (winners[0]?.label ?? "")}</div>
-            ${extraTempo}
+            ${extra}
           </div>` : `
           <div class="rodada-body"><div class="rodada-pending">⏳</div></div>`}
       </div>`;
@@ -374,6 +435,81 @@ function renderRodadas(scope, rods) {
   sec.innerHTML = `
     <div class="rodadas-titulo">${icon} Melhores por rodada</div>
     <div class="rodadas-grid">${cards}</div>`;
+}
+
+// ── Render detalhe por rodada ────────────────────────────────────
+function renderDetalhe(scope, rods) {
+  const sec   = document.getElementById(`${scope}-detalhe`);
+  if (!sec) return;
+  const teams = scope === "ponte" ? PONTE_TEAMS : SPINNER_TEAMS;
+  const rodsComDados = rods.filter(rr => rr.hasAny);
+  if (!rodsComDados.length) { sec.hidden = true; return; }
+  sec.hidden = false;
+
+  const icon = scope === "ponte" ? "🌉" : "🌀";
+
+  const tabelas = rodsComDados.map(rr => {
+    const sortedItems = scope === "ponte"
+      ? [...rr.items].sort((a, b) => {
+          if (a.tempo === null) return 1;
+          if (b.tempo === null) return -1;
+          return a.tempo - b.tempo;
+        })
+      : [...rr.items].sort((a, b) => {
+          const pa = (rr.montPts[a.team] || 0) + (rr.giroPts[a.team] || 0);
+          const pb = (rr.montPts[b.team] || 0) + (rr.giroPts[b.team] || 0);
+          return pb - pa;
+        });
+
+    const rows = sortedItems.map(it => {
+      const t      = teams.find(x => x.id === it.team);
+      const isLive = !!ST[scope].live[`${rr.round}_${it.team}`];
+      const liveTag = isLive ? `<span class="det-live">🔴</span>` : "";
+
+      if (scope === "ponte") {
+        const pts = (rr.tempoPts[it.team] || 0) + (rr.cargaPts[it.team] || 0);
+        const cargaHtml = it.carga === true
+          ? `<span class="carga-ok">✓</span>`
+          : it.carga === false
+            ? `<span class="carga-no">✗</span>`
+            : `<span class="det-nd">—</span>`;
+        return `<tr>
+          <td class="det-equipe" style="color:${t.color}">${t.label}${liveTag}</td>
+          <td class="det-val">${fmtSeg(it.tempo)}</td>
+          <td class="det-carga">${cargaHtml}</td>
+          <td class="det-pts">${it.tempo !== null ? pts : "—"}</td>
+        </tr>`;
+      } else {
+        const pts = (rr.montPts[it.team] || 0) + (rr.giroPts[it.team] || 0);
+        return `<tr>
+          <td class="det-equipe" style="color:${t.color}">${t.label}${liveTag}</td>
+          <td class="det-val">${fmtSeg(it.montagem)}</td>
+          <td class="det-val">${fmtSeg(it.giro)}</td>
+          <td class="det-pts">${it.montagem !== null ? pts : "—"}</td>
+        </tr>`;
+      }
+    }).join("");
+
+    const thead = scope === "ponte"
+      ? `<tr><th>Equipe</th><th>Tempo</th><th>Carga</th><th>Pts</th></tr>`
+      : `<tr><th>Equipe</th><th>Mont.</th><th>Giro</th><th>Pts</th></tr>`;
+
+    const parcialBadge = !rr.complete
+      ? `<span class="det-parcial">parcial</span>` : "";
+
+    return `
+      <div class="det-bloco">
+        <div class="det-header">Rodada ${rr.round} ${parcialBadge}</div>
+        <table class="det-table">
+          <thead>${thead}</thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }).join("");
+
+  sec.innerHTML = `
+    <div class="rodadas-titulo">${icon} Detalhe por rodada</div>
+    <div class="det-grid">${tabelas}</div>`;
 }
 
 // ── Render completo ──────────────────────────────────────────────
@@ -404,12 +540,14 @@ function render() {
   renderLive("ponte");
   renderRanking("ponte", rodsP);
   renderRodadas("ponte", rodsP);
+  renderDetalhe("ponte", rodsP);
 
   // Spinner
   updateBadge("spinner");
   renderLive("spinner");
   renderRanking("spinner", rodsS);
   renderRodadas("spinner", rodsS);
+  renderDetalhe("spinner", rodsS);
 
   // Rodapé
   const up = document.getElementById("footer-update");
