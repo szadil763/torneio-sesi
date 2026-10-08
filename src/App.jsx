@@ -3419,19 +3419,11 @@ export default function App() {
                   Telão
                 </button>
                 {(page === "propulsao" || page === "ponte") && (
-                  <>
-                    <a href="/telao.html" target="_blank" rel="noopener"
-                      className="px-3 py-1.5 rounded-full text-sm font-bold text-white no-underline"
-                      style={{ backgroundColor: "rgba(255,255,255,0.12)", textDecoration: "none" }}>
-                      📺 Duplo ↗
-                    </a>
-                    <a href="/telao.html?preview=1" target="_blank" rel="noopener"
-                      className="px-3 py-1.5 rounded-full text-sm font-bold no-underline"
-                      style={{ backgroundColor: "rgba(147,51,234,0.35)", color: "#e9d5ff", textDecoration: "none" }}
-                      title="Abrir telão em modo simulação">
-                      🧪
-                    </a>
-                  </>
+                  <a href="/telao.html" target="_blank" rel="noopener"
+                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white no-underline"
+                    style={{ backgroundColor: "rgba(255,255,255,0.12)", textDecoration: "none" }}>
+                    📺 Duplo ↗
+                  </a>
                 )}
               </div>
             )}
