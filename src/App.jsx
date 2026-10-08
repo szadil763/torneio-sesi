@@ -2977,6 +2977,13 @@ export default function App() {
                   style={{ backgroundColor: mode === "telao" ? LARANJA : "transparent" }}>
                   Telão
                 </button>
+                {(page === "propulsao" || page === "ponte") && (
+                  <a href="/telao.html" target="_blank" rel="noopener"
+                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white no-underline"
+                    style={{ backgroundColor: "rgba(255,255,255,0.12)", textDecoration: "none" }}>
+                    📺 Duplo ↗
+                  </a>
+                )}
               </div>
             )}
           </div>
