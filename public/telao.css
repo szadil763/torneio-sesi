@@ -122,9 +122,6 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 .geral-card {
   display: flex;
@@ -132,8 +129,6 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   gap: 7px;
   border-radius: 8px;
   padding: 5px 8px;
-  flex: 1;
-  min-height: 0;
   animation: fadeIn .4s ease-out;
 }
 .geral-medal {
@@ -165,9 +160,6 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   display: flex;
   flex-direction: column;
   gap: 3px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 .tano-row {
   display: flex;
@@ -175,8 +167,6 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   gap: 6px;
   border-radius: 7px;
   padding: 4px 7px;
-  flex: 1;
-  min-height: 0;
 }
 .tano-row-medal {
   font-size: clamp(10px, 1.1vw, 14px);
@@ -332,9 +322,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 .painel-aguardando {
   text-align: center;
@@ -352,8 +340,6 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   gap: clamp(6px, 0.8vw, 10px);
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
   animation: fadeIn .4s ease-out;
-  flex: 1;
-  min-height: 0;
 }
 .rank-pos {
   width: clamp(22px, 2.2vw, 34px);
@@ -702,12 +688,16 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 @media (max-width: 600px) {
   #telao-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 2px auto;
+    grid-template-rows: auto;   /* todos os 5 itens em linhas automáticas */
     overflow-y: auto;
   }
   .telao-divisor { height: 2px; width: 100%; align-self: auto; }
   html, body { overflow: auto; }
   #app { height: auto; min-height: 100%; }
+  /* no mobile os painéis crescem com o conteúdo */
+  .painel { overflow: visible; }
+  .sb-painel { flex: 0 0 auto; min-height: 0; }
+  #coluna-direita { overflow: visible; }
 }
 
 /* ── Overlay Resultado Final ─────────────────────────────────── */
