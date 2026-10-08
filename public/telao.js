@@ -665,12 +665,13 @@ function renderProvaAno(st, ano) {
   const rankEl = document.getElementById(`tano-ranking-${ano}`);
   if (!painel || !rankEl) return;
 
+  painel.hidden = false;
+
   const res = st.resultado;
   if (!res?.ranking || !Array.isArray(res.ranking)) {
-    painel.hidden = true;
+    rankEl.innerHTML = `<div class="painel-aguardando" style="font-size:clamp(10px,1.1vw,14px)">⏳<br>Aguardando resultados…</div>`;
     return;
   }
-  painel.hidden = false;
 
   const medals = ["🥇","🥈","🥉","🏅"];
   const rows = res.ranking.map((teamId, idx) => {
@@ -700,7 +701,8 @@ function renderGeralRanking(ponteTotals, spinnerTotals) {
   const has4       = !!ST.quartoAno.resultado?.ranking;
   const has5       = !!ST.quintoAno.resultado?.ranking;
 
-  if (!hasPonte && !hasSpinner && !has3 && !has4 && !has5) {
+  // Classificação Geral só aparece quando TODOS os anos concluíram
+  if (!hasPonte || !hasSpinner || !has3 || !has4 || !has5) {
     painel.hidden = true;
     return;
   }
@@ -793,13 +795,9 @@ function render() {
   renderProvaAno(ST.quintoAno,   5);
   renderGeralRanking(ponteTotals, spinnerTotals);
 
-  // Sidebar vazio (placeholder)
+  // Sidebar vazio (placeholder) — oculto pois 3/4/5 painéis sempre aparecem
   const sbVazio = document.getElementById("sidebar-vazio");
-  if (sbVazio) {
-    const anyVisible = ["painel-geral","painel-3ano","painel-4ano","painel-5ano"]
-      .some(id => !document.getElementById(id)?.hidden);
-    sbVazio.style.display = anyVisible ? "none" : "flex";
-  }
+  if (sbVazio) sbVazio.style.display = "none";
 
   // Rodapé
   const up = document.getElementById("footer-update");
