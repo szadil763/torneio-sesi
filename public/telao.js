@@ -465,7 +465,7 @@ function renderRanking(scope, rods) {
     let subInfo = "";
     if (scope === "ponte") {
       const tempoStr = m.bestTempo !== null ? `⏱ ${fmtSeg(m.bestTempo)}` : "";
-      const cargaStr = m.rodCount > 0 ? `· ${m.cargaCount}/${m.rodCount} carga ✓` : "";
+      const cargaStr = m.rodCount > 0 ? `· ${m.cargaCount}/${m.rodCount} ✓` : "";
       if (tempoStr || cargaStr) {
         const isRec = globalBest !== null && m.bestTempo === globalBest;
         subInfo = `<div class="rank-sub${isRec ? " rank-sub-record" : ""}"${isRec ? "" : ` style="color:${tc}99"`}>${isRec ? "⭐ " : ""}${tempoStr}${cargaStr}</div>`;
@@ -473,9 +473,27 @@ function renderRanking(scope, rods) {
     } else {
       if (m.bestGiro !== null) {
         const isRec = globalBest !== null && m.bestGiro === globalBest;
-        subInfo = `<div class="rank-sub${isRec ? " rank-sub-record" : ""}"${isRec ? "" : ` style="color:${tc}99"`}>${isRec ? "⭐ " : ""}🌀 melhor giro: ${fmtSeg(m.bestGiro)}</div>`;
+        subInfo = `<div class="rank-sub${isRec ? " rank-sub-record" : ""}"${isRec ? "" : ` style="color:${tc}99"`}>${isRec ? "⭐ " : ""}🌀 ${fmtSeg(m.bestGiro)}</div>`;
       }
     }
+
+    // Linha compacta de tempos por rodada
+    const rodadasLine = ROUNDS.map(r => {
+      const rr = rods.find(x => x.round === r);
+      if (!rr || !rr.hasAny) return `<span class="rank-rod-nd">R${r}:—</span>`;
+      const item = rr.items.find(x => x.team === t.id);
+      const isRodLive = !!ST[scope].live[`${r}_${t.id}`];
+      const dot = isRodLive ? `<span class="det-live">●</span>` : "";
+      if (scope === "ponte") {
+        const v = item?.tempo != null ? fmtSeg(item.tempo) : "—";
+        const ok = item?.carga === true ? "✓" : item?.carga === false ? "✗" : "";
+        return `<span class="rank-rod-val">R${r}:${v}${ok ? `<span class="rank-rod-carga ${item.carga ? "carga-ok" : "carga-no"}">${ok}</span>` : ""}${dot}</span>`;
+      } else {
+        const g = item?.giro != null ? fmtSeg(item.giro) : "—";
+        const mo = item?.montagem != null ? fmtSeg(item.montagem) : "—";
+        return `<span class="rank-rod-val">R${r}:${mo}/${g}${dot}</span>`;
+      }
+    }).join("");
 
     return `
       <div class="rank-card" style="background:${t.color}">
@@ -483,9 +501,10 @@ function renderRanking(scope, rods) {
         <div class="rank-info">
           <div class="rank-nome" style="color:${tc}">
             ${t.label}
-            ${isLive ? `<span class="rank-live-dot">🔴 ao vivo</span>` : ""}
+            ${isLive ? `<span class="rank-live-dot">🔴</span>` : ""}
           </div>
           ${subInfo}
+          <div class="rank-rodadas-row" style="color:${tc}bb">${rodadasLine}</div>
           <div class="rank-bar-wrap">
             <div class="rank-bar" style="width:${bar}%"></div>
           </div>

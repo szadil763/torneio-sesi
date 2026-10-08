@@ -453,8 +453,8 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   padding: 2px 0;
 }
 
-/* Tabela de detalhes: visível no telão */
-.painel-detalhe { flex-shrink: 0; }
+/* Tabela de detalhes: oculta no telão (dados por rodada ficam nos rank-cards) */
+.painel-detalhe { display: none !important; }
 .parcial {
   font-size: clamp(7px, 0.8vw, 10px);
   font-weight: 400;
@@ -470,6 +470,21 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
 }
+
+/* Linha compacta de resultados por rodada dentro do rank-card */
+.rank-rodadas-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: clamp(7px, 0.75vw, 10px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.rank-rod-val { white-space: nowrap; }
+.rank-rod-nd  { white-space: nowrap; opacity: .4; }
+.rank-rod-carga { margin-left: 1px; font-size: .9em; }
 
 /* ── Rodada winner extra ─────────────────────────────────────── */
 .rodada-winner-extra {
