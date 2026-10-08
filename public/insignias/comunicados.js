@@ -132,6 +132,7 @@ function alternarIdiomaCom() {
 }
 
 let _countdownInterval = null;
+let _provasInterval    = null;
 
 // ── Abas ──────────────────────────────────────────────────────────
 let _abaAtiva  = 'inicio';
@@ -183,6 +184,12 @@ function trocarAba(id) {
   if (id !== 'inicio' && _countdownInterval) {
     clearInterval(_countdownInterval);
     _countdownInterval = null;
+  }
+
+  // Para o polling de provas se sair da aba Provas
+  if (id !== 'provas' && _provasInterval) {
+    clearInterval(_provasInterval);
+    _provasInterval = null;
   }
 
   // Atualiza estado visual das abas
@@ -242,171 +249,172 @@ function _provasFmtTempo(s) {
   return s.toFixed(1) + 's';
 }
 
+async function _fetchProvasData() {
+  const [libP, libS, ep] = await Promise.all([
+    fetch(`${_RTDB_BASE}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/ponte_estado.json`).then(r => r.ok ? r.json() : null),
+  ]);
+
+  const ponteData = {};
+  const spinnerData = {};
+
+  await Promise.all([
+    ...( libP ? _PROVAS_ROUNDS.map(r =>
+      Promise.all(_PROVAS_TEAMS_PONTE.map(async t => {
+        try {
+          const v = await fetch(`${_RTDB_BASE}/ponte_r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
+          if (v) ponteData[`${r}_${t.id}`] = v;
+        } catch (_) {}
+      }))
+    ) : []),
+    ...( libS ? _PROVAS_ROUNDS.map(r =>
+      Promise.all(_PROVAS_TEAMS_SPINNER.map(async t => {
+        try {
+          const v = await fetch(`${_RTDB_BASE}/r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
+          if (v) spinnerData[`${r}_${t.id}`] = v;
+        } catch (_) {}
+      }))
+    ) : []),
+  ]);
+
+  return { libP, libS, ep, ponteData, spinnerData };
+}
+
+function _calcProvasHtml({ libP, libS, ep, ponteData, spinnerData }) {
+  let html = '';
+
+  if (!libP && !libS) {
+    return `<div class="com-secao">
+      <div class="com-secao-titulo">🏆 Provas</div>
+      <div class="com-vazio">${tc('provas_bloqueado')}</div>
+    </div>`;
+  }
+
+  if (libP) {
+    const ponteAoVivo = ep === 'aguardando' || ep === 'suspense';
+    const ponteTotals = {};
+    _PROVAS_TEAMS_PONTE.forEach(t => { ponteTotals[t.id] = 0; });
+    _PROVAS_ROUNDS.forEach(r => {
+      const itens = _PROVAS_TEAMS_PONTE.map(t => {
+        const v = ponteData[`${r}_${t.id}`];
+        return { team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null };
+      });
+      if (!itens.some(it => it.tempo !== null || it.carga !== null)) return;
+      const comTempo = itens.filter(it => it.tempo !== null);
+      const tempoPts = _provasRankPts(comTempo.map(it => ({ team: it.team, value: it.tempo })), false);
+      itens.forEach(it => {
+        ponteTotals[it.team] += (tempoPts[it.team] || 0) + (it.carga === true ? 4 : 0);
+      });
+    });
+    const ponteRanking = [..._PROVAS_TEAMS_PONTE].sort((a, b) => ponteTotals[b.id] - ponteTotals[a.id]);
+    const maxPonte = Math.max(1, ...ponteRanking.map(t => ponteTotals[t.id]));
+
+    html += `<div class="com-secao">
+      <div class="com-secao-titulo">🌉 Ponte de Da Vinci${ponteAoVivo ? ' <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span>' : ''}</div>
+      <div class="provas-ranking-lista">
+        ${ponteRanking.map((t, i) => {
+          const total = ponteTotals[t.id];
+          const pct   = Math.round((total / maxPonte) * 100);
+          const empate = i > 0 && ponteTotals[ponteRanking[i-1].id] === total;
+          return `<div class="provas-rank-card" style="--pc:${t.cor}">
+            <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
+            <div class="provas-rank-body">
+              <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
+              <div class="provas-rank-barra"><div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div></div>
+            </div>
+            <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (libS) {
+    const spinnerTotals = {}, spinnerGiroFirsts = {};
+    _PROVAS_TEAMS_SPINNER.forEach(t => { spinnerTotals[t.id] = 0; spinnerGiroFirsts[t.id] = 0; });
+    _PROVAS_ROUNDS.forEach(r => {
+      const itens = _PROVAS_TEAMS_SPINNER.map(t => {
+        const v = spinnerData[`${r}_${t.id}`];
+        return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
+      });
+      if (!itens.some(it => it.montagem !== null || it.giro !== null)) return;
+      const montPts = _provasRankPts(itens.filter(it => it.montagem !== null).map(it => ({ team: it.team, value: it.montagem })), false);
+      const giroPts = _provasRankPts(itens.filter(it => it.giro !== null).map(it => ({ team: it.team, value: it.giro })), true);
+      const complete = itens.every(it => it.montagem !== null && it.giro !== null);
+      _PROVAS_TEAMS_SPINNER.forEach(t => {
+        spinnerTotals[t.id] += (montPts[t.id] || 0) + (giroPts[t.id] || 0);
+        if (complete && giroPts[t.id] === 4) spinnerGiroFirsts[t.id]++;
+      });
+    });
+    const spinnerRanking = [..._PROVAS_TEAMS_SPINNER].sort((a, b) => {
+      const diff = spinnerTotals[b.id] - spinnerTotals[a.id];
+      return diff !== 0 ? diff : spinnerGiroFirsts[b.id] - spinnerGiroFirsts[a.id];
+    });
+    const maxSpinner = Math.max(1, ...spinnerRanking.map(t => spinnerTotals[t.id]));
+
+    html += `<div class="com-secao">
+      <div class="com-secao-titulo">🌀 Lançador de Spinner <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span></div>
+      <div class="provas-ranking-lista">
+        ${spinnerRanking.map((t, i) => {
+          const total = spinnerTotals[t.id];
+          const pct   = Math.round((total / maxSpinner) * 100);
+          const empate = i > 0 && spinnerTotals[spinnerRanking[i-1].id] === total;
+          return `<div class="provas-rank-card" style="--pc:${t.cor}">
+            <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
+            <div class="provas-rank-body">
+              <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
+              <div class="provas-rank-barra"><div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div></div>
+            </div>
+            <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
+
 async function renderAbaProvas() {
   const mount = getMountEl();
 
-  // Spinner de carregamento imediato
+  // Spinner de carregamento apenas na primeira abertura
   const loading = document.createElement('div');
+  loading.id = 'provas-loading';
   loading.className = 'com-secao';
   loading.innerHTML = '<div class="com-loading-spinner"></div>';
   mount.appendChild(loading);
 
-  try {
-    const [libP, libS, ep] = await Promise.all([
-      fetch(`${_RTDB_BASE}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
-      fetch(`${_RTDB_BASE}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
-      fetch(`${_RTDB_BASE}/ponte_estado.json`).then(r => r.ok ? r.json() : null),
-    ]);
+  // Container para o conteúdo — atualizado in-place no polling
+  const container = document.createElement('div');
+  container.id = 'provas-container';
+  mount.appendChild(container);
 
-    loading.remove();
+  const rodape = document.createElement('div');
+  rodape.className = 'com-rodape';
+  rodape.textContent = tc('rodape');
+  mount.appendChild(rodape);
 
-    if (!libP && !libS) {
-      const sec = document.createElement('div');
-      sec.className = 'com-secao';
-      sec.innerHTML = `
-        <div class="com-secao-titulo">🏆 Provas</div>
-        <div class="com-vazio">${tc('provas_bloqueado')}</div>`;
-      mount.appendChild(sec);
-      mount.insertAdjacentHTML('beforeend',
-        `<div class="com-rodape">${tc('rodape')}</div>`);
-      return;
+  async function _atualizar() {
+    if (_abaAtiva !== 'provas') return;
+    try {
+      const dados = await _fetchProvasData();
+      const c = document.getElementById('provas-container');
+      if (!c) return;
+      document.getElementById('provas-loading')?.remove();
+      c.innerHTML = _calcProvasHtml(dados);
+    } catch (_) {
+      document.getElementById('provas-loading')?.remove();
+      const c = document.getElementById('provas-container');
+      if (c && !c.innerHTML) c.innerHTML = `<div class="com-secao"><div class="com-vazio">Não foi possível carregar os resultados.</div></div>`;
     }
-
-    // ── Ponte de Da Vinci ─────────────────────────────────────────
-    if (libP) {
-      const ponteAoVivo = ep === 'aguardando' || ep === 'suspense';
-
-      // Busca todos os resultados
-      const ponteData = {};
-      await Promise.all(_PROVAS_ROUNDS.map(async r => {
-        await Promise.all(_PROVAS_TEAMS_PONTE.map(async t => {
-          try {
-            const v = await fetch(`${_RTDB_BASE}/ponte_r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
-            if (v) ponteData[`${r}_${t.id}`] = v;
-          } catch (_) {}
-        }));
-      }));
-
-      // Calcula pontos
-      const ponteTotals = {};
-      _PROVAS_TEAMS_PONTE.forEach(t => { ponteTotals[t.id] = 0; });
-      _PROVAS_ROUNDS.forEach(r => {
-        const itens = _PROVAS_TEAMS_PONTE.map(t => {
-          const v = ponteData[`${r}_${t.id}`];
-          return { team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null };
-        });
-        const hasAny = itens.some(it => it.tempo !== null || it.carga !== null);
-        if (!hasAny) return;
-        const comTempo = itens.filter(it => it.tempo !== null);
-        const tempoPts = _provasRankPts(comTempo.map(it => ({ team: it.team, value: it.tempo })), false);
-        itens.forEach(it => {
-          ponteTotals[it.team] += (tempoPts[it.team] || 0) + (it.carga === true ? 4 : it.carga === false ? 0 : 0);
-        });
-      });
-
-      const ponteRanking = [..._PROVAS_TEAMS_PONTE].sort((a, b) => ponteTotals[b.id] - ponteTotals[a.id]);
-      const maxPonte = Math.max(1, ...ponteRanking.map(t => ponteTotals[t.id]));
-
-      const sec = document.createElement('div');
-      sec.className = 'com-secao';
-      sec.innerHTML = `
-        <div class="com-secao-titulo">🌉 Ponte de Da Vinci${ponteAoVivo ? ' <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span>' : ''}</div>
-        <div class="provas-ranking-lista">
-          ${ponteRanking.map((t, i) => {
-            const total = ponteTotals[t.id];
-            const pct   = Math.round((total / maxPonte) * 100);
-            const empate = i > 0 && ponteTotals[ponteRanking[i-1].id] === total;
-            return `
-              <div class="provas-rank-card" style="--pc:${t.cor}">
-                <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
-                <div class="provas-rank-body">
-                  <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
-                  <div class="provas-rank-barra">
-                    <div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div>
-                  </div>
-                </div>
-                <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
-              </div>`;
-          }).join('')}
-        </div>`;
-      mount.appendChild(sec);
-    }
-
-    // ── Lançador de Spinner ───────────────────────────────────────
-    if (libS) {
-      const spinnerData = {};
-      await Promise.all(_PROVAS_ROUNDS.map(async r => {
-        await Promise.all(_PROVAS_TEAMS_SPINNER.map(async t => {
-          try {
-            const v = await fetch(`${_RTDB_BASE}/r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
-            if (v) spinnerData[`${r}_${t.id}`] = v;
-          } catch (_) {}
-        }));
-      }));
-
-      const spinnerTotals = {};
-      let spinnerGiroFirsts = {};
-      _PROVAS_TEAMS_SPINNER.forEach(t => { spinnerTotals[t.id] = 0; spinnerGiroFirsts[t.id] = 0; });
-
-      _PROVAS_ROUNDS.forEach(r => {
-        const itens = _PROVAS_TEAMS_SPINNER.map(t => {
-          const v = spinnerData[`${r}_${t.id}`];
-          return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
-        });
-        const hasAny = itens.some(it => it.montagem !== null || it.giro !== null);
-        if (!hasAny) return;
-        const comMont = itens.filter(it => it.montagem !== null);
-        const comGiro = itens.filter(it => it.giro !== null);
-        const montPts = _provasRankPts(comMont.map(it => ({ team: it.team, value: it.montagem })), false);
-        const giroPts = _provasRankPts(comGiro.map(it => ({ team: it.team, value: it.giro })), true);
-        const complete = itens.every(it => it.montagem !== null && it.giro !== null);
-        _PROVAS_TEAMS_SPINNER.forEach(t => {
-          spinnerTotals[t.id] += (montPts[t.id] || 0) + (giroPts[t.id] || 0);
-          if (complete && giroPts[t.id] === 4) spinnerGiroFirsts[t.id]++;
-        });
-      });
-
-      const spinnerRanking = [..._PROVAS_TEAMS_SPINNER].sort((a, b) => {
-        const diff = spinnerTotals[b.id] - spinnerTotals[a.id];
-        return diff !== 0 ? diff : spinnerGiroFirsts[b.id] - spinnerGiroFirsts[a.id];
-      });
-      const maxSpinner = Math.max(1, ...spinnerRanking.map(t => spinnerTotals[t.id]));
-
-      const sec = document.createElement('div');
-      sec.className = 'com-secao';
-      sec.innerHTML = `
-        <div class="com-secao-titulo">🌀 Lançador de Spinner <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span></div>
-        <div class="provas-ranking-lista">
-          ${spinnerRanking.map((t, i) => {
-            const total = spinnerTotals[t.id];
-            const pct   = Math.round((total / maxSpinner) * 100);
-            const empate = i > 0 && spinnerTotals[spinnerRanking[i-1].id] === total;
-            return `
-              <div class="provas-rank-card" style="--pc:${t.cor}">
-                <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
-                <div class="provas-rank-body">
-                  <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
-                  <div class="provas-rank-barra">
-                    <div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div>
-                  </div>
-                </div>
-                <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
-              </div>`;
-          }).join('')}
-        </div>`;
-      mount.appendChild(sec);
-    }
-
-  } catch (_) {
-    loading.remove();
-    const sec = document.createElement('div');
-    sec.className = 'com-secao';
-    sec.innerHTML = `<div class="com-vazio">Não foi possível carregar os resultados.</div>`;
-    mount.appendChild(sec);
   }
 
-  mount.insertAdjacentHTML('beforeend',
-    `<div class="com-rodape">${tc('rodape')}</div>`);
+  await _atualizar();
+
+  clearInterval(_provasInterval);
+  _provasInterval = setInterval(_atualizar, 5000);
 }
 
 function renderConteudoAba(dados) {
