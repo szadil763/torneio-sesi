@@ -329,28 +329,45 @@ function renderRanking(scope, rods) {
     });
   });
 
-  const maxPts  = Math.max(1, ...teams.map(t => totals[t.id]));
-  const sorted  = [...teams].sort((a, b) => totals[b.id] - totals[a.id]);
-  const medals  = ["🥇", "🥈", "🥉", "🏅"];
+  const maxPts   = Math.max(1, ...teams.map(t => totals[t.id]));
+  const sorted   = [...teams].sort((a, b) => totals[b.id] - totals[a.id]);
+  const medals   = ["🥇", "🥈", "🥉", "🏅"];
   const melhores = scope === "ponte" ? _melhorPonte(teams, rods) : _melhorSpinner(teams, rods);
+
+  // Melhor valor global para destacar recorde
+  let globalBest = null;
+  if (scope === "ponte") {
+    teams.forEach(t => {
+      const v = melhores[t.id].bestTempo;
+      if (v !== null && (globalBest === null || v < globalBest)) globalBest = v;
+    });
+  } else {
+    teams.forEach(t => {
+      const v = melhores[t.id].bestGiro;
+      if (v !== null && (globalBest === null || v > globalBest)) globalBest = v;
+    });
+  }
 
   el.innerHTML = sorted.map((t, idx) => {
     const pts    = totals[t.id];
     const bar    = Math.round((pts / maxPts) * 100);
     const tc     = t.dark ? "#3A3000" : "#fff";
     const isLive = ROUNDS.some(r => ST[scope].live[`${r}_${t.id}`]);
+    const m      = melhores[t.id];
 
     let subInfo = "";
     if (scope === "ponte") {
-      const m = melhores[t.id];
-      const tempoStr  = m.bestTempo !== null ? `⏱ ${fmtSeg(m.bestTempo)}` : "";
-      const cargaStr  = m.rodCount > 0
-        ? `· ${m.cargaCount}/${m.rodCount} carga ✓`
-        : "";
-      if (tempoStr || cargaStr) subInfo = `<div class="rank-sub" style="color:${tc}99">${tempoStr}${cargaStr}</div>`;
+      const tempoStr = m.bestTempo !== null ? `⏱ ${fmtSeg(m.bestTempo)}` : "";
+      const cargaStr = m.rodCount > 0 ? `· ${m.cargaCount}/${m.rodCount} carga ✓` : "";
+      if (tempoStr || cargaStr) {
+        const isRec = globalBest !== null && m.bestTempo === globalBest;
+        subInfo = `<div class="rank-sub${isRec ? " rank-sub-record" : ""}"${isRec ? "" : ` style="color:${tc}99"`}>${isRec ? "⭐ " : ""}${tempoStr}${cargaStr}</div>`;
+      }
     } else {
-      const m = melhores[t.id];
-      if (m.bestGiro !== null) subInfo = `<div class="rank-sub" style="color:${tc}99">🌀 melhor giro: ${fmtSeg(m.bestGiro)}</div>`;
+      if (m.bestGiro !== null) {
+        const isRec = globalBest !== null && m.bestGiro === globalBest;
+        subInfo = `<div class="rank-sub${isRec ? " rank-sub-record" : ""}"${isRec ? "" : ` style="color:${tc}99"`}>${isRec ? "⭐ " : ""}🌀 melhor giro: ${fmtSeg(m.bestGiro)}</div>`;
+      }
     }
 
     return `
@@ -448,6 +465,18 @@ function renderDetalhe(scope, rods) {
 
   const icon = scope === "ponte" ? "🌉" : "🌀";
 
+  // Melhor valor global para destacar recorde nas tabelas
+  let globalBest = null;
+  rodsComDados.forEach(rr => {
+    rr.items.forEach(it => {
+      if (scope === "ponte") {
+        if (it.tempo !== null && (globalBest === null || it.tempo < globalBest)) globalBest = it.tempo;
+      } else {
+        if (it.giro !== null && (globalBest === null || it.giro > globalBest)) globalBest = it.giro;
+      }
+    });
+  });
+
   const tabelas = rodsComDados.map(rr => {
     const sortedItems = scope === "ponte"
       ? [...rr.items].sort((a, b) => {
@@ -468,21 +497,23 @@ function renderDetalhe(scope, rods) {
 
       if (scope === "ponte") {
         const pts = (rr.tempoPts[it.team] || 0) + (rr.cargaPts[it.team] || 0);
+        const isRec = it.tempo !== null && it.tempo === globalBest;
         const cargaHtml = it.carga === true
           ? `<span class="carga-ok">✓</span>`
           : it.carga === false
             ? `<span class="carga-no">✗</span>`
             : `<span class="det-nd">—</span>`;
-        return `<tr>
-          <td class="det-equipe" style="color:${t.color}">${t.label}${liveTag}</td>
+        return `<tr${isRec ? ' class="det-record"' : ""}>
+          <td class="det-equipe" style="color:${t.color}">${t.label}${liveTag}${isRec ? `<span class="det-rec-star">⭐</span>` : ""}</td>
           <td class="det-val">${fmtSeg(it.tempo)}</td>
           <td class="det-carga">${cargaHtml}</td>
           <td class="det-pts">${it.tempo !== null ? pts : "—"}</td>
         </tr>`;
       } else {
         const pts = (rr.montPts[it.team] || 0) + (rr.giroPts[it.team] || 0);
-        return `<tr>
-          <td class="det-equipe" style="color:${t.color}">${t.label}${liveTag}</td>
+        const isRec = it.giro !== null && it.giro === globalBest;
+        return `<tr${isRec ? ' class="det-record"' : ""}>
+          <td class="det-equipe" style="color:${t.color}">${t.label}${liveTag}${isRec ? `<span class="det-rec-star">⭐</span>` : ""}</td>
           <td class="det-val">${fmtSeg(it.montagem)}</td>
           <td class="det-val">${fmtSeg(it.giro)}</td>
           <td class="det-pts">${it.montagem !== null ? pts : "—"}</td>
@@ -534,6 +565,12 @@ function render() {
   const anyLive = Object.keys(ST.ponte.live).length > 0 || Object.keys(ST.spinner.live).length > 0;
   const liveBadge = document.getElementById("telao-live-badge");
   liveBadge.hidden = !anyLive;
+
+  // Celebrando class nos painéis (destaque de recorde)
+  ["ponte", "spinner"].forEach(scope => {
+    const panelEl = document.getElementById(`painel-${scope}`);
+    if (panelEl) panelEl.classList.toggle("celebrando", ST[scope].celebrando);
+  });
 
   // Ponte
   updateBadge("ponte");

@@ -526,6 +526,40 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* ── Destaque de recorde ─────────────────────────────────────── */
+.rank-sub-record {
+  color: #FFD700 !important;
+  font-weight: 800;
+  text-shadow: 0 0 8px rgba(255, 215, 0, .6);
+}
+.painel.celebrando .rank-sub-record {
+  animation: recordPulse .75s ease-in-out infinite;
+}
+
+.det-record td {
+  background: rgba(255, 215, 0, .07);
+}
+.det-record .det-val,
+.det-record .det-pts {
+  color: #FFD700;
+  font-weight: 800;
+  text-shadow: 0 0 6px rgba(255, 215, 0, .5);
+}
+.painel.celebrando .det-record td {
+  animation: recordPulse .75s ease-in-out infinite;
+}
+
+.det-rec-star {
+  font-size: clamp(6px, 0.7vw, 9px);
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+@keyframes recordPulse {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  50%       { opacity: .4; filter: brightness(2); }
+}
+
 /* ── Animações gerais ─────────────────────────────────────────── */
 @keyframes pulse {
   0%,100% { opacity: 1; }
