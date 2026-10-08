@@ -119,11 +119,14 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 
 /* Classificação Geral — cards compactos */
 #geral-ranking {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 .geral-card {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -156,12 +159,17 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 }
 
 /* Anos (3/4/5) — lista compacta na sidebar */
+#tano-ranking-3,
+#tano-ranking-4,
+#tano-ranking-5 { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .tano-list {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 .tano-row {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -686,10 +694,10 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 }
 
 /* ── Mobile fallback (telas pequenas) ───────────────────────────*/
-@media (max-width: 600px) {
+@media (max-width: 900px) {
   #telao-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto;   /* todos os 5 itens em linhas automáticas */
+    grid-template-rows: auto;
     overflow-y: auto;
   }
   .telao-divisor { height: 2px; width: 100%; align-self: auto; }
@@ -699,6 +707,9 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   .painel { overflow: visible; }
   .sb-painel { flex: 0 0 auto; min-height: 0; }
   #coluna-direita { overflow: visible; }
+  /* cards da sidebar não expandem em container de altura auto */
+  .geral-card { flex: 0 0 auto; }
+  .tano-row   { flex: 0 0 auto; }
 }
 
 /* ── Overlay Resultado Final ─────────────────────────────────── */
