@@ -81,6 +81,123 @@ function countGiroFirsts(roundResults, teamId) {
   return count;
 }
 
+// ── Resultado Final — overlay compartilhado ───────────────────────
+function ResultadoFinalOverlay({ ranking, onClose, titulo }) {
+  // ranking: [{ team, pts }, ...]  sorted 1º→4º
+  const [phase, setPhase] = useState(0); // 0=intro, 1=podio, 2=campeao
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 300);
+    const t2 = setTimeout(() => setPhase(2), 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  if (!ranking.length) return null;
+  const [first, ...rest] = ranking;
+  const tc = first.team.dark ? "#3A3000" : "#fff";
+  const medals = ["🥇", "🥈", "🥉", "🏅"];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 gap-5"
+      style={{ background: "rgba(0,10,30,0.96)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <style>{`
+        @keyframes rfChampIn { 0%{transform:scale(0.5) translateY(60px);opacity:0} 60%{transform:scale(1.08) translateY(-6px)} 100%{transform:scale(1) translateY(0);opacity:1} }
+        @keyframes rfPodioIn { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes rfGlow { 0%,100%{box-shadow:0 0 40px var(--gc),0 0 80px var(--gc)} 50%{box-shadow:0 0 70px var(--gc),0 0 140px var(--gc)} }
+        @keyframes rfPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+        @keyframes rfStar { 0%{opacity:0;transform:scale(0) rotate(-30deg)} 60%{opacity:1;transform:scale(1.2) rotate(5deg)} 100%{opacity:1;transform:scale(1) rotate(0)} }
+        @keyframes rfConfetti { 0%{transform:translateY(-40px) rotate(0deg);opacity:1} 100%{transform:translateY(120vh) rotate(720deg);opacity:0} }
+      `}</style>
+
+      {/* Confetti decorativo */}
+      {phase >= 2 && Array.from({ length: 16 }).map((_, i) => (
+        <div key={i} style={{
+          position: "fixed",
+          left: `${(i * 6.5) % 100}%`,
+          top: "-20px",
+          width: 10,
+          height: 10,
+          borderRadius: i % 3 === 0 ? "50%" : 2,
+          background: ["#FFD700","#F5821F","#D92B2B","#004B8D","#2E9E4F","#fff"][i % 6],
+          animation: `rfConfetti ${1.8 + (i % 4) * 0.4}s ${(i % 5) * 0.15}s linear forwards`,
+          pointerEvents: "none",
+          zIndex: 60,
+        }} />
+      ))}
+
+      {/* Header */}
+      <div className="text-center" style={{ animation: phase >= 1 ? "rfPodioIn .5s ease-out both" : "none" }}>
+        <div className="text-xs font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
+          {titulo ?? "RESULTADO FINAL"}
+        </div>
+        <div className="font-black text-white" style={{ fontSize: "clamp(20px,4vw,32px)", letterSpacing: ".06em" }}>
+          🏆 RESULTADO FINAL
+        </div>
+      </div>
+
+      {/* Campeão */}
+      {phase >= 2 && (
+        <div
+          className="w-full max-w-md rounded-3xl p-6 flex flex-col items-center gap-2 relative overflow-hidden"
+          style={{
+            background: first.team.color,
+            "--gc": first.team.color + "88",
+            animation: "rfChampIn .7s cubic-bezier(.22,1,.36,1) both, rfGlow 2s ease-in-out 0.7s infinite",
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div style={{ fontSize: "clamp(36px,7vw,60px)", animation: "rfStar .5s ease-out .5s both", opacity: 0 }}>🥇</div>
+          <div className="font-black tracking-widest" style={{ color: tc + "99", fontSize: "clamp(11px,1.5vw,14px)", letterSpacing: ".15em" }}>
+            1º LUGAR
+          </div>
+          <div className="font-black text-center" style={{
+            color: tc, fontSize: "clamp(32px,6vw,56px)", lineHeight: 1.1,
+            animation: "rfPulse 1.5s ease-in-out infinite",
+            textShadow: `0 4px 24px rgba(0,0,0,0.4)`,
+          }}>
+            {first.team.label}
+          </div>
+          <div className="font-bold tabular-nums" style={{ color: tc + "cc", fontSize: "clamp(16px,2.5vw,22px)" }}>
+            {first.pts} pontos
+          </div>
+        </div>
+      )}
+
+      {/* Podio 2º–4º */}
+      {phase >= 1 && (
+        <div className="flex gap-3 w-full max-w-md" style={{ animation: "rfPodioIn .5s ease-out .1s both" }}
+          onClick={e => e.stopPropagation()}>
+          {rest.map((r, i) => {
+            const rtc = r.team.dark ? "#3A3000" : "#fff";
+            return (
+              <div key={r.team.id} className="flex-1 rounded-2xl p-3 flex flex-col items-center gap-1"
+                style={{ background: r.team.color, animation: `rfPodioIn .4s ease-out ${0.15 + i * 0.1}s both`, opacity: 0 }}>
+                <div style={{ fontSize: "clamp(18px,3vw,28px)" }}>{medals[i + 1]}</div>
+                <div className="font-black text-center" style={{ color: rtc, fontSize: "clamp(13px,2vw,18px)" }}>
+                  {r.team.label}
+                </div>
+                <div className="font-bold tabular-nums" style={{ color: rtc + "aa", fontSize: "clamp(10px,1.4vw,13px)" }}>
+                  {r.pts} pts
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={onClose}
+        className="mt-2 px-8 py-3 rounded-full font-bold text-white text-sm"
+        style={{ background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.3)" }}>
+        Fechar
+      </button>
+    </div>
+  );
+}
+
 function Timer({ label, icon, running, elapsed, onStart, onStop, disabled, accent, warn }) {
   return (
     <div
@@ -143,6 +260,9 @@ function MonitorView() {
   const [existing, setExisting] = useState(null);
   const [allRounds, setAllRounds] = useState({});
   const [spinnerPublicLiberado, setSpinnerPublicLiberado] = useState(false);
+  const [showFinalSpinner, setShowFinalSpinner] = useState(false);
+  const [finalRankingSpinner, setFinalRankingSpinner] = useState([]);
+  const [loadingFinalSpinner, setLoadingFinalSpinner] = useState(false);
 
   const montagemTickRef = useRef(null);
   const giroTickRef = useRef(null);
@@ -282,6 +402,35 @@ function MonitorView() {
     setSaved(false);
     setSaveError(false);
     setAllRounds((prev) => ({ ...prev, [round]: null }));
+  };
+
+  const handleResultadoFinalSpinner = async () => {
+    setLoadingFinalSpinner(true);
+    const totals = {};
+    const firstCounts = {};
+    TEAMS.forEach(t => { totals[t.id] = 0; firstCounts[t.id] = 0; });
+    for (const r of ROUNDS) {
+      const items = [];
+      for (const t of TEAMS) {
+        const v = await safeGet(keyFor(r, t.id));
+        items.push({ team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null });
+      }
+      const comMont = items.filter(it => it.montagem !== null);
+      const comGiro = items.filter(it => it.giro !== null);
+      if (comMont.length || comGiro.length) {
+        const montPts = rankPoints(comMont.map(it => ({ team: it.team, value: it.montagem })), false);
+        const giroPts = rankPoints(comGiro.map(it => ({ team: it.team, value: it.giro })), true);
+        TEAMS.forEach(t => { totals[t.id] += (montPts[t.id] || 0) + (giroPts[t.id] || 0); });
+        TEAMS.forEach(t => { firstCounts[t.id] += countGiroFirsts([{ team: t.id, giro: items.find(i => i.team === t.id)?.giro ?? null }], t.id); });
+      }
+    }
+    const sorted = [...TEAMS].sort((a, b) => {
+      if (totals[b.id] !== totals[a.id]) return totals[b.id] - totals[a.id];
+      return firstCounts[b.id] - firstCounts[a.id];
+    });
+    setFinalRankingSpinner(sorted.map(t => ({ team: t, pts: totals[t.id] })));
+    setLoadingFinalSpinner(false);
+    setShowFinalSpinner(true);
   };
 
   const handleResetTournament = async () => {
@@ -497,7 +646,14 @@ function MonitorView() {
         </button>
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      <div className="border-t border-gray-200 pt-3 pb-2">
+        <button
+          onClick={handleResultadoFinalSpinner}
+          disabled={loadingFinalSpinner}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white mb-3"
+          style={{ backgroundColor: LARANJA, opacity: loadingFinalSpinner ? 0.7 : 1 }}>
+          {loadingFinalSpinner ? "⏳ Calculando…" : "🏆 Resultado Final"}
+        </button>
         <button
           onClick={handleResetTournament}
           className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50"
@@ -505,6 +661,14 @@ function MonitorView() {
           ⚠️ Zerar torneio inteiro
         </button>
       </div>
+
+      {showFinalSpinner && (
+        <ResultadoFinalOverlay
+          ranking={finalRankingSpinner}
+          onClose={() => setShowFinalSpinner(false)}
+          titulo="Lançador de Spinner — 2º Ano"
+        />
+      )}
     </div>
   );
 }
@@ -804,6 +968,9 @@ function PonteMonitorView() {
   const [monitorEstado, setMonitorEstado] = useState("aguardando");
   const [comentarioInput, setComentarioInput] = useState("");
   const [pontePublicLiberado, setPontePublicLiberado] = useState(false);
+  const [showFinalPonte, setShowFinalPonte] = useState(false);
+  const [finalRankingPonte, setFinalRankingPonte] = useState([]);
+  const [loadingFinalPonte, setLoadingFinalPonte] = useState(false);
 
   const tickRef = useRef(null);
 
@@ -911,6 +1078,32 @@ function PonteMonitorView() {
     setSaved(false);
     setSaveError(false);
     setAllRounds((prev) => ({ ...prev, [round]: null }));
+  };
+
+  const handleResultadoFinalPonte = async () => {
+    setLoadingFinalPonte(true);
+    const totals = {};
+    TEAMS_1ANO.forEach(t => { totals[t.id] = 0; });
+    for (const r of ROUNDS) {
+      const items = [];
+      for (const t of TEAMS_1ANO) {
+        const v = await safeGet(ponteKeyFor(r, t.id));
+        items.push({ team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null });
+      }
+      const comTempo = items.filter(it => it.tempo !== null);
+      if (comTempo.length) {
+        const tempoPts = rankPoints(comTempo.map(it => ({ team: it.team, value: it.tempo })), false);
+        TEAMS_1ANO.forEach(t => {
+          totals[t.id] += (tempoPts[t.id] || 0);
+          const item = items.find(i => i.team === t.id);
+          if (item?.carga === true) totals[t.id] += 4;
+        });
+      }
+    }
+    const sorted = [...TEAMS_1ANO].sort((a, b) => totals[b.id] - totals[a.id]);
+    setFinalRankingPonte(sorted.map(t => ({ team: t, pts: totals[t.id] })));
+    setLoadingFinalPonte(false);
+    setShowFinalPonte(true);
   };
 
   const handleResetAll = async () => {
@@ -1157,12 +1350,27 @@ function PonteMonitorView() {
         </button>
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      <div className="border-t border-gray-200 pt-3 pb-2">
+        <button
+          onClick={handleResultadoFinalPonte}
+          disabled={loadingFinalPonte}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white mb-3"
+          style={{ backgroundColor: LARANJA, opacity: loadingFinalPonte ? 0.7 : 1 }}>
+          {loadingFinalPonte ? "⏳ Calculando…" : "🏆 Resultado Final"}
+        </button>
         <button onClick={handleResetAll}
           className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
           ⚠️ Zerar torneio inteiro (Ponte)
         </button>
       </div>
+
+      {showFinalPonte && (
+        <ResultadoFinalOverlay
+          ranking={finalRankingPonte}
+          onClose={() => setShowFinalPonte(false)}
+          titulo="Ponte de Da Vinci — 1º Ano"
+        />
+      )}
     </div>
   );
 }
