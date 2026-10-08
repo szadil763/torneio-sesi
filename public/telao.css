@@ -80,6 +80,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 
 /* ── Painel individual ───────────────────────────────────────── */
 .painel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -617,19 +618,20 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   to   { opacity: 0; }
 }
 
-#resultado-overlay {
-  position: fixed;
+.painel-resultado-overlay {
+  position: absolute;
   inset: 0;
-  z-index: 100;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 8, 24, 0.96);
+  background: rgba(0, 8, 24, 0.97);
   backdrop-filter: blur(6px);
   cursor: pointer;
   animation: resOverlayIn .35s ease-out both;
+  overflow: hidden;
 }
-#resultado-overlay.res-saindo {
+.painel-resultado-overlay.res-saindo {
   animation: resOverlayOut .4s ease-in both;
 }
 .res-confetti-wrap {

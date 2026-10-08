@@ -4,14 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Telão — SESI Torneio Infantil</title>
-  <link rel="stylesheet" href="telao.css?v=20261008d" />
+  <link rel="stylesheet" href="telao.css?v=20261008e" />
 </head>
 <body>
   <div id="app">
 
     <!-- Overlays globais -->
-    <div id="resultado-overlay" hidden></div>
-
     <div id="suspense-overlay" hidden>
       <div class="suspense-icon">⏳</div>
       <div class="suspense-titulo">CALCULANDO…</div>
@@ -36,6 +34,7 @@
 
       <!-- Coluna esquerda: Ponte de Da Vinci -->
       <div class="painel" id="painel-ponte">
+        <div id="resultado-overlay-ponte" class="painel-resultado-overlay" hidden></div>
         <div class="painel-header">
           <div class="painel-icone">🌉</div>
           <div class="painel-titulo">Ponte de Da Vinci</div>
@@ -55,6 +54,7 @@
 
       <!-- Coluna direita: Lançador de Spinner -->
       <div class="painel" id="painel-spinner">
+        <div id="resultado-overlay-spinner" class="painel-resultado-overlay" hidden></div>
         <div class="painel-header">
           <div class="painel-icone">🌀</div>
           <div class="painel-titulo">Lançador de Spinner</div>
@@ -80,6 +80,6 @@
     </footer>
 
   </div>
-  <script src="telao.js?v=20261008d"></script>
+  <script src="telao.js?v=20261008e"></script>
 </body>
 </html>

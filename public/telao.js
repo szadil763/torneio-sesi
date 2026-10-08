@@ -140,13 +140,13 @@ async function poll() {
   ST.ponte.estado = metaPonte[0] ?? "aguardando";
   ST.ponte.comt   = typeof metaPonte[1] === "string" ? metaPonte[1] : "";
   checkRecorde(ST.ponte, metaPonte[2]);
-  checkResultado(ST.ponte, metaPonte[3], "Ponte de Da Vinci — 1º Ano", PONTE_TEAMS);
+  checkResultado(ST.ponte, metaPonte[3], "ponte", "Ponte de Da Vinci — 1º Ano", PONTE_TEAMS);
 
   // Spinner meta
   ST.spinner.estado = metaSpinner[0] ?? "aguardando";
   ST.spinner.comt   = typeof metaSpinner[1] === "string" ? metaSpinner[1] : "";
   checkRecorde(ST.spinner, metaSpinner[2]);
-  checkResultado(ST.spinner, metaSpinner[3], "Lançador de Spinner — 2º Ano", SPINNER_TEAMS);
+  checkResultado(ST.spinner, metaSpinner[3], "spinner", "Lançador de Spinner — 2º Ano", SPINNER_TEAMS);
 
   // Distribuir resultados
   const newPonteData = {}, newPonteLive = {};
@@ -190,16 +190,16 @@ function checkRecorde(st, rec) {
   st.recorde = rec ?? null;
 }
 
-function checkResultado(st, res, titulo, teams) {
+function checkResultado(st, res, scope, titulo, teams) {
   if (res?.ts && res.ts !== st.prevResultadoTs) {
     st.prevResultadoTs = res.ts;
     st.resultado = res;
-    showResultadoOverlay(res, titulo, teams);
+    showResultadoOverlay(res, scope, titulo, teams);
   }
 }
 
-function showResultadoOverlay(res, titulo, teams) {
-  const el = document.getElementById("resultado-overlay");
+function showResultadoOverlay(res, scope, titulo, teams) {
+  const el = document.getElementById(`resultado-overlay-${scope}`);
   if (!el) return;
 
   const medals = ["🥇","🥈","🥉","🏅"];
