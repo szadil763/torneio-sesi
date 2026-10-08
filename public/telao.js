@@ -827,65 +827,16 @@ function updateBadge(scope) {
 
 // ── Preview mode (?preview=1) ─────────────────────────────────────
 function _injectPreviewData() {
-  ST.ponte.estado = "aguardando";
-  // 4 rodadas completas — 1A=Vermelho, 1B=Azul, 1C=Verde, 1D=Amarelo
-  // carga:true = suportou peso; tempo em segundos (menor = melhor)
-  ST.ponte.data = {
-    "ponte_r1_1A": { tempo: 12.3, carga: true  },
-    "ponte_r1_1B": { tempo: 15.1, carga: true  },
-    "ponte_r1_1C": { tempo: 18.2, carga: false },
-    "ponte_r1_1D": { tempo: 11.8, carga: true  },
-    "ponte_r2_1A": { tempo: 13.0, carga: true  },
-    "ponte_r2_1B": { tempo: 14.5, carga: true  },
-    "ponte_r2_1C": { tempo: 17.0, carga: true  },
-    "ponte_r2_1D": { tempo: 12.5, carga: true  },
-    "ponte_r3_1A": { tempo: 11.2, carga: true  },
-    "ponte_r3_1B": { tempo: 16.3, carga: false },
-    "ponte_r3_1C": { tempo: 14.8, carga: true  },
-    "ponte_r3_1D": { tempo: 13.7, carga: true  },
-    "ponte_r4_1A": { tempo: 10.9, carga: true  },
-    "ponte_r4_1B": { tempo: 13.2, carga: true  },
-    "ponte_r4_1C": { tempo: 15.5, carga: true  },
-    "ponte_r4_1D": { tempo: 14.1, carga: true  },
-  };
-
+  // Estado inicial: tudo zerado
+  ST.ponte.estado   = "aguardando";
+  ST.ponte.data     = {};
+  ST.ponte.live     = {};
   ST.spinner.estado = "aguardando";
-  // 4 rodadas completas — 2A=Vermelho, 2B=Azul, 2C=Verde, 2D=Amarelo
-  // giro em segundos (maior = melhor)
-  ST.spinner.data = {
-    "r1_2A": { montagem: 8.2,  giro: 12.5 },
-    "r1_2B": { montagem: 9.1,  giro: 10.3 },
-    "r1_2C": { montagem: 7.8,  giro: 14.2 },
-    "r1_2D": { montagem: 10.5, giro:  9.8 },
-    "r2_2A": { montagem: 7.9,  giro: 13.1 },
-    "r2_2B": { montagem: 8.6,  giro: 11.7 },
-    "r2_2C": { montagem: 8.1,  giro: 15.0 },
-    "r2_2D": { montagem: 9.8,  giro: 10.6 },
-    "r3_2A": { montagem: 7.5,  giro: 14.8 },
-    "r3_2B": { montagem: 8.9,  giro: 12.4 },
-    "r3_2C": { montagem: 7.2,  giro: 16.3 },
-    "r3_2D": { montagem: 9.3,  giro:  9.1 },
-    "r4_2A": { montagem: 8.0,  giro: 13.9 },
-    "r4_2B": { montagem: 9.4,  giro: 11.0 },
-    "r4_2C": { montagem: 7.6,  giro: 15.7 },
-    "r4_2D": { montagem: 10.1, giro:  8.5 },
-  };
-
-  // Ao vivo: ponte R2 equipe 1C rodando, spinner R2 equipe 2B na fase de giro
-  const now = Date.now();
-  ST.ponte.live = {
-    "2_1C": { running: true, startTs: now - 8400 },   // ~8.4s rodando
-  };
-  ST.spinner.live = {
-    "2_2B": { giroRunning: true, startTs_giro: now - 5200 }, // ~5.2s girando
-  };
-
-  // 3º Ano — resultado publicado
-  ST.terceiroAno.resultado = { ranking: ["vermelho", "verde", "amarelo", "azul"], ts: 1 };
-  // 4º Ano — resultado publicado
-  ST.quartoAno.resultado   = { ranking: ["azul", "vermelho", "verde", "amarelo"], ts: 2 };
-  // 5º Ano — resultado publicado
-  ST.quintoAno.resultado   = { ranking: ["verde", "amarelo", "azul", "vermelho"], ts: 3 };
+  ST.spinner.data   = {};
+  ST.spinner.live   = {};
+  ST.terceiroAno.resultado = null;
+  ST.quartoAno.resultado   = null;
+  ST.quintoAno.resultado   = null;
 
   const hdr = document.getElementById("telao-header");
   if (hdr) {
@@ -894,13 +845,71 @@ function _injectPreviewData() {
     b.style.cssText = "font-size:clamp(9px,1vw,13px);font-weight:800;letter-spacing:.1em;background:#9333ea;color:#fff;padding:4px 12px;border-radius:100px;white-space:nowrap";
     hdr.appendChild(b);
   }
+
+  // Dados por rodada — Ponte
+  const PR = {
+    1: { "ponte_r1_1A": { tempo: 12.3, carga: true  }, "ponte_r1_1B": { tempo: 15.1, carga: true  }, "ponte_r1_1C": { tempo: 18.2, carga: false }, "ponte_r1_1D": { tempo: 11.8, carga: true  } },
+    2: { "ponte_r2_1A": { tempo: 13.0, carga: true  }, "ponte_r2_1B": { tempo: 14.5, carga: true  }, "ponte_r2_1C": { tempo: 17.0, carga: true  }, "ponte_r2_1D": { tempo: 12.5, carga: true  } },
+    3: { "ponte_r3_1A": { tempo: 11.2, carga: true  }, "ponte_r3_1B": { tempo: 16.3, carga: false }, "ponte_r3_1C": { tempo: 14.8, carga: true  }, "ponte_r3_1D": { tempo: 13.7, carga: true  } },
+    4: { "ponte_r4_1A": { tempo: 10.9, carga: true  }, "ponte_r4_1B": { tempo: 13.2, carga: true  }, "ponte_r4_1C": { tempo: 15.5, carga: true  }, "ponte_r4_1D": { tempo: 14.1, carga: true  } },
+  };
+  // Dados por rodada — Spinner
+  const SR = {
+    1: { "r1_2A": { montagem: 8.2,  giro: 12.5 }, "r1_2B": { montagem: 9.1,  giro: 10.3 }, "r1_2C": { montagem: 7.8,  giro: 14.2 }, "r1_2D": { montagem: 10.5, giro:  9.8 } },
+    2: { "r2_2A": { montagem: 7.9,  giro: 13.1 }, "r2_2B": { montagem: 8.6,  giro: 11.7 }, "r2_2C": { montagem: 8.1,  giro: 15.0 }, "r2_2D": { montagem: 9.8,  giro: 10.6 } },
+    3: { "r3_2A": { montagem: 7.5,  giro: 14.8 }, "r3_2B": { montagem: 8.9,  giro: 12.4 }, "r3_2C": { montagem: 7.2,  giro: 16.3 }, "r3_2D": { montagem: 9.3,  giro:  9.1 } },
+    4: { "r4_2A": { montagem: 8.0,  giro: 13.9 }, "r4_2B": { montagem: 9.4,  giro: 11.0 }, "r4_2C": { montagem: 7.6,  giro: 15.7 }, "r4_2D": { montagem: 10.1, giro:  8.5 } },
+  };
+
+  const LIVE_MS = 3000;  // duração do timer ao vivo antes de fechar a rodada
+  const STEP_MS = 5000;  // intervalo entre rodadas
+
+  function at(ms, fn) { setTimeout(fn, ms); }
+
+  let t = 0;
+
+  // ── Ponte R1–R4 ──────────────────────────────────────────────────
+  const ponteLive = ["1A","1B","1C","1D"];
+  for (let r = 1; r <= 4; r++) {
+    const round = r, lv = ponteLive[r - 1];
+    at(t, () => {
+      ST.ponte.live = { [`${round}_${lv}`]: { running: true, startTs: Date.now() } };
+      render(); startRaf();
+    });
+    at(t + LIVE_MS, () => {
+      ST.ponte.live = {};
+      Object.assign(ST.ponte.data, PR[round]);
+      stopRaf(); render();
+    });
+    t += STEP_MS;
+  }
+
+  // ── Spinner R1–R4 ────────────────────────────────────────────────
+  const spinnerLive = ["2A","2B","2C","2D"];
+  for (let r = 1; r <= 4; r++) {
+    const round = r, lv = spinnerLive[r - 1];
+    at(t, () => {
+      ST.spinner.live = { [`${round}_${lv}`]: { giroRunning: true, startTs_giro: Date.now() } };
+      render(); startRaf();
+    });
+    at(t + LIVE_MS, () => {
+      ST.spinner.live = {};
+      Object.assign(ST.spinner.data, SR[round]);
+      stopRaf(); render();
+    });
+    t += STEP_MS;
+  }
+
+  // ── Anos (3º → 4º → 5º → Geral aparece automaticamente) ─────────
+  at(t,       () => { ST.terceiroAno.resultado = { ranking: ["vermelho","verde","amarelo","azul"],    ts: Date.now() }; render(); });
+  at(t + 4000,() => { ST.quartoAno.resultado   = { ranking: ["azul","vermelho","verde","amarelo"],    ts: Date.now() }; render(); });
+  at(t + 8000,() => { ST.quintoAno.resultado   = { ranking: ["verde","amarelo","azul","vermelho"],    ts: Date.now() }; render(); });
 }
 
 // ── Start ────────────────────────────────────────────────────────
 if (/[?&]preview=1/.test(location.search)) {
   _injectPreviewData();
   render();
-  startRaf();
 } else {
   poll();
   _pollId = setInterval(poll, _pollMs);
