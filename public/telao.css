@@ -453,8 +453,8 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   padding: 2px 0;
 }
 
-/* Tabela de detalhes: oculta no telão (visível apenas no monitor React) */
-.painel-detalhe { display: none !important; }
+/* Tabela de detalhes: visível no telão */
+.painel-detalhe { flex-shrink: 0; }
 .parcial {
   font-size: clamp(7px, 0.8vw, 10px);
   font-weight: 400;
