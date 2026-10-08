@@ -827,6 +827,46 @@ function updateBadge(scope) {
   }
 }
 
+// ── Preview mode (?preview=1) ─────────────────────────────────────
+function _injectPreviewData() {
+  ST.ponte.estado = "aguardando";
+  ST.ponte.data = {
+    "ponte_r1_1A": { tempo: 12.3, carga: true },
+    "ponte_r1_1B": { tempo: 15.1, carga: true },
+    "ponte_r1_1C": { tempo: 18.2, carga: false },
+    "ponte_r1_1D": { tempo: 11.8, carga: true },
+    "ponte_r2_1A": { tempo: 13.0, carga: true },
+    "ponte_r2_1B": { tempo: 14.5, carga: true },
+    "ponte_r2_1C": { tempo: 17.0, carga: true },
+    "ponte_r2_1D": { tempo: 12.5, carga: true },
+  };
+  ST.spinner.estado = "aguardando";
+  ST.spinner.data = {
+    "r1_2A": { montagem: 8.2,  giro: 12.5 },
+    "r1_2B": { montagem: 9.1,  giro: 10.3 },
+    "r1_2C": { montagem: 7.8,  giro: 14.2 },
+    "r1_2D": { montagem: 10.5, giro: 9.8  },
+    "r2_2A": { montagem: 7.9,  giro: 13.1 },
+    "r2_2B": { montagem: 8.6,  giro: 11.7 },
+  };
+  ST.terceiroAno.resultado = { ranking: ["vermelho", "azul",    "verde",   "amarelo"], ts: 1 };
+  ST.quartoAno.resultado   = { ranking: ["azul",     "vermelho","amarelo", "verde"  ], ts: 2 };
+  ST.quintoAno.resultado   = { ranking: ["verde",    "amarelo", "vermelho","azul"   ], ts: 3 };
+
+  const hdr = document.getElementById("telao-header");
+  if (hdr) {
+    const b = document.createElement("div");
+    b.textContent = "🧪 PREVIEW";
+    b.style.cssText = "font-size:clamp(9px,1vw,13px);font-weight:800;letter-spacing:.1em;background:#9333ea;color:#fff;padding:4px 12px;border-radius:100px;white-space:nowrap";
+    hdr.appendChild(b);
+  }
+}
+
 // ── Start ────────────────────────────────────────────────────────
-poll();
-_pollId = setInterval(poll, _pollMs);
+if (/[?&]preview=1/.test(location.search)) {
+  _injectPreviewData();
+  render();
+} else {
+  poll();
+  _pollId = setInterval(poll, _pollMs);
+}
