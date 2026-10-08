@@ -545,8 +545,8 @@ function _iniciarPonteVotacao() {
 // ── Spinner ao vivo — votação pública ─────────────────────────────
 const _SPINNER_VOTO_KEY = 'torneio-spinner-voto:v1';
 const RTDB_SPINNER_VOTACAO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_votacao.json";
-const RTDB_SPINNER_LIBERADO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_liberado.json";
-let _spinnerLiberado = false;
+const RTDB_SPINNER_ESTADO_URL  = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_estado.json";
+let _spinnerEstadoAtual = null;
 let _spinnerVotacaoAtual = {};
 let _spinnerVotoUsuario = null;
 let _spinnerVotacaoInterval = null;
@@ -567,11 +567,11 @@ function _salvarVotoSpinner(v) {
 
 async function _fetchSpinnerEstado() {
   try {
-    const [lib, rv] = await Promise.all([
-      fetch(RTDB_SPINNER_LIBERADO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    const [est, rv] = await Promise.all([
+      fetch(RTDB_SPINNER_ESTADO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
       fetch(RTDB_SPINNER_VOTACAO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
     ]);
-    _spinnerLiberado = lib === true;
+    _spinnerEstadoAtual = est ?? null;
     _spinnerVotacaoAtual = rv ?? {};
     _renderSpinnerWidget();
   } catch (_) {}
@@ -593,7 +593,7 @@ async function _votarSpinner(teamId) {
 function _renderSpinnerWidget() {
   const el = document.getElementById('spinner-voto-widget');
   if (!el) return;
-  if (!_spinnerLiberado) { el.innerHTML = ''; return; }
+  if (!_spinnerEstadoAtual || _spinnerEstadoAtual === 'revelado') { el.innerHTML = ''; return; }
 
   const total = Object.values(_spinnerVotacaoAtual).reduce((a, b) => a + (b || 0), 0) || 1;
   const jaVotou = !!_spinnerVotoUsuario;

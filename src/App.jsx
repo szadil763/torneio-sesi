@@ -264,6 +264,8 @@ function MonitorView() {
   const [finalRankingSpinner, setFinalRankingSpinner] = useState([]);
   const [loadingFinalSpinner, setLoadingFinalSpinner] = useState(false);
   const [votacaoSpinner, setVotacaoSpinner] = useState({});
+  const [spinnerEstado, setSpinnerEstado] = useState("aguardando");
+  const [comentarioSpinnerInput, setComentarioSpinnerInput] = useState("");
 
   const montagemTickRef = useRef(null);
   const giroTickRef = useRef(null);
@@ -272,9 +274,11 @@ function MonitorView() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [data, lib] = await Promise.all([
+      const [data, lib, est, comt] = await Promise.all([
         safeGet(keyFor(round, teamId)),
         safeGet("spinner_liberado"),
+        safeGet("spinner_estado"),
+        safeGet("spinner_comentario"),
       ]);
       if (!cancelled) {
         setExisting(data);
@@ -285,6 +289,8 @@ function MonitorView() {
         setSaved(false);
         setSaveError(false);
         setSpinnerPublicLiberado(lib === true);
+        setSpinnerEstado(est ?? "aguardando");
+        setComentarioSpinnerInput(comt ?? "");
       }
 
       const hist = {};
@@ -447,6 +453,20 @@ function MonitorView() {
     await safeSet("spinner_resultado_final", { ts: Date.now(), ranking: rankingData });
   };
 
+  const handleSetSpinnerEstado = async (estado) => {
+    await safeSet("spinner_estado", estado);
+    setSpinnerEstado(estado);
+  };
+
+  const handlePublicarComentarioSpinner = async () => {
+    await safeSet("spinner_comentario", comentarioSpinnerInput || null);
+  };
+
+  const handleLimparComentarioSpinner = async () => {
+    setComentarioSpinnerInput("");
+    await safeSet("spinner_comentario", null);
+  };
+
   const handleResetTournament = async () => {
     const confirmed = window.confirm(
       "⚠️ ZERAR TORNEIO INTEIRO?\n\nTodos os resultados de todas as rodadas e equipes serão apagados permanentemente.\n\nClique em OK para confirmar."
@@ -475,7 +495,7 @@ function MonitorView() {
   return (
     <>
     {/* Votação — painel ao vivo no monitor */}
-    {Object.keys(votacaoSpinner).length > 0 && spinnerPublicLiberado && (
+    {Object.keys(votacaoSpinner).length > 0 && spinnerEstado !== "revelado" && spinnerPublicLiberado && (
       <div className="fixed top-4 right-4 z-30 bg-white rounded-2xl shadow-lg p-3 min-w-[160px]"
         style={{ border: `2px solid ${AZUL}` }}>
         <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar o Lançador de Spinner?</div>
@@ -662,6 +682,37 @@ function MonitorView() {
       <div className="text-center text-xs text-gray-400 pb-2">
         Mesa: {team.label} · Rodada {round} — os tempos são enviados ao telão
         automaticamente após salvar.
+      </div>
+
+      {/* Controles do Telão */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🎬 Controles do Telão</div>
+        <div className="text-xs font-semibold text-gray-600 mb-2">Estado da tela</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { id: "aguardando", label: "⏳ Aguardando" },
+            { id: "suspense",   label: "🎭 Suspense"   },
+            { id: "revelado",   label: "🎉 Revelar"     },
+          ].map(e => (
+            <button key={e.id} onClick={() => handleSetSpinnerEstado(e.id)}
+              className="py-2 rounded-xl text-xs font-bold"
+              style={{ backgroundColor: spinnerEstado === e.id ? AZUL : "#F3F4F6", color: spinnerEstado === e.id ? "#fff" : "#374151" }}>
+              {e.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs font-semibold text-gray-600 mb-1">Comentário no telão</div>
+        <div className="flex gap-2 mb-2">
+          <input value={comentarioSpinnerInput} onChange={ev => setComentarioSpinnerInput(ev.target.value)}
+            onKeyDown={ev => { if (ev.key === "Enter") handlePublicarComentarioSpinner(); }}
+            placeholder="Mensagem para aparecer no telão..."
+            className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none" />
+          <button onClick={handlePublicarComentarioSpinner}
+            className="px-3 py-2 rounded-xl text-white text-xs font-bold shrink-0"
+            style={{ backgroundColor: AZUL }}>Publicar</button>
+          <button onClick={handleLimparComentarioSpinner}
+            className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500 shrink-0">✕</button>
+        </div>
       </div>
 
       {/* Acesso público */}
