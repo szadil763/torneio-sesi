@@ -67,11 +67,13 @@ const ST = {
     data: {}, live: {},
     estado: "aguardando", comt: "",
     recorde: null, prevRecordeTs: undefined, celebrando: false, celebTimer: null,
+    resultado: null, prevResultadoTs: undefined, resultadoTimer: null,
   },
   spinner: {
     data: {}, live: {},
     estado: "aguardando", comt: "",
     recorde: null, prevRecordeTs: undefined, celebrando: false, celebTimer: null,
+    resultado: null, prevResultadoTs: undefined, resultadoTimer: null,
   },
 };
 
@@ -123,11 +125,13 @@ async function poll() {
       dbGet("ponte_estado"),
       dbGet("ponte_comentario"),
       dbGet("ponte_recorde"),
+      dbGet("ponte_resultado_final"),
     ]),
     Promise.all([
       dbGet("spinner_estado"),
       dbGet("spinner_comentario"),
       dbGet("spinner_recorde"),
+      dbGet("spinner_resultado_final"),
     ]),
     Promise.all(fetches),
   ]);
@@ -136,11 +140,13 @@ async function poll() {
   ST.ponte.estado = metaPonte[0] ?? "aguardando";
   ST.ponte.comt   = typeof metaPonte[1] === "string" ? metaPonte[1] : "";
   checkRecorde(ST.ponte, metaPonte[2]);
+  checkResultado(ST.ponte, metaPonte[3], "Ponte de Da Vinci — 1º Ano", PONTE_TEAMS);
 
   // Spinner meta
   ST.spinner.estado = metaSpinner[0] ?? "aguardando";
   ST.spinner.comt   = typeof metaSpinner[1] === "string" ? metaSpinner[1] : "";
   checkRecorde(ST.spinner, metaSpinner[2]);
+  checkResultado(ST.spinner, metaSpinner[3], "Lançador de Spinner — 2º Ano", SPINNER_TEAMS);
 
   // Distribuir resultados
   const newPonteData = {}, newPonteLive = {};
@@ -182,6 +188,73 @@ function checkRecorde(st, rec) {
     st.prevRecordeTs = rec.ts;
   }
   st.recorde = rec ?? null;
+}
+
+function checkResultado(st, res, titulo, teams) {
+  if (res?.ts && res.ts !== st.prevResultadoTs) {
+    st.prevResultadoTs = res.ts;
+    st.resultado = res;
+    showResultadoOverlay(res, titulo, teams);
+  }
+}
+
+function showResultadoOverlay(res, titulo, teams) {
+  const el = document.getElementById("resultado-overlay");
+  if (!el) return;
+
+  const medals = ["🥇","🥈","🥉","🏅"];
+  const ranking = (res.ranking || []).map(r => {
+    const t = teams.find(x => x.id === r.id);
+    return t ? { team: t, pts: r.pts } : null;
+  }).filter(Boolean);
+
+  if (!ranking.length) return;
+
+  const [first, ...rest] = ranking;
+  const tc = first.team.dark ? "#3A3000" : "#fff";
+
+  const confetti = Array.from({ length: 20 }).map((_, i) => {
+    const colors = ["#FFD700","#F5821F","#D92B2B","#004B8D","#2E9E4F","#fff"];
+    const color = colors[i % colors.length];
+    const shape = i % 3 === 0 ? "50%" : "2px";
+    const dur = (1.8 + (i % 4) * 0.4).toFixed(1);
+    const delay = ((i % 6) * 0.12).toFixed(2);
+    const left = ((i * 5.1) % 100).toFixed(1);
+    return `<div class="res-confetti-piece" style="left:${left}%;background:${color};border-radius:${shape};animation-duration:${dur}s;animation-delay:${delay}s"></div>`;
+  }).join("");
+
+  const podioCards = rest.map((r, i) => {
+    const rtc = r.team.dark ? "#3A3000" : "#fff";
+    return `<div class="res-pod-card" style="background:${r.team.color};animation-delay:${0.15 + i * 0.1}s">
+      <div class="res-pod-medalha">${medals[i + 1]}</div>
+      <div class="res-pod-nome" style="color:${rtc}">${r.team.label}</div>
+      <div class="res-pod-pts" style="color:${rtc}99">${r.pts} pts</div>
+    </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="res-confetti-wrap">${confetti}</div>
+    <div class="res-content">
+      <div class="res-titulo-prova">${titulo}</div>
+      <div class="res-header">🏆 RESULTADO FINAL</div>
+      <div class="res-campeao" style="background:${first.team.color};--gc:${first.team.color}88">
+        <div class="res-medalha-grande">🥇</div>
+        <div class="res-pos-label" style="color:${tc}99">1º LUGAR</div>
+        <div class="res-nome" style="color:${tc}">${first.team.label}</div>
+        <div class="res-pts" style="color:${tc}cc">${first.pts} pontos</div>
+      </div>
+      <div class="res-podio">${podioCards}</div>
+      <div class="res-dica">Toque em qualquer lugar para fechar</div>
+    </div>`;
+
+  el.hidden = false;
+  el.classList.remove("res-saindo");
+  el.classList.add("res-entrando");
+
+  el.onclick = () => {
+    el.classList.add("res-saindo");
+    setTimeout(() => { el.hidden = true; el.classList.remove("res-saindo","res-entrando"); }, 400);
+  };
 }
 
 // ── Calcular rodadas Ponte ───────────────────────────────────────

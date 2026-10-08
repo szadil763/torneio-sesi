@@ -428,9 +428,11 @@ function MonitorView() {
       if (totals[b.id] !== totals[a.id]) return totals[b.id] - totals[a.id];
       return firstCounts[b.id] - firstCounts[a.id];
     });
+    const rankingData = sorted.map(t => ({ id: t.id, pts: totals[t.id] }));
     setFinalRankingSpinner(sorted.map(t => ({ team: t, pts: totals[t.id] })));
     setLoadingFinalSpinner(false);
     setShowFinalSpinner(true);
+    await safeSet("spinner_resultado_final", { ts: Date.now(), ranking: rankingData });
   };
 
   const handleResetTournament = async () => {
@@ -1101,9 +1103,11 @@ function PonteMonitorView() {
       }
     }
     const sorted = [...TEAMS_1ANO].sort((a, b) => totals[b.id] - totals[a.id]);
+    const rankingData = sorted.map(t => ({ id: t.id, pts: totals[t.id] }));
     setFinalRankingPonte(sorted.map(t => ({ team: t, pts: totals[t.id] })));
     setLoadingFinalPonte(false);
     setShowFinalPonte(true);
+    await safeSet("ponte_resultado_final", { ts: Date.now(), ranking: rankingData });
   };
 
   const handleResetAll = async () => {

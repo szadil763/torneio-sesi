@@ -581,3 +581,163 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   html, body { overflow: auto; }
   #app { height: auto; min-height: 100%; }
 }
+
+/* ── Overlay Resultado Final ─────────────────────────────────── */
+@keyframes resChampIn {
+  0%   { transform: scale(.5) translateY(60px); opacity: 0; }
+  60%  { transform: scale(1.08) translateY(-6px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes resPodioIn {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes resGlow {
+  0%,100% { box-shadow: 0 0 40px var(--gc), 0 0 80px var(--gc); }
+  50%     { box-shadow: 0 0 70px var(--gc), 0 0 140px var(--gc); }
+}
+@keyframes resPulse {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.04); }
+}
+@keyframes resHeaderIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes resConfetti {
+  0%   { transform: translateY(-40px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+@keyframes resOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes resOverlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+#resultado-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 8, 24, 0.96);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  animation: resOverlayIn .35s ease-out both;
+}
+#resultado-overlay.res-saindo {
+  animation: resOverlayOut .4s ease-in both;
+}
+.res-confetti-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.res-confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 10px;
+  animation: resConfetti 2s linear forwards;
+}
+.res-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.5vh, 24px);
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+}
+.res-titulo-prova {
+  font-size: clamp(11px, 1.4vw, 14px);
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--laranja);
+  animation: resHeaderIn .5s ease-out both;
+}
+.res-header {
+  font-size: clamp(22px, 4.5vw, 40px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: .06em;
+  animation: resHeaderIn .5s ease-out .1s both;
+  opacity: 0;
+  animation-fill-mode: both;
+}
+.res-campeao {
+  width: 100%;
+  border-radius: 24px;
+  padding: clamp(16px, 3vh, 28px) 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  --gc: rgba(255,255,255,.3);
+  animation: resChampIn .7s cubic-bezier(.22,1,.36,1) .3s both, resGlow 2s ease-in-out 1s infinite;
+  opacity: 0;
+}
+.res-medalha-grande {
+  font-size: clamp(40px, 8vw, 68px);
+  line-height: 1;
+}
+.res-pos-label {
+  font-size: clamp(11px, 1.5vw, 14px);
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+.res-nome {
+  font-size: clamp(36px, 7vw, 64px);
+  font-weight: 900;
+  line-height: 1.05;
+  animation: resPulse 1.5s ease-in-out 1s infinite;
+  text-shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+.res-pts {
+  font-size: clamp(16px, 2.5vw, 24px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.res-podio {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  animation: resPodioIn .5s ease-out .5s both;
+  opacity: 0;
+}
+.res-pod-card {
+  flex: 1;
+  border-radius: 16px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: resPodioIn .4s ease-out both;
+  opacity: 0;
+}
+.res-pod-medalha { font-size: clamp(18px, 3.5vw, 30px); }
+.res-pod-nome {
+  font-size: clamp(14px, 2.2vw, 20px);
+  font-weight: 900;
+  text-align: center;
+}
+.res-pod-pts {
+  font-size: clamp(10px, 1.4vw, 13px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.res-dica {
+  font-size: clamp(10px, 1.2vw, 12px);
+  color: rgba(255,255,255,.3);
+  letter-spacing: .06em;
+  animation: resPodioIn .5s ease-out .9s both;
+  opacity: 0;
+}
