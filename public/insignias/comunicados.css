@@ -67,6 +67,13 @@
   opacity: 1;
   font-weight: 700;
 }
+.pr-live-banner-telao {
+  background: linear-gradient(90deg, #1a2744 0%, #004B8D 60%, #F5821F 100%);
+  box-shadow: 0 4px 16px rgba(0,43,82,.3);
+}
+.pr-live-banner-telao .pr-live-banner-dot {
+  background: #F5821F;
+}
 
 /* ── Aba Provas — ranking inline ───────────────────────────────── */
 .provas-ranking-lista { display: flex; flex-direction: column; gap: 8px; }
