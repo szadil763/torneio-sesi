@@ -871,6 +871,15 @@ function _injectPreviewData() {
     "r4_2D": { montagem: 10.1, giro:  8.5 },
   };
 
+  // Ao vivo: ponte R2 equipe 1C rodando, spinner R2 equipe 2B na fase de giro
+  const now = Date.now();
+  ST.ponte.live = {
+    "2_1C": { running: true, startTs: now - 8400 },   // ~8.4s rodando
+  };
+  ST.spinner.live = {
+    "2_2B": { giroRunning: true, startTs_giro: now - 5200 }, // ~5.2s girando
+  };
+
   // 3º Ano — resultado publicado
   ST.terceiroAno.resultado = { ranking: ["vermelho", "verde", "amarelo", "azul"], ts: 1 };
   // 4º Ano — resultado publicado
@@ -891,6 +900,7 @@ function _injectPreviewData() {
 if (/[?&]preview=1/.test(location.search)) {
   _injectPreviewData();
   render();
+  startRaf();
 } else {
   poll();
   _pollId = setInterval(poll, _pollMs);
