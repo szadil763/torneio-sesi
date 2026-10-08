@@ -263,9 +263,11 @@ function MonitorView() {
   const [showFinalSpinner, setShowFinalSpinner] = useState(false);
   const [finalRankingSpinner, setFinalRankingSpinner] = useState([]);
   const [loadingFinalSpinner, setLoadingFinalSpinner] = useState(false);
+  const [votacaoSpinner, setVotacaoSpinner] = useState({});
 
   const montagemTickRef = useRef(null);
   const giroTickRef = useRef(null);
+  const votacaoSpinnerIntervalRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -309,6 +311,16 @@ function MonitorView() {
       safeDelete(liveKeyFor(round, teamId));
     }
   }, [montagemRunning, giroRunning, montagemStart, giroStart, round, teamId]);
+
+  useEffect(() => {
+    const fetchVotacao = async () => {
+      const v = await safeGet("spinner_votacao");
+      setVotacaoSpinner(v ?? {});
+    };
+    fetchVotacao();
+    votacaoSpinnerIntervalRef.current = setInterval(fetchVotacao, 6000);
+    return () => clearInterval(votacaoSpinnerIntervalRef.current);
+  }, []);
 
   useEffect(() => {
     if (montagemRunning) {
@@ -461,6 +473,27 @@ function MonitorView() {
   const hasHistory = Object.values(allRounds).some((v) => v !== null && v !== undefined);
 
   return (
+    <>
+    {/* Votação — painel ao vivo no monitor */}
+    {Object.keys(votacaoSpinner).length > 0 && spinnerPublicLiberado && (
+      <div className="fixed top-4 right-4 z-30 bg-white rounded-2xl shadow-lg p-3 min-w-[160px]"
+        style={{ border: `2px solid ${AZUL}` }}>
+        <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar o Lançador de Spinner?</div>
+        {TEAMS.map(t => {
+          const v = votacaoSpinner[t.id] || 0;
+          const total = Object.values(votacaoSpinner).reduce((a,b) => a + b, 0) || 1;
+          return (
+            <div key={t.id} className="flex items-center gap-2 mb-1">
+              <div className="text-xs font-semibold w-12 shrink-0" style={{ color: t.color }}>{t.label}</div>
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "#F3F4F6" }}>
+                <div className="h-full rounded-full" style={{ width: `${(v/total)*100}%`, background: t.color, transition: "width 0.5s ease" }} />
+              </div>
+              <div className="text-xs font-bold w-6 text-right" style={{ color: t.color }}>{v}</div>
+            </div>
+          );
+        })}
+      </div>
+    )}
     <div className="flex flex-col gap-5 p-4 max-w-xl mx-auto">
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="text-xs font-bold uppercase tracking-wide mb-2 text-gray-500">
@@ -672,6 +705,7 @@ function MonitorView() {
         />
       )}
     </div>
+    </>
   );
 }
 
@@ -1516,7 +1550,7 @@ function PonteTelaoView() {
     {Object.keys(votacao).length > 0 && provaEstado === "aguardando" && (
       <div className="fixed top-4 right-4 z-30 bg-white rounded-2xl shadow-lg p-3 min-w-[160px]"
         style={{ border: `2px solid ${AZUL}` }}>
-        <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar?</div>
+        <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar a prova da Ponte?</div>
         {TEAMS_1ANO.map(t => {
           const v = votacao[t.id] || 0;
           const total = Object.values(votacao).reduce((a,b) => a + b, 0) || 1;

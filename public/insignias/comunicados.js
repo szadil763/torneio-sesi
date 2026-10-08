@@ -515,7 +515,7 @@ function _renderPonteWidget() {
 
   el.innerHTML = `
     <div class="ponte-voto-card">
-      <div class="ponte-voto-titulo">🗳️ Quem vai ganhar a Ponte?</div>
+      <div class="ponte-voto-titulo">🗳️ Quem vai ganhar a prova da Ponte?</div>
       <div class="ponte-voto-opcoes">
         ${TEAMS_1ANO_CORES.map(t => {
           const votos = _ponteVotacaoAtual[t.id] || 0;
@@ -540,6 +540,91 @@ function _iniciarPonteVotacao() {
   _fetchPonteEstado();
   clearInterval(_ponteVotacaoInterval);
   _ponteVotacaoInterval = setInterval(_fetchPonteEstado, 6000);
+}
+
+// ── Spinner ao vivo — votação pública ─────────────────────────────
+const _SPINNER_VOTO_KEY = 'torneio-spinner-voto:v1';
+const RTDB_SPINNER_VOTACAO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_votacao.json";
+const RTDB_SPINNER_LIBERADO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_liberado.json";
+let _spinnerLiberado = false;
+let _spinnerVotacaoAtual = {};
+let _spinnerVotoUsuario = null;
+let _spinnerVotacaoInterval = null;
+
+const TEAMS_2ANO_CORES = [
+  { id: '2A', label: '2º A', color: '#D92B2B' },
+  { id: '2B', label: '2º B', color: '#004B8D' },
+  { id: '2C', label: '2º C', color: '#2E9E4F' },
+  { id: '2D', label: '2º D', color: '#F0B800' },
+];
+
+function _lerVotoSpinner() {
+  try { return JSON.parse(localStorage.getItem(_SPINNER_VOTO_KEY)) || null; } catch (_) { return null; }
+}
+function _salvarVotoSpinner(v) {
+  try { localStorage.setItem(_SPINNER_VOTO_KEY, JSON.stringify(v)); } catch (_) {}
+}
+
+async function _fetchSpinnerEstado() {
+  try {
+    const [lib, rv] = await Promise.all([
+      fetch(RTDB_SPINNER_LIBERADO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      fetch(RTDB_SPINNER_VOTACAO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    ]);
+    _spinnerLiberado = lib === true;
+    _spinnerVotacaoAtual = rv ?? {};
+    _renderSpinnerWidget();
+  } catch (_) {}
+}
+
+async function _votarSpinner(teamId) {
+  if (_spinnerVotoUsuario) return;
+  _spinnerVotoUsuario = teamId;
+  _salvarVotoSpinner(teamId);
+  const url = `https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_votacao/${teamId}.json`;
+  try {
+    const current = await fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : 0).then(v => (typeof v === 'number' ? v : 0));
+    await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current + 1) });
+    await _fetchSpinnerEstado();
+  } catch (_) {}
+  _renderSpinnerWidget();
+}
+
+function _renderSpinnerWidget() {
+  const el = document.getElementById('spinner-voto-widget');
+  if (!el) return;
+  if (!_spinnerLiberado) { el.innerHTML = ''; return; }
+
+  const total = Object.values(_spinnerVotacaoAtual).reduce((a, b) => a + (b || 0), 0) || 1;
+  const jaVotou = !!_spinnerVotoUsuario;
+
+  el.innerHTML = `
+    <div class="ponte-voto-card">
+      <div class="ponte-voto-titulo">🗳️ Qual equipe vai ganhar a prova do Lançador de Spinner?</div>
+      <div class="ponte-voto-opcoes">
+        ${TEAMS_2ANO_CORES.map(t => {
+          const votos = _spinnerVotacaoAtual[t.id] || 0;
+          const pct   = Math.round((votos / total) * 100);
+          const eu    = _spinnerVotoUsuario === t.id;
+          return `
+            <button class="ponte-voto-btn${jaVotou ? ' votado' : ''}${eu ? ' meu-voto' : ''}"
+              onclick="_votarSpinner('${t.id}')"
+              ${jaVotou ? 'disabled' : ''}
+              style="--vc:${t.color}">
+              <span class="ponte-voto-label">${t.label}${eu ? ' ✓' : ''}</span>
+              ${jaVotou ? `<div class="ponte-voto-barra-wrap"><div class="ponte-voto-barra" style="width:${pct}%;background:${t.color}"></div></div><span class="ponte-voto-pct">${pct}%</span>` : ''}
+            </button>`;
+        }).join('')}
+      </div>
+      ${jaVotou ? `<div class="ponte-voto-total">${total} voto${total !== 1 ? 's' : ''}</div>` : ''}
+    </div>`;
+}
+
+function _iniciarSpinnerVotacao() {
+  _spinnerVotoUsuario = _lerVotoSpinner();
+  _fetchSpinnerEstado();
+  clearInterval(_spinnerVotacaoInterval);
+  _spinnerVotacaoInterval = setInterval(_fetchSpinnerEstado, 6000);
 }
 
 function _atualizarBannerRanking(id, liberado, url, subLiberado, aoVivo) {
@@ -586,6 +671,12 @@ function renderInicio(dados) {
   divVoto.id = 'ponte-voto-widget';
   getMountEl().appendChild(divVoto);
   _iniciarPonteVotacao();
+
+  // Widget de votação do spinner
+  const divVotoSpinner = document.createElement('div');
+  divVotoSpinner.id = 'spinner-voto-widget';
+  getMountEl().appendChild(divVotoSpinner);
+  _iniciarSpinnerVotacao();
 
   // Banners "Ranking ao vivo" — Ponte e Spinner
   const divRankingBanners = document.createElement('div');
