@@ -748,6 +748,9 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   animation: resOverlayIn .35s ease-out both;
   overflow: hidden;
 }
+/* display:flex acima tem mesma especificidade que [hidden]{display:none}
+   do UA stylesheet; sem este override o overlay cobre o painel eternamente */
+.painel-resultado-overlay[hidden] { display: none !important; }
 .painel-resultado-overlay.res-saindo {
   animation: resOverlayOut .4s ease-in both;
 }
