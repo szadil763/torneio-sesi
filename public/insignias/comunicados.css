@@ -55,6 +55,53 @@
   animation: none;
   background: #9CA3AF;
 }
+.pr-live-banner-ao-vivo {
+  background: linear-gradient(90deg, #7B1200 0%, #D92B2B 100%);
+  box-shadow: 0 4px 20px rgba(217,43,43,.45);
+}
+.pr-live-banner-ao-vivo .pr-live-banner-dot {
+  background: #fff;
+  animation: prDotPulse .8s ease-in-out infinite;
+}
+.pr-live-banner-ao-vivo .pr-live-banner-sub {
+  opacity: 1;
+  font-weight: 700;
+}
+
+/* ── Aba Provas — ranking inline ───────────────────────────────── */
+.provas-ranking-lista { display: flex; flex-direction: column; gap: 8px; }
+.provas-rank-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card-bg, #fff);
+  border: 1.5px solid color-mix(in srgb, var(--pc) 20%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+@media (prefers-color-scheme: dark) {
+  .provas-rank-card { background: #1a2535; }
+}
+.provas-rank-pos { font-size: 22px; width: 28px; text-align: center; flex-shrink: 0; }
+.provas-rank-body { flex: 1; min-width: 0; }
+.provas-rank-nome { font-size: 14px; font-weight: 800; line-height: 1.2; margin-bottom: 5px; }
+.provas-rank-barra {
+  height: 5px;
+  background: color-mix(in srgb, var(--pc) 15%, transparent);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.provas-rank-fill { height: 100%; border-radius: 99px; transition: width .4s; }
+.provas-rank-pts {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--pc);
+  text-align: right;
+  min-width: 44px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.provas-rank-pts-label { font-size: 11px; font-weight: 600; opacity: .7; margin-left: 2px; }
 
 /* ── Banner de novo conteúdo (Opção B) ──────────────────────────── */
 .com-novo-banner {

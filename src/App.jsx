@@ -370,6 +370,38 @@ function MonitorView() {
         />
       </div>
 
+      {(montagemFinal !== null || giroFinal !== null) && !montagemRunning && !giroRunning && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+          <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">✏️ Corrigir tempos</div>
+          <div className="grid grid-cols-2 gap-3">
+            {montagemFinal !== null && (
+              <div>
+                <div className="text-xs text-gray-500 mb-1">⏱️ Montagem (s)</div>
+                <input
+                  type="number" step="0.1" min="0"
+                  value={montagemFinal.toFixed(1)}
+                  onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { setMontagemFinal(v); setMontagemElapsed(v); } }}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none text-center font-bold tabular-nums"
+                  style={{ color: AZUL }}
+                />
+              </div>
+            )}
+            {giroFinal !== null && (
+              <div>
+                <div className="text-xs text-gray-500 mb-1">🌀 Giro (s)</div>
+                <input
+                  type="number" step="0.1" min="0"
+                  value={giroFinal.toFixed(1)}
+                  onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { setGiroFinal(v); setGiroElapsed(v); } }}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none text-center font-bold tabular-nums"
+                  style={{ color: LARANJA }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <button
         disabled={!canSave || saving}
         onClick={handleSave}
@@ -949,6 +981,22 @@ function PonteMonitorView() {
           </button>
         )}
       </div>
+
+      {tempoFinal !== null && !running && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+          <div className="text-xs font-bold uppercase tracking-wide mb-2 text-gray-500">✏️ Corrigir tempo</div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-gray-500 shrink-0">⏱️ Tempo (s)</div>
+            <input
+              type="number" step="0.1" min="0"
+              value={tempoFinal.toFixed(1)}
+              onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { setTempoFinal(v); setElapsed(v); } }}
+              className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none text-center font-bold tabular-nums"
+              style={{ color: AZUL }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Carga */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">

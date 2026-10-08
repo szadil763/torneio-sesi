@@ -43,8 +43,10 @@ const STRINGS_COM = {
     noticias_vazio:  'Nenhuma notícia por enquanto.',
     aba_fotos:     'Fotos',
     aba_shorts:    'Shorts',
+    aba_provas:    'Provas',
     fotos_vazio:   'Nenhuma foto ainda.',
     shorts_vazio:  'Nenhum short ainda.',
+    provas_bloqueado: 'Os rankings serão divulgados durante as provas.',
     boletim_item:  'item',
     boletim_itens: 'itens',
     boletim_vazio: 'Nenhum item no boletim por enquanto.',
@@ -86,8 +88,10 @@ const STRINGS_COM = {
     noticias_vazio:  'No news yet.',
     aba_fotos:     'Photos',
     aba_shorts:    'Shorts',
+    aba_provas:    'Competitions',
     fotos_vazio:   'No photos yet.',
     shorts_vazio:  'No shorts yet.',
+    provas_bloqueado: 'Rankings will be revealed during the competitions.',
     boletim_item:  'item',
     boletim_itens: 'items',
     boletim_vazio: 'No bulletin items yet.',
@@ -136,6 +140,7 @@ let _carregandoFirebase = false; // true enquanto a fase 2 (fetch) ainda não te
 
 const ABAS_CONFIG = [
   { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
+  { id: 'provas',    emoji: '🏆', labelKey: 'aba_provas'    },
   { id: 'noticias',  emoji: '📰', labelKey: 'aba_noticias'  },
   { id: 'insignias', emoji: '🏅', labelKey: 'aba_insignias' },
   { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
@@ -199,9 +204,215 @@ function trocarAba(id) {
   }
 }
 
+// ── Aba Provas — ranking ao vivo inline ──────────────────────────
+const _PROVAS_TEAMS_SPINNER = [
+  { id: '2A', label: '2º A', cor: '#D92B2B' },
+  { id: '2B', label: '2º B', cor: '#004B8D' },
+  { id: '2C', label: '2º C', cor: '#2E9E4F' },
+  { id: '2D', label: '2º D', cor: '#F0B800', escuro: true },
+];
+const _PROVAS_TEAMS_PONTE = [
+  { id: '1A', label: '1º A', cor: '#D92B2B' },
+  { id: '1B', label: '1º B', cor: '#004B8D' },
+  { id: '1C', label: '1º C', cor: '#2E9E4F' },
+  { id: '1D', label: '1º D', cor: '#F0B800', escuro: true },
+];
+const _PROVAS_ROUNDS = [1, 2, 3, 4];
+const _PROVAS_MEDALS = ['🥇', '🥈', '🥉', '🏅'];
+const _RTDB_BASE = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
+
+function _provasRankPts(itens, higherBetter) {
+  const present = itens.filter(it => it.value !== null && it.value !== undefined);
+  if (!present.length) return {};
+  const sorted = [...present].sort((a, b) => higherBetter ? b.value - a.value : a.value - b.value);
+  const pts = [4, 3, 2, 1];
+  const result = {};
+  let lastVal = null, lastPts = null;
+  sorted.forEach((it, i) => {
+    const p = (lastVal !== null && it.value === lastVal) ? lastPts : (pts[i] !== undefined ? pts[i] : 1);
+    result[it.team] = p;
+    lastVal = it.value;
+    lastPts = p;
+  });
+  return result;
+}
+
+function _provasFmtTempo(s) {
+  if (s === null || s === undefined) return '–';
+  return s.toFixed(1) + 's';
+}
+
+async function renderAbaProvas() {
+  const mount = getMountEl();
+
+  // Spinner de carregamento imediato
+  const loading = document.createElement('div');
+  loading.className = 'com-secao';
+  loading.innerHTML = '<div class="com-loading-spinner"></div>';
+  mount.appendChild(loading);
+
+  try {
+    const [libP, libS, ep] = await Promise.all([
+      fetch(`${_RTDB_BASE}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
+      fetch(`${_RTDB_BASE}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
+      fetch(`${_RTDB_BASE}/ponte_estado.json`).then(r => r.ok ? r.json() : null),
+    ]);
+
+    loading.remove();
+
+    if (!libP && !libS) {
+      const sec = document.createElement('div');
+      sec.className = 'com-secao';
+      sec.innerHTML = `
+        <div class="com-secao-titulo">🏆 Provas</div>
+        <div class="com-vazio">${tc('provas_bloqueado')}</div>`;
+      mount.appendChild(sec);
+      mount.insertAdjacentHTML('beforeend',
+        `<div class="com-rodape">${tc('rodape')}</div>`);
+      return;
+    }
+
+    // ── Ponte de Da Vinci ─────────────────────────────────────────
+    if (libP) {
+      const ponteAoVivo = ep === 'aguardando' || ep === 'suspense';
+
+      // Busca todos os resultados
+      const ponteData = {};
+      await Promise.all(_PROVAS_ROUNDS.map(async r => {
+        await Promise.all(_PROVAS_TEAMS_PONTE.map(async t => {
+          try {
+            const v = await fetch(`${_RTDB_BASE}/ponte_r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
+            if (v) ponteData[`${r}_${t.id}`] = v;
+          } catch (_) {}
+        }));
+      }));
+
+      // Calcula pontos
+      const ponteTotals = {};
+      _PROVAS_TEAMS_PONTE.forEach(t => { ponteTotals[t.id] = 0; });
+      _PROVAS_ROUNDS.forEach(r => {
+        const itens = _PROVAS_TEAMS_PONTE.map(t => {
+          const v = ponteData[`${r}_${t.id}`];
+          return { team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null };
+        });
+        const hasAny = itens.some(it => it.tempo !== null || it.carga !== null);
+        if (!hasAny) return;
+        const comTempo = itens.filter(it => it.tempo !== null);
+        const tempoPts = _provasRankPts(comTempo.map(it => ({ team: it.team, value: it.tempo })), false);
+        itens.forEach(it => {
+          ponteTotals[it.team] += (tempoPts[it.team] || 0) + (it.carga === true ? 4 : it.carga === false ? 0 : 0);
+        });
+      });
+
+      const ponteRanking = [..._PROVAS_TEAMS_PONTE].sort((a, b) => ponteTotals[b.id] - ponteTotals[a.id]);
+      const maxPonte = Math.max(1, ...ponteRanking.map(t => ponteTotals[t.id]));
+
+      const sec = document.createElement('div');
+      sec.className = 'com-secao';
+      sec.innerHTML = `
+        <div class="com-secao-titulo">🌉 Ponte de Da Vinci${ponteAoVivo ? ' <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span>' : ''}</div>
+        <div class="provas-ranking-lista">
+          ${ponteRanking.map((t, i) => {
+            const total = ponteTotals[t.id];
+            const pct   = Math.round((total / maxPonte) * 100);
+            const empate = i > 0 && ponteTotals[ponteRanking[i-1].id] === total;
+            return `
+              <div class="provas-rank-card" style="--pc:${t.cor}">
+                <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
+                <div class="provas-rank-body">
+                  <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
+                  <div class="provas-rank-barra">
+                    <div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div>
+                  </div>
+                </div>
+                <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
+              </div>`;
+          }).join('')}
+        </div>`;
+      mount.appendChild(sec);
+    }
+
+    // ── Lançador de Spinner ───────────────────────────────────────
+    if (libS) {
+      const spinnerData = {};
+      await Promise.all(_PROVAS_ROUNDS.map(async r => {
+        await Promise.all(_PROVAS_TEAMS_SPINNER.map(async t => {
+          try {
+            const v = await fetch(`${_RTDB_BASE}/r${r}_${t.id}.json`).then(x => x.ok ? x.json() : null);
+            if (v) spinnerData[`${r}_${t.id}`] = v;
+          } catch (_) {}
+        }));
+      }));
+
+      const spinnerTotals = {};
+      let spinnerGiroFirsts = {};
+      _PROVAS_TEAMS_SPINNER.forEach(t => { spinnerTotals[t.id] = 0; spinnerGiroFirsts[t.id] = 0; });
+
+      _PROVAS_ROUNDS.forEach(r => {
+        const itens = _PROVAS_TEAMS_SPINNER.map(t => {
+          const v = spinnerData[`${r}_${t.id}`];
+          return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
+        });
+        const hasAny = itens.some(it => it.montagem !== null || it.giro !== null);
+        if (!hasAny) return;
+        const comMont = itens.filter(it => it.montagem !== null);
+        const comGiro = itens.filter(it => it.giro !== null);
+        const montPts = _provasRankPts(comMont.map(it => ({ team: it.team, value: it.montagem })), false);
+        const giroPts = _provasRankPts(comGiro.map(it => ({ team: it.team, value: it.giro })), true);
+        const complete = itens.every(it => it.montagem !== null && it.giro !== null);
+        _PROVAS_TEAMS_SPINNER.forEach(t => {
+          spinnerTotals[t.id] += (montPts[t.id] || 0) + (giroPts[t.id] || 0);
+          if (complete && giroPts[t.id] === 4) spinnerGiroFirsts[t.id]++;
+        });
+      });
+
+      const spinnerRanking = [..._PROVAS_TEAMS_SPINNER].sort((a, b) => {
+        const diff = spinnerTotals[b.id] - spinnerTotals[a.id];
+        return diff !== 0 ? diff : spinnerGiroFirsts[b.id] - spinnerGiroFirsts[a.id];
+      });
+      const maxSpinner = Math.max(1, ...spinnerRanking.map(t => spinnerTotals[t.id]));
+
+      const sec = document.createElement('div');
+      sec.className = 'com-secao';
+      sec.innerHTML = `
+        <div class="com-secao-titulo">🌀 Lançador de Spinner <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span></div>
+        <div class="provas-ranking-lista">
+          ${spinnerRanking.map((t, i) => {
+            const total = spinnerTotals[t.id];
+            const pct   = Math.round((total / maxSpinner) * 100);
+            const empate = i > 0 && spinnerTotals[spinnerRanking[i-1].id] === total;
+            return `
+              <div class="provas-rank-card" style="--pc:${t.cor}">
+                <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
+                <div class="provas-rank-body">
+                  <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
+                  <div class="provas-rank-barra">
+                    <div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div>
+                  </div>
+                </div>
+                <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
+              </div>`;
+          }).join('')}
+        </div>`;
+      mount.appendChild(sec);
+    }
+
+  } catch (_) {
+    loading.remove();
+    const sec = document.createElement('div');
+    sec.className = 'com-secao';
+    sec.innerHTML = `<div class="com-vazio">Não foi possível carregar os resultados.</div>`;
+    mount.appendChild(sec);
+  }
+
+  mount.insertAdjacentHTML('beforeend',
+    `<div class="com-rodape">${tc('rodape')}</div>`);
+}
+
 function renderConteudoAba(dados) {
   switch (_abaAtiva) {
     case 'inicio':    renderInicio(dados);             break;
+    case 'provas':    renderAbaProvas();               break;
     case 'noticias':  renderNoticias(dados);           break;
     case 'insignias': renderEstojosSection();           break;
     case 'recados':   renderRecados(dados.recados);    break;
@@ -323,16 +534,16 @@ function _iniciarPonteVotacao() {
   _ponteVotacaoInterval = setInterval(_fetchPonteEstado, 6000);
 }
 
-function _atualizarBannerRanking(id, liberado, url, subLiberado) {
+function _atualizarBannerRanking(id, liberado, url, subLiberado, aoVivo) {
   const el = document.getElementById(`pr-banner-${id}`);
   if (!el) return;
   const sub = document.getElementById(`pr-banner-${id}-sub`);
   const seta = el.querySelector('.pr-live-banner-seta');
   if (liberado) {
-    el.className = 'pr-live-banner';
+    el.className = 'pr-live-banner' + (aoVivo ? ' pr-live-banner-ao-vivo' : '');
     el.style.cursor = 'pointer';
     el.onclick = () => { location.href = url; };
-    if (sub) sub.textContent = subLiberado;
+    if (sub) sub.textContent = aoVivo ? '🔴 Competindo agora · toque para ver ao vivo' : subLiberado;
     if (seta) seta.textContent = '›';
   } else {
     el.className = 'pr-live-banner pr-live-banner-locked';
@@ -396,12 +607,15 @@ function renderInicio(dados) {
   (async () => {
     try {
       const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
-      const [rp, rs] = await Promise.all([
+      const [rp, rs, ep] = await Promise.all([
         fetch(`${RTDB}/ponte_liberado.json`).then(r => r.ok ? r.json() : null),
         fetch(`${RTDB}/spinner_liberado.json`).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_estado.json`).then(r => r.ok ? r.json() : null),
       ]);
-      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   'Acompanhe o ranking ao vivo');
-      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', 'Acompanhe o ranking ao vivo');
+      const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense');
+      const spinnerAoVivo = rs === true;
+      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   'Acompanhe o ranking ao vivo', ponteAoVivo);
+      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', 'Acompanhe o ranking ao vivo', spinnerAoVivo);
     } catch (_) {}
   })();
 
