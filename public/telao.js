@@ -14,6 +14,14 @@ const SPINNER_TEAMS = [
   { id: "2C", label: "2º C", color: "#2E9E4F" },
   { id: "2D", label: "2º D", color: "#F0B800", dark: true },
 ];
+const TERCEIRO_ANO_TEAMS = [
+  { id: "vermelho", label: "Vermelho", color: "#D92B2B" },
+  { id: "azul",     label: "Azul",     color: "#004B8D" },
+  { id: "verde",    label: "Verde",    color: "#2E9E4F" },
+  { id: "amarelo",  label: "Amarelo",  color: "#F0B800", dark: true },
+];
+const SCORES_3ANO = [10, 7, 5, 3];
+
 const ROUNDS = [1, 2, 3, 4];
 
 // ── Firebase REST ────────────────────────────────────────────────
@@ -75,6 +83,9 @@ const ST = {
     recorde: null, prevRecordeTs: undefined, celebrando: false, celebTimer: null,
     resultado: null, prevResultadoTs: undefined, resultadoTimer: null,
   },
+  terceiroAno: {
+    resultado: null, prevTs: undefined,
+  },
 };
 
 let _raf    = null;   // requestAnimationFrame para timers ao vivo
@@ -120,7 +131,7 @@ async function poll() {
     }
   }
 
-  const [metaPonte, metaSpinner, all] = await Promise.all([
+  const [metaPonte, metaSpinner, prova3ano, all] = await Promise.all([
     Promise.all([
       dbGet("ponte_estado"),
       dbGet("ponte_comentario"),
@@ -133,6 +144,7 @@ async function poll() {
       dbGet("spinner_recorde"),
       dbGet("spinner_resultado_final"),
     ]),
+    dbGet("prova_3ano"),
     Promise.all(fetches),
   ]);
 
@@ -147,6 +159,15 @@ async function poll() {
   ST.spinner.comt   = typeof metaSpinner[1] === "string" ? metaSpinner[1] : "";
   checkRecorde(ST.spinner, metaSpinner[2]);
   checkResultado(ST.spinner, metaSpinner[3], "spinner", "Lançador de Spinner — 2º Ano", SPINNER_TEAMS);
+
+  // 3º Ano
+  if (prova3ano?.ts && prova3ano.ts !== ST.terceiroAno.prevTs) {
+    ST.terceiroAno.prevTs = prova3ano.ts;
+    ST.terceiroAno.resultado = prova3ano;
+    show3AnoOverlay(prova3ano);
+  } else if (!prova3ano) {
+    ST.terceiroAno.resultado = null;
+  }
 
   // Distribuir resultados
   const newPonteData = {}, newPonteLive = {};
@@ -616,6 +637,46 @@ function renderDetalhe(scope, rods) {
     <div class="det-grid">${tabelas}</div>`;
 }
 
+// ── 3º Ano overlay ao publicar ──────────────────────────────────
+function show3AnoOverlay(data) {
+  // Mostra via painel principal; só faz pulse no badge
+  const badge = document.getElementById("tano-badge");
+  if (badge) {
+    badge.textContent = "✅ Publicado";
+    badge.className = "tano-badge publicado";
+    badge.hidden = false;
+  }
+}
+
+// ── Render 3º Ano ─────────────────────────────────────────────────
+function render3Ano() {
+  const painel = document.getElementById("painel-3ano");
+  const rankEl = document.getElementById("tano-ranking");
+  if (!painel || !rankEl) return;
+
+  const res = ST.terceiroAno.resultado;
+  if (!res?.ranking || !Array.isArray(res.ranking)) {
+    painel.hidden = true;
+    return;
+  }
+  painel.hidden = false;
+
+  const medals = ["🥇","🥈","🥉","🏅"];
+  const cards = res.ranking.map((teamId, idx) => {
+    const team = TERCEIRO_ANO_TEAMS.find(t => t.id === teamId);
+    if (!team) return "";
+    const tc = team.dark ? "#3A3000" : "#fff";
+    return `
+      <div class="tano-card" style="background:${team.color}">
+        <div class="tano-medal">${medals[idx] ?? (idx+1)+"º"}</div>
+        <div class="tano-nome" style="color:${tc}">${team.label}</div>
+        <div class="tano-pts" style="color:${tc}cc">${SCORES_3ANO[idx]}<span class="tano-pts-label" style="color:${tc}88">pts</span></div>
+      </div>`;
+  }).join("");
+
+  rankEl.innerHTML = cards;
+}
+
 // ── Render completo ──────────────────────────────────────────────
 function render() {
   const rodsP = calcRodadasPonte();
@@ -658,6 +719,9 @@ function render() {
   renderRanking("spinner", rodsS);
   renderRodadas("spinner", rodsS);
   renderDetalhe("spinner", rodsS);
+
+  // 3º Ano
+  render3Ano();
 
   // Rodapé
   const up = document.getElementById("footer-update");

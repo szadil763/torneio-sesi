@@ -743,3 +743,85 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   animation: resPodioIn .5s ease-out .9s both;
   opacity: 0;
 }
+
+/* ── 3º Ano panel ────────────────────────────────────────────── */
+#painel-3ano {
+  flex-shrink: 0;
+  background: #0A1A2C;
+  border-top: 2px solid var(--azul);
+  padding: 10px 20px 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+#painel-3ano[hidden] { display: none; }
+
+.tano-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.tano-icone {
+  font-size: clamp(16px, 2vw, 24px);
+}
+.tano-titulo {
+  font-size: clamp(11px, 1.4vw, 16px);
+  font-weight: 900;
+  letter-spacing: .04em;
+  color: var(--fg);
+}
+.tano-badge {
+  font-size: clamp(8px, 0.85vw, 11px);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.tano-badge.publicado {
+  background: var(--laranja);
+  color: #fff;
+}
+.tano-badge[hidden] { display: none; }
+
+.tano-ranking {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.tano-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 6px 12px 6px 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  animation: fadeIn .4s ease-out;
+  flex: 1;
+  min-width: 100px;
+}
+.tano-medal {
+  font-size: clamp(16px, 2vw, 24px);
+  flex-shrink: 0;
+}
+.tano-nome {
+  font-size: clamp(12px, 1.6vw, 18px);
+  font-weight: 800;
+  flex: 1;
+  min-width: 0;
+}
+.tano-pts {
+  font-size: clamp(14px, 2vw, 22px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.tano-pts-label {
+  font-size: clamp(8px, 0.9vw, 11px);
+  font-weight: 600;
+  margin-left: 2px;
+}

@@ -14,6 +14,15 @@ const TEAMS_1ANO = [
   { id: "1C", label: "1º C", color: "#2E9E4F" },
   { id: "1D", label: "1º D", color: "#F0B800", dark: true },
 ];
+const TEAMS_3ANO = [
+  { id: "vermelho", label: "Vermelho", color: "#D92B2B" },
+  { id: "azul",     label: "Azul",     color: "#004B8D" },
+  { id: "verde",    label: "Verde",    color: "#2E9E4F" },
+  { id: "amarelo",  label: "Amarelo",  color: "#F0B800", dark: true },
+];
+const SCORES_3ANO = [10, 7, 5, 3];
+const RTDB_3ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_3ano.json";
+
 const TEAMS_KAHOOT = [
   { id: "A", label: "Equipe A", color: "#E5484D" },
   { id: "B", label: "Equipe B", color: "#2F8FE0" },
@@ -1840,6 +1849,141 @@ function QRPrintModal({ onClose }) {
   );
 }
 
+function TerceiroAnoMonitorView() {
+  const [ranking, setRanking] = useState([null, null, null, null]);
+  const [publicado, setPublicado] = useState(null);
+  const [publicando, setPublicando] = useState(false);
+  const [limpar, setLimpar] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const data = await safeGet("prova_3ano");
+      if (data?.ranking) setPublicado(data);
+    })();
+  }, []);
+
+  function selecionarEquipe(posIdx, teamId) {
+    setRanking(prev => {
+      const next = [...prev];
+      // Remove esse time de outras posições
+      for (let i = 0; i < 4; i++) {
+        if (next[i] === teamId) next[i] = null;
+      }
+      // Alterna (clicou no mesmo = desmarca)
+      next[posIdx] = prev[posIdx] === teamId ? null : teamId;
+      return next;
+    });
+  }
+
+  async function publicarResultado() {
+    if (ranking.some(r => r === null)) return;
+    setPublicando(true);
+    const payload = {
+      ranking,
+      ts: Date.now(),
+    };
+    try {
+      await fetch(RTDB_3ANO, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setPublicado(payload);
+    } catch {
+      alert("Erro ao publicar. Tente novamente.");
+    } finally {
+      setPublicando(false);
+    }
+  }
+
+  async function limparResultado() {
+    if (!window.confirm("Limpar resultado publicado do 3º Ano?")) return;
+    await fetch(RTDB_3ANO, { method: "DELETE" });
+    setPublicado(null);
+    setRanking([null, null, null, null]);
+  }
+
+  const pronto = ranking.every(r => r !== null);
+  const posLabels = ["🥇 1º Lugar", "🥈 2º Lugar", "🥉 3º Lugar", "🏅 4º Lugar"];
+
+  return (
+    <div className="p-4 max-w-lg mx-auto flex flex-col gap-4">
+      <div className="rounded-2xl p-4 flex flex-col gap-3"
+        style={{ background: "#0F2A45", border: "1.5px solid #1E3A5F" }}>
+        <div className="text-base font-extrabold text-white">🏫 Prova do 3º Ano</div>
+        <div className="text-xs font-semibold text-blue-300 opacity-70 uppercase tracking-wider">
+          Clique em cada posição para atribuir a equipe
+        </div>
+
+        <div className="flex flex-col gap-2 mt-1">
+          {posLabels.map((label, posIdx) => (
+            <div key={posIdx} className="rounded-xl p-3 flex flex-col gap-2"
+              style={{ background: "#0A1E30", border: "1px solid #1E3550" }}>
+              <div className="text-xs font-bold text-blue-200 opacity-80">{label} · {SCORES_3ANO[posIdx]} pts</div>
+              <div className="flex gap-2 flex-wrap">
+                {TEAMS_3ANO.map(team => {
+                  const selecionado = ranking[posIdx] === team.id;
+                  const usadoOutra = !selecionado && ranking.some((r, i) => i !== posIdx && r === team.id);
+                  return (
+                    <button key={team.id}
+                      onClick={() => selecionarEquipe(posIdx, team.id)}
+                      disabled={usadoOutra}
+                      className="flex-1 py-2 rounded-lg font-extrabold text-sm transition-all"
+                      style={{
+                        background: selecionado ? team.color : usadoOutra ? "#1a2a3a" : team.color + "44",
+                        color: selecionado ? (team.dark ? "#3A3000" : "#fff") : usadoOutra ? "#334" : team.color,
+                        border: selecionado ? `2px solid #fff` : `2px solid ${team.color}55`,
+                        opacity: usadoOutra ? 0.35 : 1,
+                        boxShadow: selecionado ? `0 0 12px ${team.color}99` : "none",
+                        minWidth: 70,
+                      }}>
+                      {team.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={publicarResultado} disabled={!pronto || publicando}
+          className="w-full py-3 rounded-xl font-extrabold text-base mt-1 transition-all"
+          style={{
+            background: pronto ? "#F5821F" : "#1a2a3a",
+            color: pronto ? "#fff" : "#445",
+            opacity: pronto ? 1 : 0.5,
+            cursor: pronto ? "pointer" : "not-allowed",
+          }}>
+          {publicando ? "Publicando…" : "📢 Publicar Resultado"}
+        </button>
+      </div>
+
+      {publicado && (
+        <div className="rounded-2xl p-4 flex flex-col gap-2"
+          style={{ background: "#0A1E30", border: "1.5px solid #F5821F55" }}>
+          <div className="text-sm font-extrabold text-orange-400">✅ Resultado Publicado</div>
+          {publicado.ranking.map((teamId, idx) => {
+            const team = TEAMS_3ANO.find(t => t.id === teamId);
+            if (!team) return null;
+            return (
+              <div key={idx} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                style={{ background: team.color + "33" }}>
+                <span className="text-lg">{["🥇","🥈","🥉","🏅"][idx]}</span>
+                <span className="font-extrabold" style={{ color: team.color }}>{team.label}</span>
+                <span className="ml-auto text-xs font-bold text-blue-300 opacity-70">{SCORES_3ANO[idx]} pts</span>
+              </div>
+            );
+          })}
+          <button onClick={limparResultado}
+            className="mt-2 text-xs font-bold text-red-400 opacity-60 hover:opacity-100 transition-opacity self-start">
+            🗑 Limpar resultado
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HomeView() {
   const [open, setOpen] = useState(false);
   return (
@@ -3287,10 +3431,11 @@ export default function App() {
           {/* Linha 2: navegação entre páginas */}
           <div className="flex gap-2">
             {[
-              { id: "home",      label: "🏠 Início" },
-              { id: "propulsao", label: "🌀 Spinner" },
-              { id: "ponte",     label: "🌉 Ponte" },
-              { id: "kahoot",    label: "🎓 Kahoot" },
+              { id: "home",        label: "🏠 Início" },
+              { id: "propulsao",   label: "🌀 Spinner" },
+              { id: "ponte",       label: "🌉 Ponte" },
+              { id: "terceiroano", label: "🏫 3º Ano" },
+              { id: "kahoot",      label: "🎓 Kahoot" },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => handleSetPage(id)}
                 className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
@@ -3309,6 +3454,7 @@ export default function App() {
       {isHome && <HomeView />}
       {page === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
       {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
+      {page === "terceiroano" && <TerceiroAnoMonitorView />}
       {page === "kahoot"    && (
         mode === "monitor"
           ? <KahootMonitorView />
