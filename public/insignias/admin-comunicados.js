@@ -1641,17 +1641,19 @@ async function shortsAdicionarVideo() {
   const legenda  = (document.getElementById('sht-legenda')?.value  || '').trim();
   const reporter = (document.getElementById('sht-reporter')?.value || '').trim();
   const sizeMB = _shtPendingBlob.size / 1024 / 1024;
-  if (sizeMB > 100) {
-    if (err) err.textContent = `Arquivo muito grande (${sizeMB.toFixed(0)} MB). Use um vídeo menor (até 100 MB).`;
+  if (sizeMB > 50) {
+    if (err) err.textContent = `Arquivo muito grande (${sizeMB.toFixed(0)} MB). Use um vídeo menor (até 50 MB).`;
     return;
   }
-  if (progress) { progress.style.display = ''; progress.textContent = `⏳ Enviando vídeo (${sizeMB.toFixed(1)} MB)…`; }
+  if (progress) { progress.style.display = ''; progress.textContent = `⏳ Enviando chunk 1… (${sizeMB.toFixed(1)} MB total)`; }
   try {
-    const filename = `short_${Date.now()}`;
-    const url      = await uploadVideoStorage(_shtPendingBlob, filename);
-    const shorts   = await carregarShorts();
-    shorts.itens   = shorts.itens || [];
-    shorts.itens.unshift({ id: `sht_${Date.now()}`, url, legenda, reporter, ts: Date.now() });
+    const id     = `sht_${Date.now()}`;
+    const shorts = await carregarShorts();
+    shorts.itens = shorts.itens || [];
+    await salvarVideoShorts(id, _shtPendingBlob, (atual, total) => {
+      if (progress) progress.textContent = `⏳ Enviando chunk ${atual}/${total}…`;
+    });
+    shorts.itens.unshift({ id, videoId: id, legenda, reporter, ts: Date.now() });
     await salvarShorts(shorts);
     _shtPendingBlob = null;
     if (progress) progress.style.display = 'none';
@@ -1669,7 +1671,8 @@ async function shortsRemoverVideo(idx) {
   const item    = shorts.itens[idx];
   shorts.itens.splice(idx, 1);
   await salvarShorts(shorts);
-  if (item && item.url) deletarVideoStorage(item.url).catch(() => {});
+  if (item && item.videoId) removerVideoShorts(item.videoId).catch(() => {});
+  else if (item && item.url) deletarVideoStorage(item.url).catch(() => {});
   trocarAbaCom('shorts');
 }
 

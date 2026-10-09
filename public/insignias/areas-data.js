@@ -230,6 +230,63 @@ async function removerVideoBoletim(id) {
   } catch (_) {}
 }
 
+// ── Vídeos de Shorts — mesma mecânica de chunks do boletim ────────
+async function salvarVideoShorts(id, blob, onProgress) {
+  const n = Math.ceil(blob.size / _BLOB_CHUNK);
+  const mime = blob.type || 'video/mp4';
+  for (let i = 0; i < n; i++) {
+    const slice = blob.slice(i * _BLOB_CHUNK, (i + 1) * _BLOB_CHUNK);
+    const b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = e => resolve(e.target.result.split(',')[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(slice);
+    });
+    const resp = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/c${i}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(b64),
+    });
+    if (!resp.ok) throw new Error(`RTDB sht-video chunk ${i}: ${resp.status}`);
+    if (onProgress) onProgress(i + 1, n + 1);
+  }
+  await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/mime.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mime),
+  });
+  const meta = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/n.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(n),
+  });
+  if (!meta.ok) throw new Error('RTDB sht-video meta: ' + meta.status);
+  if (onProgress) onProgress(n + 1, n + 1);
+}
+
+async function carregarVideoShorts(id) {
+  try {
+    const nResp = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/n.json`);
+    if (!nResp.ok) throw new Error('n.json não encontrado');
+    const n = await nResp.json();
+    if (typeof n === 'number' && n > 0) {
+      const mimeResp = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/mime.json`);
+      const mime = mimeResp.ok ? await mimeResp.json() : null;
+      const parts = await Promise.all(
+        Array.from({ length: n }, (_, i) =>
+          fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/c${i}.json`).then(r => r.json())
+        )
+      );
+      const b64 = parts.join('');
+      const effectiveMime = mime || 'video/mp4';
+      const bytes = atob(b64);
+      const u8 = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) u8[i] = bytes.charCodeAt(i);
+      return URL.createObjectURL(new Blob([u8], { type: effectiveMime }));
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function removerVideoShorts(id) {
+  try { await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}.json`, { method: 'DELETE' }); } catch (_) {}
+}
+
 // ── Recados dos Professores ───────────────────────────────────────
 const RTDB_RECADOS_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/recados.json";
 const STORAGE_KEY_RECADOS = "torneio-recados:v1";
@@ -565,10 +622,9 @@ const RTDB_PONTE_VOTACAO_URL   = "https://torneio-sesi-20de0-default-rtdb.fireba
 const RTDB_PONTE_COMENTARIO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_comentario.json";
 
 // ── Shorts ────────────────────────────────────────────────────────
-const RTDB_SHORTS_URL      = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/shorts.json";
-const CLOUDINARY_CLOUD     = "zimtzbbg";
-const CLOUDINARY_PRESET    = "torneio shorts";
-const STORAGE_KEY_SHORTS   = "torneio-shorts:v1";
+const RTDB_SHORTS_URL        = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/shorts.json";
+const RTDB_SHT_VIDEOS_BASE   = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/sht-videos";
+const STORAGE_KEY_SHORTS     = "torneio-shorts:v1";
 let _shortsCache = null;
 
 function lerShorts() {
@@ -603,29 +659,6 @@ async function salvarShorts(dados) {
   });
 }
 
-async function uploadVideoStorage(blob, filename) {
-  const type = blob.type || '';
-  const ext = type.includes('mp4') ? 'mp4'
-    : (type.includes('quicktime') || type.includes('mov')) ? 'mov'
-    : type.includes('webm') ? 'webm'
-    : 'mp4';
-  const safeFilename = filename.replace(/\.[^.]+$/, '') + '.' + ext;
-  const fd = new FormData();
-  fd.append('file', blob, safeFilename);
-  fd.append('upload_preset', CLOUDINARY_PRESET);
-  const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`, {
-    method: 'POST',
-    body: fd
-  });
-  if (!resp.ok) {
-    let msg = resp.status;
-    try { const j = await resp.json(); msg = j.error?.message || msg; } catch (_) {}
-    throw new Error('Upload falhou: ' + msg);
-  }
-  const data = await resp.json();
-  return data.secure_url;
-}
-
 async function deletarVideoStorage(_videoUrl) {
-  // Cloudinary não permite exclusão por upload não assinado — arquivo permanece na nuvem
+  // Cloudinary: exclusão não suportada por upload não assinado
 }

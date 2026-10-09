@@ -1528,6 +1528,18 @@ async function carregarVideosPendentes() {
   }
 }
 
+async function _carregarVideosShortsLazy() {
+  const videos = document.querySelectorAll('video[data-sht-video-id]');
+  for (const video of videos) {
+    const id = video.dataset.shtVideoId;
+    if (!id) continue;
+    try {
+      const blobUrl = await carregarVideoShorts(id);
+      if (blobUrl) { video.src = blobUrl; video.load(); }
+    } catch (_) {}
+  }
+}
+
 // ── Opção B: banner de novo conteúdo ─────────────────────────────
 const _ULTIMA_VISITA_KEY = 'torneio-com-ultima-visita';
 
@@ -2076,13 +2088,16 @@ function renderAbaShorts(shorts) {
     <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
     <div class="shorts-mosaic">
       ${itens.map((s, i) => {
-        const thumb = _cloudinaryThumb(s.url);
+        const thumb = s.url ? _cloudinaryThumb(s.url) : '';
+        const videoSrc = s.url ? _cloudinaryVideoUrl(s.url) : '';
         return `
         <div class="short-thumb" onclick="abrirShortModal(${i})">
           <div class="short-thumb-wrap">
             ${thumb
               ? `<img src="${thumb}" class="short-thumb-img" alt="${s.legenda || ''}" loading="lazy">`
-              : `<video class="short-thumb-img" src="${_cloudinaryVideoUrl(s.url || '')}" preload="metadata" muted playsinline></video>`}
+              : videoSrc
+                ? `<video class="short-thumb-img" src="${videoSrc}" preload="metadata" muted playsinline></video>`
+                : `<video class="short-thumb-img" data-sht-video-id="${s.videoId || ''}" preload="metadata" muted playsinline></video>`}
             <div class="short-thumb-overlay"><span class="short-thumb-play">▶</span></div>
           </div>
           ${s.legenda ? `<div class="short-thumb-caption">${s.legenda}</div>` : ''}
@@ -2091,6 +2106,7 @@ function renderAbaShorts(shorts) {
       }).join('')}
     </div>`;
   getMountEl().appendChild(secao);
+  _carregarVideosShortsLazy();
 }
 
 let _shortModalMuted = true; // persiste entre navegações
@@ -2122,12 +2138,15 @@ function abrirShortModal(idx) {
   const muteLabel = _shortModalMuted ? 'som' : '';
   const muteTitle = _shortModalMuted ? 'Toque para ativar o som' : 'Silenciar';
 
+  const initialSrc = s.url ? _cloudinaryVideoUrl(s.url) : '';
+
   overlay.innerHTML = `
     <div class="short-modal-inner" onclick="event.stopPropagation()">
       <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove();_shortModalMuted=true;">✕</button>
       <div class="short-modal-video-wrap">
         <video id="short-modal-vid" class="short-modal-video"
-               src="${_cloudinaryVideoUrl(s.url || '')}" playsinline loop ${_shortModalMuted ? 'muted' : ''} autoplay></video>
+               src="${initialSrc}" playsinline loop ${_shortModalMuted ? 'muted' : ''} autoplay></video>
+        ${!initialSrc ? '<div id="short-modal-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">⏳ Carregando…</div>' : ''}
         ${itens.length > 1 ? `
         <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${idx},-1)">&#8249;</button>
         <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${idx},1)">&#8250;</button>` : ''}
@@ -2142,10 +2161,23 @@ function abrirShortModal(idx) {
     </div>`;
 
   document.body.appendChild(overlay);
-  requestAnimationFrame(() => {
-    const vid = document.getElementById('short-modal-vid');
-    if (vid) vid.play().catch(() => {});
-  });
+
+  if (s.videoId && !initialSrc) {
+    carregarVideoShorts(s.videoId).then(blobUrl => {
+      const vid = document.getElementById('short-modal-vid');
+      const loading = document.getElementById('short-modal-loading');
+      if (loading) loading.remove();
+      if (vid && blobUrl) { vid.src = blobUrl; vid.load(); vid.play().catch(() => {}); }
+    }).catch(() => {
+      const loading = document.getElementById('short-modal-loading');
+      if (loading) loading.textContent = '⚠ Vídeo indisponível';
+    });
+  } else {
+    requestAnimationFrame(() => {
+      const vid = document.getElementById('short-modal-vid');
+      if (vid) vid.play().catch(() => {});
+    });
+  }
 }
 
 function _navShortModal(currentIdx, delta) {
