@@ -219,7 +219,8 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px 14px 8px;
   gap: 7px;
 }
@@ -474,8 +475,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   padding: 2px 0;
 }
 
-/* Tabela de detalhes: oculta no telão (dados por rodada ficam nos rank-cards) */
-.painel-detalhe { display: none !important; }
+/* Tabela de detalhes: visível no telão */
 .parcial {
   font-size: clamp(7px, 0.8vw, 10px);
   font-weight: 400;
@@ -518,8 +518,8 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
 
 .det-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
 }
 .det-bloco {
   background: var(--card-bg);
