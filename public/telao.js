@@ -436,7 +436,9 @@ function renderRanking(scope, rods) {
   const teams = scope === "ponte" ? PONTE_TEAMS : SPINNER_TEAMS;
   if (!el) return;
 
-  const hasAny = rods.some(rr => rr.hasAny);
+  const hasAny      = rods.some(rr => rr.hasAny);
+  const allComplete = rods.length > 0 && rods.every(rr => rr.complete);
+
   if (!hasAny) {
     el.innerHTML = `<div class="painel-aguardando">⏳<br>Aguardando resultados…</div>`;
     return;
@@ -463,11 +465,11 @@ function renderRanking(scope, rods) {
     });
   }
 
-  el.innerHTML = sorted.map((t, idx) => {
+  const cards = sorted.map((t, idx) => {
     const pts    = totals[t.id];
     const bar    = Math.round((pts / maxPts) * 100);
     const tc     = t.dark ? "#3A3000" : "#fff";
-    const isLive = ROUNDS.some(r => ST[scope].live[`${r}_${t.id}`]);
+    const isLive = !allComplete && ROUNDS.some(r => ST[scope].live[`${r}_${t.id}`]);
     const m      = melhores[t.id];
 
     let subInfo = "";
@@ -485,8 +487,10 @@ function renderRanking(scope, rods) {
       }
     }
 
+    const finalBorder = allComplete && idx === 0 ? ` rank-card-campeao` : "";
+
     return `
-      <div class="rank-card" style="background:${t.color}">
+      <div class="rank-card${finalBorder}" style="background:${t.color}">
         <div class="rank-pos" style="color:${tc}">${medals[idx] ?? (idx+1)+"º"}</div>
         <div class="rank-info">
           <div class="rank-nome" style="color:${tc}">
@@ -504,6 +508,12 @@ function renderRanking(scope, rods) {
         </div>
       </div>`;
   }).join("");
+
+  const finalBanner = allComplete
+    ? `<div class="rank-final-banner">🏆 RESULTADO FINAL</div>`
+    : "";
+
+  el.innerHTML = finalBanner + cards;
 }
 
 // ── Render rodadas ───────────────────────────────────────────────
@@ -834,14 +844,14 @@ function render() {
   });
 
   // Ponte
-  updateBadge("ponte");
+  updateBadge("ponte", rodsP);
   renderLive("ponte");
   renderRanking("ponte", rodsP);
   renderRodadas("ponte", rodsP);
   renderDetalhe("ponte", rodsP);
 
   // Spinner
-  updateBadge("spinner");
+  updateBadge("spinner", rodsS);
   renderLive("spinner");
   renderRanking("spinner", rodsS);
   renderRodadas("spinner", rodsS);
@@ -862,10 +872,11 @@ function render() {
   if (up) up.textContent = "Atualizado " + new Date().toLocaleTimeString("pt-BR");
 }
 
-function updateBadge(scope) {
+function updateBadge(scope, rods) {
   const el = document.getElementById(`${scope}-badge`);
   if (!el) return;
   const st = ST[scope];
+  const allComplete = rods && rods.length > 0 && rods.every(rr => rr.complete);
   if (st.estado === "suspense") {
     el.textContent = "🎭 Suspense";
     el.className = "painel-badge ao-vivo";
@@ -873,6 +884,10 @@ function updateBadge(scope) {
   } else if (st.estado === "revelado") {
     el.textContent = "✅ Revelado";
     el.className = "painel-badge revelado";
+    el.hidden = false;
+  } else if (allComplete) {
+    el.textContent = "🏆 Final";
+    el.className = "painel-badge final";
     el.hidden = false;
   } else if (Object.keys(st.live).length > 0) {
     el.textContent = "🔴 Ao vivo";

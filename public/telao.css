@@ -270,6 +270,10 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   background: var(--laranja);
   color: #fff;
 }
+.painel-badge.final {
+  background: linear-gradient(90deg, #DAA520, #FFD700, #DAA520);
+  color: #3A2800;
+}
 .painel-badge[hidden] { display: none; }
 
 /* Live card */
@@ -354,6 +358,19 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   line-height: 1.8;
 }
 
+.rank-final-banner {
+  text-align: center;
+  font-size: clamp(11px, 1.2vw, 16px);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: #3A2800;
+  background: linear-gradient(90deg, #DAA520, #FFD700, #DAA520);
+  border-radius: 8px;
+  padding: clamp(5px, 0.6vh, 9px) 12px;
+  margin-bottom: clamp(5px, 0.6vh, 8px);
+  animation: fadeIn .5s ease-out;
+}
+
 .rank-card {
   border-radius: 10px;
   padding: clamp(5px, 0.7vh, 9px) clamp(8px, 1vw, 13px);
@@ -362,6 +379,9 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   gap: clamp(6px, 0.8vw, 10px);
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
   animation: fadeIn .4s ease-out;
+}
+.rank-card-campeao {
+  box-shadow: 0 0 0 3px #FFD700, 0 4px 16px rgba(0,0,0,.4);
 }
 .rank-pos {
   width: clamp(22px, 2.2vw, 34px);
