@@ -637,6 +637,61 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hi
   50%      { transform: scale(1.15); opacity: .65; }
 }
 
+/* ── Overlay Resultado Geral (full-screen) ───────────────────── */
+#geral-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0,4,16,.97);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: resOverlayIn .4s ease-out both;
+  overflow: hidden;
+}
+#geral-overlay[hidden] { display: none !important; }
+#geral-overlay.res-saindo { animation: resOverlayOut .4s ease-in both; }
+.geral-ov-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2.5vh, 28px);
+  padding: 28px 20px;
+  width: 100%;
+  max-width: 700px;
+  text-align: center;
+}
+.geral-ov-titulo {
+  font-size: clamp(10px, 1.3vw, 14px);
+  font-weight: 800;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--laranja);
+  animation: resHeaderIn .5s ease-out both;
+}
+.geral-ov-header {
+  font-size: clamp(28px, 5.5vw, 58px);
+  font-weight: 900;
+  color: #FFD700;
+  letter-spacing: .05em;
+  text-shadow: 0 0 40px rgba(255,215,0,.5);
+  animation: resHeaderIn .5s ease-out .1s both;
+  opacity: 0;
+  animation-fill-mode: both;
+}
+.geral-ov-podio {
+  display: flex;
+  gap: clamp(8px, 1.5vw, 16px);
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  animation: resPodioIn .6s ease-out .55s both;
+  opacity: 0;
+  animation-fill-mode: both;
+}
+
 #recorde-overlay {
   position: fixed;
   inset: 0;

@@ -94,6 +94,7 @@ const ST = {
   terceiroAno: { resultado: null, prevTs: undefined },
   quartoAno:   { resultado: null, prevTs: undefined },
   quintoAno:   { resultado: null, prevTs: undefined },
+  geral:       { resultado: null, prevTs: undefined },
 };
 
 let _raf    = null;   // requestAnimationFrame para timers ao vivo
@@ -139,7 +140,7 @@ async function poll() {
     }
   }
 
-  const [metaPonte, metaSpinner, prova3ano, prova4ano, prova5ano, all] = await Promise.all([
+  const [metaPonte, metaSpinner, prova3ano, prova4ano, prova5ano, geralResultado, all] = await Promise.all([
     Promise.all([
       dbGet("ponte_estado"),
       dbGet("ponte_comentario"),
@@ -155,6 +156,7 @@ async function poll() {
     dbGet("prova_3ano"),
     dbGet("prova_4ano"),
     dbGet("prova_5ano"),
+    dbGet("geral_resultado_final"),
     Promise.all(fetches),
   ]);
 
@@ -174,6 +176,9 @@ async function poll() {
   checkProvaAno(ST.terceiroAno, prova3ano);
   checkProvaAno(ST.quartoAno,   prova4ano);
   checkProvaAno(ST.quintoAno,   prova5ano);
+
+  // Geral
+  checkGeralResultado(geralResultado);
 
   // Distribuir resultados
   const newPonteData = {}, newPonteLive = {};
@@ -650,6 +655,74 @@ function renderDetalhe(scope, rods) {
     <div class="det-grid">${tabelas}</div>`;
 }
 
+// ── Resultado Geral ───────────────────────────────────────────────
+function checkGeralResultado(data) {
+  if (data?.ts && data.ts !== ST.geral.prevTs) {
+    ST.geral.prevTs = data.ts;
+    ST.geral.resultado = data;
+    showGeralOverlay(data);
+  } else if (!data) {
+    ST.geral.resultado = null;
+  }
+}
+
+function showGeralOverlay(res) {
+  const el = document.getElementById("geral-overlay");
+  if (!el) return;
+
+  const medals = ["🥇","🥈","🥉","🏅"];
+  const ranking = (res.ranking || []).map(r => {
+    const ct = COLOR_TEAMS.find(x => x.id === r.id);
+    return ct ? { team: ct, pts: r.pts } : null;
+  }).filter(Boolean);
+  if (!ranking.length) return;
+
+  const [first, ...rest] = ranking;
+  const tc = first.team.dark ? "#3A3000" : "#fff";
+
+  const confetti = Array.from({ length: 36 }).map((_, i) => {
+    const colors = ["#FFD700","#F5821F","#D92B2B","#004B8D","#2E9E4F","#fff","#F0B800","#93C5FD"];
+    const color  = colors[i % colors.length];
+    const shape  = i % 3 === 0 ? "50%" : "2px";
+    const dur    = (1.4 + (i % 5) * 0.32).toFixed(1);
+    const delay  = ((i % 9) * 0.08).toFixed(2);
+    const left   = ((i * 2.85) % 100).toFixed(1);
+    return `<div class="res-confetti-piece" style="left:${left}%;background:${color};border-radius:${shape};animation-duration:${dur}s;animation-delay:${delay}s"></div>`;
+  }).join("");
+
+  const podioCards = rest.map((r, i) => {
+    const rtc = r.team.dark ? "#3A3000" : "#fff";
+    return `<div class="res-pod-card" style="background:${r.team.color};animation-delay:${0.6 + i * 0.12}s">
+      <div class="res-pod-medalha">${medals[i + 1]}</div>
+      <div class="res-pod-nome" style="color:${rtc}">${r.team.label}</div>
+      <div class="res-pod-pts" style="color:${rtc}99">${r.pts} pts</div>
+    </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="res-confetti-wrap">${confetti}</div>
+    <div class="geral-ov-content">
+      <div class="geral-ov-titulo">SESI — TORNEIO INFANTIL 2026</div>
+      <div class="geral-ov-header">🏆 CLASSIFICAÇÃO GERAL</div>
+      <div class="res-campeao" style="background:${first.team.color};--gc:${first.team.color}88">
+        <div class="res-medalha-grande">🥇</div>
+        <div class="res-pos-label" style="color:${tc}99">CAMPEÃO GERAL</div>
+        <div class="res-nome" style="color:${tc}">${first.team.label}</div>
+        <div class="res-pts" style="color:${tc}cc">${first.pts} pontos</div>
+      </div>
+      <div class="geral-ov-podio">${podioCards}</div>
+      <div class="res-dica">Toque em qualquer lugar para fechar</div>
+    </div>`;
+
+  el.hidden = false;
+  el.classList.remove("res-saindo");
+  el.classList.add("res-entrando");
+  el.onclick = () => {
+    el.classList.add("res-saindo");
+    setTimeout(() => { el.hidden = true; el.classList.remove("res-saindo", "res-entrando"); }, 400);
+  };
+}
+
 // ── Provas por Ano ────────────────────────────────────────────────
 function checkProvaAno(st, data) {
   if (data?.ts && data.ts !== st.prevTs) {
@@ -690,44 +763,26 @@ function renderProvaAno(st, ano) {
 }
 
 // ── Classificação Geral ───────────────────────────────────────────
-function renderGeralRanking(ponteTotals, spinnerTotals) {
+function renderGeralRanking() {
   const painel = document.getElementById("painel-geral");
   const rankEl = document.getElementById("geral-ranking");
   if (!painel || !rankEl) return;
 
-  const hasPonte   = Object.values(ponteTotals).some(v => v > 0);
-  const hasSpinner = Object.values(spinnerTotals).some(v => v > 0);
-  const has3       = !!ST.terceiroAno.resultado?.ranking;
-  const has4       = !!ST.quartoAno.resultado?.ranking;
-  const has5       = !!ST.quintoAno.resultado?.ranking;
-
-  // Classificação Geral só aparece quando TODOS os anos concluíram
-  if (!hasPonte || !hasSpinner || !has3 || !has4 || !has5) {
+  // Só aparece após admin publicar o resultado geral
+  if (!ST.geral.resultado?.ranking) {
     painel.hidden = true;
     return;
   }
   painel.hidden = false;
 
-  const totals = {};
-  COLOR_TEAMS.forEach(ct => {
-    totals[ct.id] =
-      (ponteTotals[ct.ponteId]   || 0) +
-      (spinnerTotals[ct.spinnerId] || 0);
-  });
-
-  [ST.terceiroAno, ST.quartoAno, ST.quintoAno].forEach(st => {
-    if (!st.resultado?.ranking) return;
-    st.resultado.ranking.forEach((teamId, idx) => {
-      if (totals[teamId] !== undefined) totals[teamId] += SCORES_3ANO[idx];
-    });
-  });
-
-  const maxPts = Math.max(1, ...COLOR_TEAMS.map(ct => totals[ct.id]));
-  const sorted = [...COLOR_TEAMS].sort((a, b) => totals[b.id] - totals[a.id]);
+  const res    = ST.geral.resultado;
   const medals = ["🥇","🥈","🥉","🏅"];
+  const maxPts = Math.max(1, ...res.ranking.map(r => r.pts || 0));
 
-  rankEl.innerHTML = sorted.map((ct, idx) => {
-    const pts = totals[ct.id];
+  rankEl.innerHTML = res.ranking.map((r, idx) => {
+    const ct = COLOR_TEAMS.find(x => x.id === r.id);
+    if (!ct) return "";
+    const pts = r.pts || 0;
     const tc  = ct.dark ? "#3A3000" : "#fff";
     const bar = Math.round((pts / maxPts) * 100);
     return `
@@ -793,7 +848,7 @@ function render() {
   renderProvaAno(ST.terceiroAno, 3);
   renderProvaAno(ST.quartoAno,   4);
   renderProvaAno(ST.quintoAno,   5);
-  renderGeralRanking(ponteTotals, spinnerTotals);
+  renderGeralRanking();
 
   // Sidebar vazio (placeholder) — oculto pois 3/4/5 painéis sempre aparecem
   const sbVazio = document.getElementById("sidebar-vazio");

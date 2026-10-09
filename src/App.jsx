@@ -25,6 +25,13 @@ const RTDB_3ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_
 const RTDB_4ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_4ano.json";
 const RTDB_5ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_5ano.json";
 
+const COLOR_TEAMS_GERAL = [
+  { id: "vermelho", label: "Vermelho", color: "#D92B2B", ponteId: "1A", spinnerId: "2A" },
+  { id: "azul",     label: "Azul",     color: "#004B8D", ponteId: "1B", spinnerId: "2B" },
+  { id: "verde",    label: "Verde",    color: "#2E9E4F", ponteId: "1C", spinnerId: "2C" },
+  { id: "amarelo",  label: "Amarelo",  color: "#F0B800", ponteId: "1D", spinnerId: "2D", dark: true },
+];
+
 const TEAMS_KAHOOT = [
   { id: "A", label: "Equipe A", color: "#E5484D" },
   { id: "B", label: "Equipe B", color: "#2F8FE0" },
@@ -1984,6 +1991,182 @@ function TerceiroAnoMonitorView()  { return <ProvaAnoMonitorView ano={3} rtdbUrl
 function QuartoAnoMonitorView()    { return <ProvaAnoMonitorView ano={4} rtdbUrl={RTDB_4ANO} fbKey="prova_4ano" />; }
 function QuintoAnoMonitorView()    { return <ProvaAnoMonitorView ano={5} rtdbUrl={RTDB_5ANO} fbKey="prova_5ano" />; }
 
+// ── Classificação Geral — Monitor ────────────────────────────────
+function GeralMonitorView() {
+  const [ranking, setRanking]     = useState(null);
+  const [avisos,  setAvisos]      = useState([]);
+  const [publicado, setPublicado] = useState(null);
+  const [publicando, setPublicando] = useState(false);
+  const [loading, setLoading]     = useState(true);
+
+  async function calcular() {
+    setLoading(true);
+    const av = [];
+    const [ponteRows, spinnerRows, ano3, ano4, ano5, existente] = await Promise.all([
+      Promise.all(ROUNDS.flatMap(r => TEAMS_1ANO.map(t =>
+        safeGet(`ponte_r${r}_${t.id}`).then(v => ({ r, teamId: t.id, data: v }))
+      ))),
+      Promise.all(ROUNDS.flatMap(r => TEAMS.map(t =>
+        safeGet(`r${r}_${t.id}`).then(v => ({ r, teamId: t.id, data: v }))
+      ))),
+      safeGet("prova_3ano"),
+      safeGet("prova_4ano"),
+      safeGet("prova_5ano"),
+      safeGet("geral_resultado_final"),
+    ]);
+
+    if (existente?.ranking) setPublicado(existente);
+
+    // Ponte totals
+    const ptTotals = Object.fromEntries(TEAMS_1ANO.map(t => [t.id, 0]));
+    for (const r of ROUNDS) {
+      const ri = ponteRows.filter(x => x.r === r);
+      const comTempo = ri.filter(x => x.data?.tempo != null);
+      if (!comTempo.length) { av.push(`Ponte R${r}: sem dados`); continue; }
+      const tPts = rankPoints(comTempo.map(x => ({ team: x.teamId, value: x.data.tempo })), false);
+      ri.forEach(x => {
+        if (x.data?.tempo != null)
+          ptTotals[x.teamId] += (tPts[x.teamId] || 0) + (x.data.carga ? 4 : 0);
+      });
+    }
+
+    // Spinner totals
+    const spTotals = Object.fromEntries(TEAMS.map(t => [t.id, 0]));
+    for (const r of ROUNDS) {
+      const ri = spinnerRows.filter(x => x.r === r);
+      const comM = ri.filter(x => x.data?.montagem != null);
+      const comG = ri.filter(x => x.data?.giro != null);
+      if (!comM.length && !comG.length) { av.push(`Spinner R${r}: sem dados`); continue; }
+      const mPts = rankPoints(comM.map(x => ({ team: x.teamId, value: x.data.montagem })), false);
+      const gPts = rankPoints(comG.map(x => ({ team: x.teamId, value: x.data.giro })), true);
+      ri.forEach(x => {
+        spTotals[x.teamId] += (mPts[x.teamId] || 0) + (gPts[x.teamId] || 0);
+      });
+    }
+
+    // Geral totals
+    const totais = {};
+    COLOR_TEAMS_GERAL.forEach(ct => {
+      totais[ct.id] = (ptTotals[ct.ponteId] || 0) + (spTotals[ct.spinnerId] || 0);
+    });
+    [[ano3, 3], [ano4, 4], [ano5, 5]].forEach(([ano, n]) => {
+      if (!ano?.ranking) { av.push(`${n}º Ano: resultado não publicado`); return; }
+      ano.ranking.forEach((teamId, idx) => {
+        if (totais[teamId] !== undefined) totais[teamId] += SCORES_ANO[idx];
+      });
+    });
+
+    const sorted = [...COLOR_TEAMS_GERAL]
+      .map(ct => ({ ...ct, pts: totais[ct.id] }))
+      .sort((a, b) => b.pts - a.pts);
+
+    setRanking(sorted);
+    setAvisos(av);
+    setLoading(false);
+  }
+
+  useEffect(() => { calcular(); }, []);
+
+  async function publicarResultado() {
+    if (!ranking) return;
+    setPublicando(true);
+    const payload = { ts: Date.now(), ranking: ranking.map(r => ({ id: r.id, pts: r.pts })) };
+    try {
+      await safeSet("geral_resultado_final", payload);
+      setPublicado(payload);
+    } catch { alert("Erro ao publicar. Tente novamente."); }
+    finally { setPublicando(false); }
+  }
+
+  async function limparResultado() {
+    if (!window.confirm("Limpar resultado geral publicado no telão?")) return;
+    await safeDelete("geral_resultado_final");
+    setPublicado(null);
+  }
+
+  const medals = ["🥇","🥈","🥉","🏅"];
+
+  return (
+    <div className="p-4 max-w-lg mx-auto flex flex-col gap-4">
+
+      {/* Ranking calculado */}
+      <div className="rounded-2xl p-4 flex flex-col gap-3"
+        style={{ background: "#0F2A45", border: "1.5px solid #1E3A5F" }}>
+        <div className="flex items-center justify-between">
+          <div className="text-base font-extrabold text-white">🏆 Classificação Geral</div>
+          <button onClick={calcular} className="text-xs font-bold px-3 py-1 rounded-full"
+            style={{ background: "#1E3A5F", color: "#93C5FD" }}>
+            ↺ Recalcular
+          </button>
+        </div>
+        <div className="text-xs text-blue-300 opacity-60">Soma de todas as provas</div>
+
+        {loading ? (
+          <div className="text-center text-blue-300 text-sm py-4">Calculando…</div>
+        ) : (
+          <>
+            {avisos.length > 0 && (
+              <div className="rounded-xl p-2 flex flex-col gap-1"
+                style={{ background: "#2a1500", border: "1px solid #F5821F44" }}>
+                <div className="text-xs font-bold text-orange-400">⚠ Dados incompletos:</div>
+                {avisos.map((a, i) => (
+                  <div key={i} className="text-xs text-orange-300 opacity-80">• {a}</div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {(ranking || []).map((t, idx) => (
+                <div key={t.id} className="flex items-center gap-3 rounded-xl px-3 py-2"
+                  style={{ background: t.color + "33", border: `1.5px solid ${t.color}55` }}>
+                  <span className="text-lg">{medals[idx]}</span>
+                  <span className="font-extrabold flex-1" style={{ color: t.color }}>{t.label}</span>
+                  <span className="font-extrabold text-white tabular-nums">{t.pts} pts</span>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={publicarResultado} disabled={publicando || !ranking}
+              className="w-full py-3 rounded-xl font-extrabold text-base mt-1 transition-all"
+              style={{
+                background: ranking ? "#F5821F" : "#1a2a3a",
+                color: ranking ? "#fff" : "#445",
+                opacity: ranking ? 1 : 0.5,
+                cursor: ranking ? "pointer" : "not-allowed",
+              }}>
+              {publicando ? "Publicando…" : "🏆 Publicar Resultado Geral no Telão"}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Resultado já publicado */}
+      {publicado && (
+        <div className="rounded-2xl p-4 flex flex-col gap-2"
+          style={{ background: "#0A1E30", border: "1.5px solid #F5821F55" }}>
+          <div className="text-sm font-extrabold text-orange-400">✅ Resultado Publicado no Telão</div>
+          {publicado.ranking.map((r, idx) => {
+            const team = COLOR_TEAMS_GERAL.find(t => t.id === r.id);
+            if (!team) return null;
+            return (
+              <div key={idx} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                style={{ background: team.color + "33" }}>
+                <span className="text-lg">{medals[idx]}</span>
+                <span className="font-extrabold" style={{ color: team.color }}>{team.label}</span>
+                <span className="ml-auto text-xs font-bold text-blue-300 opacity-70">{r.pts} pts</span>
+              </div>
+            );
+          })}
+          <button onClick={limparResultado}
+            className="mt-2 text-xs font-bold text-red-400 opacity-60 hover:opacity-100 transition-opacity self-start">
+            🗑 Limpar resultado
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HomeView() {
   const [open, setOpen] = useState(false);
   return (
@@ -3437,6 +3620,7 @@ export default function App() {
               { id: "terceiroano", label: "🏫 3º Ano" },
               { id: "quartoano",   label: "🏫 4º Ano" },
               { id: "quintoano",   label: "🏫 5º Ano" },
+              { id: "geral",       label: "🏆 Geral" },
               { id: "kahoot",      label: "🎓 Kahoot" },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => handleSetPage(id)}
@@ -3459,6 +3643,7 @@ export default function App() {
       {page === "terceiroano" && <TerceiroAnoMonitorView />}
       {page === "quartoano"   && <QuartoAnoMonitorView />}
       {page === "quintoano"   && <QuintoAnoMonitorView />}
+      {page === "geral"       && <GeralMonitorView />}
       {page === "kahoot"    && (
         mode === "monitor"
           ? <KahootMonitorView />
