@@ -32,6 +32,19 @@ const COLOR_TEAMS_GERAL = [
   { id: "amarelo",  label: "Amarelo",  color: "#F0B800", ponteId: "1D", spinnerId: "2D", dark: true },
 ];
 
+const SIM_PONTE = {
+  1: [{ id:"1A", tempo:12.3, carga:true  },{ id:"1B", tempo:15.1, carga:true  },{ id:"1C", tempo:18.2, carga:false},{ id:"1D", tempo:11.8, carga:true  }],
+  2: [{ id:"1A", tempo:13.0, carga:true  },{ id:"1B", tempo:14.5, carga:true  },{ id:"1C", tempo:17.0, carga:true },{ id:"1D", tempo:12.5, carga:true  }],
+  3: [{ id:"1A", tempo:11.2, carga:true  },{ id:"1B", tempo:16.3, carga:false },{ id:"1C", tempo:14.8, carga:true },{ id:"1D", tempo:13.7, carga:true  }],
+  4: [{ id:"1A", tempo:10.9, carga:true  },{ id:"1B", tempo:13.2, carga:true  },{ id:"1C", tempo:15.5, carga:true },{ id:"1D", tempo:14.1, carga:true  }],
+};
+const SIM_SPINNER = {
+  1: [{ id:"2A", montagem:8.2, giro:12.5 },{ id:"2B", montagem:9.1, giro:10.3 },{ id:"2C", montagem:7.8, giro:14.2 },{ id:"2D", montagem:10.5, giro:9.8  }],
+  2: [{ id:"2A", montagem:7.9, giro:13.1 },{ id:"2B", montagem:8.6, giro:11.7 },{ id:"2C", montagem:8.1, giro:15.0 },{ id:"2D", montagem:9.8,  giro:10.6 }],
+  3: [{ id:"2A", montagem:7.5, giro:14.8 },{ id:"2B", montagem:8.9, giro:12.4 },{ id:"2C", montagem:7.2, giro:16.3 },{ id:"2D", montagem:9.3,  giro:9.1  }],
+  4: [{ id:"2A", montagem:8.0, giro:13.9 },{ id:"2B", montagem:9.4, giro:11.0 },{ id:"2C", montagem:7.6, giro:15.7 },{ id:"2D", montagem:10.1, giro:8.5  }],
+};
+
 const TEAMS_KAHOOT = [
   { id: "A", label: "Equipe A", color: "#E5484D" },
   { id: "B", label: "Equipe B", color: "#2F8FE0" },
@@ -2167,6 +2180,180 @@ function GeralMonitorView() {
   );
 }
 
+// ── Simulação — modo demo ─────────────────────────────────────────
+function SimulacaoView() {
+  const [rodando, setRodando] = useState(false);
+  const [log, setLog] = useState([]);
+  const [etapa, setEtapa] = useState("");
+  const timersRef = useRef([]);
+  const keysRef = useRef([]);
+
+  function addLog(msg) {
+    setLog(prev => [...prev.slice(-19), `${new Date().toLocaleTimeString("pt-BR")} — ${msg}`]);
+  }
+
+  function agenda(ms, fn) {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+  }
+
+  async function limpar() {
+    addLog("Limpando dados…");
+    for (const k of keysRef.current) await safeDelete(k);
+    keysRef.current = [];
+    for (const url of [RTDB_3ANO, RTDB_4ANO, RTDB_5ANO]) {
+      try { await fetch(url, { method: "DELETE" }); } catch {}
+    }
+    await safeDelete("geral_resultado_final");
+    addLog("✓ Dados removidos.");
+  }
+
+  async function parar() {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    setRodando(false);
+    setEtapa("");
+    await limpar();
+  }
+
+  async function iniciar() {
+    if (rodando) return;
+    setLog([]);
+    setRodando(true);
+    keysRef.current = [];
+    addLog("▶ Iniciando simulação…");
+
+    const LIVE_MS = 3000;
+    const STEP_MS = 5000;
+    let t = 0;
+
+    const ponteLiveTeams = ["1A","1B","1C","1D"];
+    for (let r = 1; r <= 4; r++) {
+      const round = r, lv = ponteLiveTeams[r - 1];
+      agenda(t, async () => {
+        setEtapa(`Ponte — Rodada ${round} ao vivo`);
+        addLog(`🌉 Ponte R${round}: timer (${lv})`);
+        const lk = ponteLiveKeyFor(round, lv);
+        await safeSet(lk, { running: true, startTs: Date.now() });
+        keysRef.current.push(lk);
+      });
+      agenda(t + LIVE_MS, async () => {
+        addLog(`🌉 Ponte R${round}: resultados`);
+        const lk = ponteLiveKeyFor(round, lv);
+        await safeDelete(lk);
+        keysRef.current = keysRef.current.filter(k => k !== lk);
+        for (const d of SIM_PONTE[round]) {
+          const k = ponteKeyFor(round, d.id);
+          await safeSet(k, { tempo: d.tempo, carga: d.carga });
+          keysRef.current.push(k);
+        }
+      });
+      t += STEP_MS;
+    }
+
+    const spinnerLiveTeams = ["2A","2B","2C","2D"];
+    for (let r = 1; r <= 4; r++) {
+      const round = r, lv = spinnerLiveTeams[r - 1];
+      agenda(t, async () => {
+        setEtapa(`Spinner — Rodada ${round} ao vivo`);
+        addLog(`🌀 Spinner R${round}: timer (${lv})`);
+        const lk = liveKeyFor(round, lv);
+        await safeSet(lk, { giroRunning: true, startTs_giro: Date.now() });
+        keysRef.current.push(lk);
+      });
+      agenda(t + LIVE_MS, async () => {
+        addLog(`🌀 Spinner R${round}: resultados`);
+        const lk = liveKeyFor(round, lv);
+        await safeDelete(lk);
+        keysRef.current = keysRef.current.filter(k => k !== lk);
+        for (const d of SIM_SPINNER[round]) {
+          const k = keyFor(round, d.id);
+          await safeSet(k, { montagem: d.montagem, giro: d.giro });
+          keysRef.current.push(k);
+        }
+      });
+      t += STEP_MS;
+    }
+
+    agenda(t, async () => {
+      setEtapa("3º Ano");
+      addLog("🏫 3º Ano");
+      await fetch(RTDB_3ANO, { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ranking:["vermelho","verde","amarelo","azul"], ts: Date.now() }) });
+    });
+    agenda(t + 4000, async () => {
+      setEtapa("4º Ano");
+      addLog("🏫 4º Ano");
+      await fetch(RTDB_4ANO, { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ranking:["azul","vermelho","verde","amarelo"], ts: Date.now() }) });
+    });
+    agenda(t + 8000, async () => {
+      setEtapa("5º Ano");
+      addLog("🏫 5º Ano");
+      await fetch(RTDB_5ANO, { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ranking:["verde","amarelo","azul","vermelho"], ts: Date.now() }) });
+    });
+    agenda(t + 12000, () => {
+      setEtapa("✅ Concluído");
+      setRodando(false);
+      addLog("✅ Concluído! Vá em 🏆 Geral para publicar o resultado final no telão.");
+    });
+  }
+
+  return (
+    <div className="p-4 max-w-lg mx-auto flex flex-col gap-4">
+      <div className="rounded-2xl p-4 flex flex-col gap-3"
+        style={{ background: "#0F2A45", border: "1.5px solid #1E3A5F" }}>
+        <div className="text-base font-extrabold text-white">🎬 Simulação — Modo Demo</div>
+        <div className="text-xs text-blue-300 opacity-70 leading-relaxed">
+          Injeta dados fictícios no Firebase para testar o fluxo completo do telão.
+          Não use durante o torneio real. Duração total ≈ 52 segundos.
+        </div>
+
+        {etapa && (
+          <div className="rounded-xl px-3 py-2 text-sm font-bold"
+            style={{ background: "#F5821F22", color: "#F5821F", border: "1px solid #F5821F55" }}>
+            ▶ {etapa}
+          </div>
+        )}
+
+        <div className="text-xs text-blue-200 opacity-60 space-y-0.5">
+          <div>📋 Sequência:</div>
+          <div>· Ponte R1–R4 (timer ao vivo → resultado) — 20s</div>
+          <div>· Spinner R1–R4 (timer ao vivo → resultado) — 20s</div>
+          <div>· 3º / 4º / 5º Ano — 12s</div>
+          <div>· Use 🏆 Geral para publicar o resultado final</div>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={iniciar} disabled={rodando}
+            className="flex-1 py-3 rounded-xl font-extrabold text-base"
+            style={{
+              background: rodando ? "#1a2a3a" : "#2E9E4F",
+              color: rodando ? "#444" : "#fff",
+              opacity: rodando ? 0.5 : 1,
+              cursor: rodando ? "not-allowed" : "pointer",
+            }}>
+            ▶ Iniciar
+          </button>
+          <button onClick={parar}
+            className="flex-1 py-3 rounded-xl font-extrabold text-base"
+            style={{ background: "#D92B2B", color: "#fff" }}>
+            ⏹ Parar e Limpar
+          </button>
+        </div>
+      </div>
+
+      {log.length > 0 && (
+        <div className="rounded-2xl p-4 flex flex-col gap-0.5"
+          style={{ background: "#0A1E30", border: "1.5px solid #1E3550" }}>
+          <div className="text-xs font-bold text-blue-300 mb-2 uppercase tracking-wider">Log</div>
+          {log.map((l, i) => (
+            <div key={i} className="text-xs font-mono" style={{ color: "#93C5FD" }}>{l}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HomeView() {
   const [open, setOpen] = useState(false);
   return (
@@ -3558,9 +3745,10 @@ export default function App() {
   const [mode, setMode] = useState("monitor"); // "monitor" | "telao"
 
 
-  const pageLabel = page === "home"      ? "🏠 Início"
-    : page === "propulsao" ? "🌀 Lançador de Spinner"
-    : page === "ponte"     ? "🌉 Ponte de Da Vinci"
+  const pageLabel = page === "home"       ? "🏠 Início"
+    : page === "propulsao"  ? "🌀 Lançador de Spinner"
+    : page === "ponte"      ? "🌉 Ponte de Da Vinci"
+    : page === "simulacao"  ? "🎬 Simulação"
     : "🎓 Kahoot English";
 
   const handleSetPage = (p) => {
@@ -3622,6 +3810,7 @@ export default function App() {
               { id: "quintoano",   label: "🏫 5º Ano" },
               { id: "geral",       label: "🏆 Geral" },
               { id: "kahoot",      label: "🎓 Kahoot" },
+              { id: "simulacao",   label: "🎬 Sim." },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => handleSetPage(id)}
                 className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
@@ -3644,6 +3833,7 @@ export default function App() {
       {page === "quartoano"   && <QuartoAnoMonitorView />}
       {page === "quintoano"   && <QuintoAnoMonitorView />}
       {page === "geral"       && <GeralMonitorView />}
+      {page === "simulacao"   && <SimulacaoView />}
       {page === "kahoot"    && (
         mode === "monitor"
           ? <KahootMonitorView />
