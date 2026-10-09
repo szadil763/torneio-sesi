@@ -725,8 +725,8 @@ function renderInicio(dados) {
         fetch(`${RTDB}/ponte_resultado_final.json`,   { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
         fetch(`${RTDB}/spinner_resultado_final.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
       ]);
-      const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense');
-      const spinnerAoVivo = rs === true && (es === 'aguardando' || es === 'suspense');
+      const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense') && !rfp?.ts;
+      const spinnerAoVivo = rs === true && (es === 'aguardando' || es === 'suspense') && !rfs?.ts;
       const ponteEncerrada   = rfp?.ts || (rp === true && !ponteAoVivo);
       const spinnerEncerrada = rfs?.ts || (rs === true && !spinnerAoVivo);
       const ponteSub   = ponteAoVivo   ? '🔴 Competindo agora · toque para ver ao vivo'
