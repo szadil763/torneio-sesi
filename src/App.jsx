@@ -783,6 +783,10 @@ function TelaoView() {
   const [data, setData] = useState({});
   const [liveKeys, setLiveKeys] = useState({});
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [spinnerEstado, setSpinnerEstado] = useState("aguardando");
+  const [spinnerComentario, setSpinnerComentario] = useState("");
+  const [liveNow, setLiveNow] = useState(() => Date.now());
+  const liveTickRef = useRef(null);
 
   const fetchAll = useCallback(async () => {
     const entries = {};
@@ -800,6 +804,12 @@ function TelaoView() {
     setData(entries);
     setLiveKeys(live);
     setLastUpdate(new Date());
+    const [est, comt] = await Promise.all([
+      safeGet("spinner_estado"),
+      safeGet("spinner_comentario"),
+    ]);
+    setSpinnerEstado(est ?? "aguardando");
+    setSpinnerComentario(comt ?? "");
   }, []);
 
   useEffect(() => {
@@ -807,6 +817,16 @@ function TelaoView() {
     const id = setInterval(fetchAll, 4000);
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  useEffect(() => {
+    const hasLive = Object.values(liveKeys).some(v => v?.montagemRunning || v?.giroRunning);
+    if (hasLive) {
+      liveTickRef.current = setInterval(() => setLiveNow(Date.now()), 100);
+    } else {
+      clearInterval(liveTickRef.current);
+    }
+    return () => clearInterval(liveTickRef.current);
+  }, [liveKeys]);
 
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS.map((t) => {
@@ -844,7 +864,34 @@ function TelaoView() {
   const maxTotal = Math.max(1, ...TEAMS.map((t) => totals[t.id]));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
+    <>
+    <style>{`
+      @keyframes suspensePulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.7} }
+      @keyframes slideUp { 0%{transform:translateY(100%)}100%{transform:translateY(0)} }
+    `}</style>
+
+    {/* Suspense overlay */}
+    {spinnerEstado === "suspense" && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+        style={{ background: "linear-gradient(135deg,#001830 0%,#003580 100%)" }}>
+        <div style={{ fontSize: 88, animation: "suspensePulse 1.8s ease-in-out infinite" }}>⏳</div>
+        <div className="font-extrabold text-white mt-6 tracking-widest text-center"
+          style={{ fontSize: "clamp(28px,6vw,64px)" }}>CALCULANDO...</div>
+        <div className="mt-3 font-semibold tracking-wide" style={{ color: "#93C5FD", fontSize: "clamp(14px,3vw,24px)" }}>
+          resultado em breve
+        </div>
+      </div>
+    )}
+
+    {/* Comment bar */}
+    {spinnerComentario && (
+      <div className="fixed bottom-0 left-0 right-0 z-40 py-4 px-6 text-center font-bold text-white"
+        style={{ background: "rgba(0,40,100,0.92)", animation: "slideUp 0.35s ease-out", fontSize: "clamp(14px,2.5vw,22px)", backdropFilter: "blur(4px)" }}>
+        💬 {spinnerComentario}
+      </div>
+    )}
+
+    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8" style={{ paddingBottom: spinnerComentario ? "80px" : undefined }}>
       <div>
         <div
           className="text-center text-sm font-bold tracking-widest mb-1"
@@ -862,7 +909,18 @@ function TelaoView() {
 
       <div className="flex flex-col gap-3">
         {ranking.map((t, idx) => {
-          const isLiveAny = ROUNDS.some((r) => liveKeys[`${r}_${t.id}`]);
+          const activeLiveKey = ROUNDS.reduce((found, r) => found || liveKeys[`${r}_${t.id}`], null);
+          const isLiveAny = !!activeLiveKey;
+          let liveBadge = null;
+          if (isLiveAny) {
+            if (activeLiveKey.montagemRunning && activeLiveKey.startTs_montagem) {
+              liveBadge = `🔴 montagem ${((liveNow - activeLiveKey.startTs_montagem) / 1000).toFixed(1)}s`;
+            } else if (activeLiveKey.giroRunning && activeLiveKey.startTs_giro) {
+              liveBadge = `🔴 giro ${((liveNow - activeLiveKey.startTs_giro) / 1000).toFixed(1)}s`;
+            } else {
+              liveBadge = "🔴 ao vivo";
+            }
+          }
           return (
             <div
               key={t.id}
@@ -883,12 +941,12 @@ function TelaoView() {
                 style={{ color: t.dark ? "#3A3000" : "#fff", flex: "1" }}
               >
                 {t.label}
-                {isLiveAny && (
+                {liveBadge && (
                   <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full"
+                    className="text-xs font-bold px-2 py-0.5 rounded-full tabular-nums"
                     style={{ backgroundColor: "#D92B2B", color: "#fff" }}
                   >
-                    🔴 ao vivo
+                    {liveBadge}
                   </span>
                 )}
               </div>
@@ -995,7 +1053,10 @@ function TelaoView() {
                   const pts = rr.complete
                     ? (rr.montPts[it.team] || 0) + (rr.giroPts[it.team] || 0)
                     : null;
-                  const isLive = !!liveKeys[`${rr.round}_${it.team}`];
+                  const lv = liveKeys[`${rr.round}_${it.team}`];
+                  const isLive = !!lv;
+                  const montagemLive = isLive && lv.montagemRunning && lv.startTs_montagem;
+                  const giroLive = isLive && lv.giroRunning && lv.startTs_giro;
                   return (
                     <tr key={it.team} className="border-t border-gray-100">
                       <td className="px-3 py-2 font-semibold" style={{ color: t.color }}>
@@ -1006,8 +1067,16 @@ function TelaoView() {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-center">{formatTime(it.montagem)}</td>
-                      <td className="px-3 py-2 text-center">{formatTime(it.giro)}</td>
+                      <td className="px-3 py-2 text-center tabular-nums">
+                        {montagemLive
+                          ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>🔴 {((liveNow - lv.startTs_montagem) / 1000).toFixed(1)}s</span>
+                          : formatTime(it.montagem)}
+                      </td>
+                      <td className="px-3 py-2 text-center tabular-nums">
+                        {giroLive
+                          ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>🔴 {((liveNow - lv.startTs_giro) / 1000).toFixed(1)}s</span>
+                          : formatTime(it.giro)}
+                      </td>
                       <td className="px-3 py-2 text-center font-bold">
                         {pts !== null ? pts : "--"}
                       </td>
@@ -1051,6 +1120,7 @@ function TelaoView() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1494,6 +1564,8 @@ function PonteTelaoView() {
   const [votacao, setVotacao] = useState({});
   const [celebrando, setCelebrando] = useState(false);
   const prevRecordeTsRef = useRef(undefined);
+  const [liveNow, setLiveNow] = useState(() => Date.now());
+  const liveTickRef = useRef(null);
 
   const fetchAll = useCallback(async () => {
     const entries = {};
@@ -1533,6 +1605,16 @@ function PonteTelaoView() {
     const id = setInterval(fetchAll, 4000);
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  useEffect(() => {
+    const hasLive = Object.values(liveKeys).some(v => v?.running);
+    if (hasLive) {
+      liveTickRef.current = setInterval(() => setLiveNow(Date.now()), 100);
+    } else {
+      clearInterval(liveTickRef.current);
+    }
+    return () => clearInterval(liveTickRef.current);
+  }, [liveKeys]);
 
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS_1ANO.map((t) => {
@@ -1651,7 +1733,16 @@ function PonteTelaoView() {
       {/* Ranking geral */}
       <div className="flex flex-col gap-3">
         {ranking.map((t, idx) => {
-          const isLive = ROUNDS.some((r) => liveKeys[`${r}_${t.id}`]);
+          const activeLv = ROUNDS.reduce((found, r) => found || liveKeys[`${r}_${t.id}`], null);
+          const isLive = !!activeLv;
+          let liveBadge = null;
+          if (isLive) {
+            if (activeLv.running && activeLv.startTs) {
+              liveBadge = `🔴 ${((liveNow - activeLv.startTs) / 1000).toFixed(1)}s`;
+            } else {
+              liveBadge = "🔴 ao vivo";
+            }
+          }
           return (
             <div key={`${t.id}-${idx}`} className="rank-row flex items-center gap-4 rounded-2xl p-4 shadow-sm"
               style={{ backgroundColor: t.color }}>
@@ -1662,9 +1753,9 @@ function PonteTelaoView() {
               <div className="font-bold text-xl md:text-2xl flex items-center gap-2"
                 style={{ color: t.dark ? "#3A3000" : "#fff", flex: "1" }}>
                 {t.label}
-                {isLive && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#D92B2B", color: "#fff" }}>
-                    🔴 ao vivo
+                {liveBadge && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full tabular-nums" style={{ backgroundColor: "#D92B2B", color: "#fff" }}>
+                    {liveBadge}
                   </span>
                 )}
               </div>
@@ -1757,14 +1848,20 @@ function PonteTelaoView() {
                 }).map((it) => {
                   const t = TEAMS_1ANO.find((x) => x.id === it.team);
                   const pts = rr.hasAny ? (rr.tempoPts[it.team] || 0) + (rr.cargaPts[it.team] || 0) : null;
-                  const isLive = !!liveKeys[`${rr.round}_${it.team}`];
+                  const lv = liveKeys[`${rr.round}_${it.team}`];
+                  const isLive = !!lv;
+                  const tempoLive = isLive && lv.running && lv.startTs;
                   return (
                     <tr key={it.team} className="border-t border-gray-100">
                       <td className="px-3 py-2 font-semibold" style={{ color: t.color }}>
                         {t.label}
                         {isLive && <span className="ml-1 text-xs font-bold" style={{ color: "#D92B2B" }}>🔴</span>}
                       </td>
-                      <td className="px-3 py-2 text-center tabular-nums">{formatTime(it.tempo)}</td>
+                      <td className="px-3 py-2 text-center tabular-nums">
+                        {tempoLive
+                          ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>🔴 {((liveNow - lv.startTs) / 1000).toFixed(1)}s</span>
+                          : formatTime(it.tempo)}
+                      </td>
                       <td className="px-3 py-2 text-center">
                         {it.carga === true ? <span style={{ color: "#2E9E4F", fontWeight: 700 }}>✓ 4pts</span>
                           : it.carga === false ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>✗ 0pts</span>
