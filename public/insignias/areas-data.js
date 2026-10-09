@@ -540,7 +540,8 @@ async function carregarGaleria() {
     const resp = await fetch(RTDB_GALERIA_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
-      _galeriaCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      const itens = data?.itens;
+      _galeriaCache = { ...data, itens: Array.isArray(itens) ? itens : (itens && typeof itens === 'object' ? Object.values(itens) : []) };
       try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(_galeriaCache)); } catch (_) {}
       return _galeriaCache;
     }
@@ -583,7 +584,8 @@ async function carregarShorts() {
     const resp = await fetch(RTDB_SHORTS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
-      _shortsCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
+      const itens = data?.itens;
+      _shortsCache = { ...data, itens: Array.isArray(itens) ? itens : (itens && typeof itens === 'object' ? Object.values(itens) : []) };
       try { localStorage.setItem(STORAGE_KEY_SHORTS, JSON.stringify(_shortsCache)); } catch (_) {}
       return _shortsCache;
     }
@@ -602,15 +604,24 @@ async function salvarShorts(dados) {
 }
 
 async function uploadVideoStorage(blob, filename) {
+  const type = blob.type || '';
+  const ext = type.includes('mp4') ? 'mp4'
+    : (type.includes('quicktime') || type.includes('mov')) ? 'mov'
+    : type.includes('webm') ? 'webm'
+    : 'mp4';
+  const safeFilename = filename.replace(/\.[^.]+$/, '') + '.' + ext;
   const fd = new FormData();
-  fd.append('file', blob, filename);
+  fd.append('file', blob, safeFilename);
   fd.append('upload_preset', CLOUDINARY_PRESET);
-  fd.append('resource_type', 'video');
   const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/video/upload`, {
     method: 'POST',
     body: fd
   });
-  if (!resp.ok) throw new Error('Upload falhou: ' + resp.status);
+  if (!resp.ok) {
+    let msg = resp.status;
+    try { const j = await resp.json(); msg = j.error?.message || msg; } catch (_) {}
+    throw new Error('Upload falhou: ' + msg);
+  }
   const data = await resp.json();
   return data.secure_url;
 }

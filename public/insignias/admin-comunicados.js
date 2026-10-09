@@ -1640,10 +1640,14 @@ async function shortsAdicionarVideo() {
   }
   const legenda  = (document.getElementById('sht-legenda')?.value  || '').trim();
   const reporter = (document.getElementById('sht-reporter')?.value || '').trim();
-  if (progress) { progress.style.display = ''; progress.textContent = '⏳ Enviando vídeo para o servidor…'; }
+  const sizeMB = _shtPendingBlob.size / 1024 / 1024;
+  if (sizeMB > 100) {
+    if (err) err.textContent = `Arquivo muito grande (${sizeMB.toFixed(0)} MB). Use um vídeo menor (até 100 MB).`;
+    return;
+  }
+  if (progress) { progress.style.display = ''; progress.textContent = `⏳ Enviando vídeo (${sizeMB.toFixed(1)} MB)…`; }
   try {
-    const ext      = _shtPendingBlob.type.includes('mp4') ? 'mp4' : 'webm';
-    const filename = `short_${Date.now()}.${ext}`;
+    const filename = `short_${Date.now()}`;
     const url      = await uploadVideoStorage(_shtPendingBlob, filename);
     const shorts   = await carregarShorts();
     shorts.itens   = shorts.itens || [];
