@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ponte de Da Vinci · Ranking ao Vivo</title>
+  <link rel="stylesheet" href="ponte-ranking.css?v=20261005c" />
+</head>
+<body>
+  <div id="app">
+    <!-- Overlays (toggled via hidden attr) -->
+    <div id="suspense-overlay" hidden>
+      <div class="suspense-icon">⏳</div>
+      <div class="suspense-titulo">CALCULANDO...</div>
+      <div class="suspense-sub">resultado em breve</div>
+    </div>
+
+    <div id="recorde-overlay" hidden>
+      <div class="recorde-trofeu">🏆</div>
+      <div class="recorde-texto">NOVO RECORDE!</div>
+      <div id="recorde-detalhe" class="recorde-detalhe"></div>
+    </div>
+
+    <div id="comentario-bar" hidden></div>
+
+    <!-- Main content -->
+    <div id="main-content">
+      <header class="pr-header">
+        <a href="comunicados.html" class="pr-back">‹ Voltar</a>
+        <div class="pr-header-center">
+          <div class="pr-header-sup">SESI — TORNEIO INFANTIL</div>
+          <div class="pr-header-titulo">🌉 Ponte de Da Vinci</div>
+        </div>
+        <div id="estado-badge" class="pr-estado-badge" hidden></div>
+      </header>
+
+      <div id="live-section" class="pr-live-section" hidden></div>
+
+      <div id="ranking-list" class="pr-ranking-list"></div>
+
+      <div id="rounds-section" class="pr-rounds-section" hidden>
+        <div class="pr-section-title">🥇 Mais rápido por rodada</div>
+        <div id="rounds-grid" class="pr-rounds-grid"></div>
+      </div>
+
+      <div id="rounds-detail-section" class="pr-detail-section" hidden>
+        <div class="pr-section-title">Detalhes por rodada</div>
+        <div id="rounds-detail" class="pr-detail-list"></div>
+      </div>
+
+      <div id="last-update" class="pr-last-update" hidden></div>
+    </div>
+  </div>
+  <script src="ponte-ranking.js?v=20261005c"></script>
+</body>
+</html>

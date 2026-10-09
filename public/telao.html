@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telão — SESI Torneio Infantil</title>
+  <link rel="stylesheet" href="telao.css?v=20261009d" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Overlays globais -->
+    <div id="suspense-overlay" hidden>
+      <div class="suspense-icon">⏳</div>
+      <div class="suspense-titulo">CALCULANDO…</div>
+      <div class="suspense-sub">resultado em breve</div>
+    </div>
+
+    <div id="geral-overlay" hidden></div>
+
+    <div id="recorde-overlay" hidden>
+      <div class="recorde-trofeu">🏆</div>
+      <div class="recorde-texto">NOVO RECORDE!</div>
+      <div id="recorde-detalhe" class="recorde-detalhe"></div>
+    </div>
+
+    <!-- Header -->
+    <header id="telao-header">
+      <div class="telao-header-sup">SESI — TORNEIO INFANTIL 2026</div>
+      <div class="telao-header-titulo">PLACAR AO VIVO</div>
+      <div id="telao-live-badge" class="telao-live-badge" hidden>🔴 AO VIVO</div>
+    </header>
+
+    <!-- Grid principal: 65% esquerda + 35% sidebar -->
+    <div id="telao-grid">
+
+      <!-- Coluna 1: Ponte de Da Vinci -->
+      <div class="painel" id="painel-ponte">
+        <div id="resultado-overlay-ponte" class="painel-resultado-overlay" hidden></div>
+        <div class="painel-header">
+          <div class="painel-icone">🌉</div>
+          <div class="painel-titulo">Ponte de Da Vinci</div>
+          <div class="painel-series">1º ano</div>
+          <div id="ponte-badge" class="painel-badge" hidden></div>
+        </div>
+        <div id="ponte-live" class="painel-live" hidden></div>
+        <div id="ponte-ranking" class="painel-ranking">
+          <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
+        </div>
+        <div id="ponte-rodadas" class="painel-rodadas" hidden></div>
+        <div id="ponte-detalhe" class="painel-detalhe" hidden></div>
+      </div>
+
+      <!-- Divisor vertical -->
+      <div class="telao-divisor"></div>
+
+      <!-- Coluna 2: Lançador de Spinner -->
+      <div class="painel" id="painel-spinner">
+        <div id="resultado-overlay-spinner" class="painel-resultado-overlay" hidden></div>
+        <div class="painel-header">
+          <div class="painel-icone">🌀</div>
+          <div class="painel-titulo">Lançador de Spinner</div>
+          <div class="painel-series">2º ano</div>
+          <div id="spinner-badge" class="painel-badge" hidden></div>
+        </div>
+        <div id="spinner-live" class="painel-live" hidden></div>
+        <div id="spinner-ranking" class="painel-ranking">
+          <div class="painel-aguardando">⏳<br>Aguardando resultados…</div>
+        </div>
+        <div id="spinner-rodadas" class="painel-rodadas" hidden></div>
+        <div id="spinner-detalhe" class="painel-detalhe" hidden></div>
+      </div>
+
+      <!-- Divisor vertical -->
+      <div class="telao-divisor"></div>
+
+      <!-- Coluna 3: Sidebar (Geral + 3º/4º/5º Ano) -->
+      <div id="coluna-direita">
+
+        <!-- Classificação Geral -->
+        <div id="painel-geral" class="sb-painel" hidden>
+          <div class="sb-titulo">🏆 Classificação Geral</div>
+          <div id="geral-ranking"></div>
+        </div>
+
+        <!-- 3º Ano -->
+        <div id="painel-3ano" class="sb-painel" hidden>
+          <div class="sb-titulo">🏫 3º Ano</div>
+          <div id="tano-ranking-3"></div>
+        </div>
+
+        <!-- 4º Ano -->
+        <div id="painel-4ano" class="sb-painel" hidden>
+          <div class="sb-titulo">🏫 4º Ano</div>
+          <div id="tano-ranking-4"></div>
+        </div>
+
+        <!-- 5º Ano -->
+        <div id="painel-5ano" class="sb-painel" hidden>
+          <div class="sb-titulo">🏫 5º Ano</div>
+          <div id="tano-ranking-5"></div>
+        </div>
+
+        <!-- Placeholder quando sidebar vazia -->
+        <div id="sidebar-vazio">
+          <div class="painel-aguardando">⏳<br>Aguardando<br>resultados…</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Rodapé -->
+    <footer id="telao-footer">
+      <span id="footer-update">—</span>
+      <span class="footer-sep">·</span>
+      <a href="ponte-ranking.html" class="footer-link">Ver Ponte completo</a>
+      <span class="footer-sep">·</span>
+      <a href="spinner-ranking.html" class="footer-link">Ver Spinner completo</a>
+    </footer>
+
+  </div>
+  <script src="telao.js?v=20261009d"></script>
+</body>
+</html>

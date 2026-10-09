@@ -38,7 +38,7 @@ function lerEstadoAreas() {
 // Busca do Firebase e atualiza cache. Chamar no início de cada página.
 async function carregarInsignias() {
   try {
-    const resp = await fetch(RTDB_INSIGNIAS_URL);
+    const resp = await fetch(RTDB_INSIGNIAS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _insigniasCache = (data && data.conquistas) ? data : { conquistas: {} };
@@ -108,7 +108,7 @@ function lerBoletim() {
 // Busca do Firebase e atualiza cache. Sempre chamar antes de exibir o boletim.
 async function carregarBoletim() {
   try {
-    const resp = await fetch(RTDB_BOLETIM_URL);
+    const resp = await fetch(RTDB_BOLETIM_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _boletimCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -230,6 +230,63 @@ async function removerVideoBoletim(id) {
   } catch (_) {}
 }
 
+// ── Vídeos de Shorts — mesma mecânica de chunks do boletim ────────
+async function salvarVideoShorts(id, blob, onProgress) {
+  const n = Math.ceil(blob.size / _BLOB_CHUNK);
+  const mime = blob.type || 'video/mp4';
+  for (let i = 0; i < n; i++) {
+    const slice = blob.slice(i * _BLOB_CHUNK, (i + 1) * _BLOB_CHUNK);
+    const b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = e => resolve(e.target.result.split(',')[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(slice);
+    });
+    const resp = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/c${i}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(b64),
+    });
+    if (!resp.ok) throw new Error(`RTDB sht-video chunk ${i}: ${resp.status}`);
+    if (onProgress) onProgress(i + 1, n + 1);
+  }
+  await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/mime.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mime),
+  });
+  const meta = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/n.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(n),
+  });
+  if (!meta.ok) throw new Error('RTDB sht-video meta: ' + meta.status);
+  if (onProgress) onProgress(n + 1, n + 1);
+}
+
+async function carregarVideoShorts(id) {
+  try {
+    const nResp = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/n.json`);
+    if (!nResp.ok) throw new Error('n.json não encontrado');
+    const n = await nResp.json();
+    if (typeof n === 'number' && n > 0) {
+      const mimeResp = await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/mime.json`);
+      const mime = mimeResp.ok ? await mimeResp.json() : null;
+      const parts = await Promise.all(
+        Array.from({ length: n }, (_, i) =>
+          fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}/c${i}.json`).then(r => r.json())
+        )
+      );
+      const b64 = parts.join('');
+      const effectiveMime = mime || 'video/mp4';
+      const bytes = atob(b64);
+      const u8 = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) u8[i] = bytes.charCodeAt(i);
+      return URL.createObjectURL(new Blob([u8], { type: effectiveMime }));
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function removerVideoShorts(id) {
+  try { await fetch(`${RTDB_SHT_VIDEOS_BASE}/${id}.json`, { method: 'DELETE' }); } catch (_) {}
+}
+
 // ── Recados dos Professores ───────────────────────────────────────
 const RTDB_RECADOS_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/recados.json";
 const STORAGE_KEY_RECADOS = "torneio-recados:v1";
@@ -243,7 +300,7 @@ function lerRecados() {
 
 async function carregarRecados() {
   try {
-    const resp = await fetch(RTDB_RECADOS_URL);
+    const resp = await fetch(RTDB_RECADOS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _recadosCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -257,10 +314,9 @@ async function carregarRecados() {
 
 async function salvarRecados(dados) {
   _recadosCache = dados;
-  localStorage.setItem(STORAGE_KEY_RECADOS, JSON.stringify(dados));
-  try {
-    await fetch(RTDB_RECADOS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
-  } catch (_) {}
+  try { localStorage.setItem(STORAGE_KEY_RECADOS, JSON.stringify(dados)); } catch (_) {}
+  const resp = await fetch(RTDB_RECADOS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+  if (!resp.ok) throw new Error('RTDB recados: ' + resp.status);
 }
 
 // ── Dicas ─────────────────────────────────────────────────────────
@@ -276,7 +332,7 @@ function lerDicas() {
 
 async function carregarDicas() {
   try {
-    const resp = await fetch(RTDB_DICAS_URL);
+    const resp = await fetch(RTDB_DICAS_URL, { cache: 'no-store' });
     if (resp.ok) {
       const data = await resp.json();
       _dicasCache = (data && Array.isArray(data.itens)) ? data : { itens: [] };
@@ -290,10 +346,9 @@ async function carregarDicas() {
 
 async function salvarDicas(dados) {
   _dicasCache = dados;
-  localStorage.setItem(STORAGE_KEY_DICAS, JSON.stringify(dados));
-  try {
-    await fetch(RTDB_DICAS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
-  } catch (_) {}
+  try { localStorage.setItem(STORAGE_KEY_DICAS, JSON.stringify(dados)); } catch (_) {}
+  const resp = await fetch(RTDB_DICAS_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+  if (!resp.ok) throw new Error('RTDB dicas: ' + resp.status);
 }
 
 // ── Reações com emoji ─────────────────────────────────────────────
@@ -319,7 +374,7 @@ function _salvarReacoesLocais(obj) {
 
 async function carregarTodasReacoes() {
   try {
-    const resp = await fetch(RTDB_REACOES_BASE + '.json');
+    const resp = await fetch(RTDB_REACOES_BASE + '.json', { cache: 'no-store' });
     if (resp.ok) { _reacoesCache = (await resp.json()) || {}; return _reacoesCache; }
   } catch (_) {}
   _reacoesCache = {};
@@ -371,27 +426,19 @@ function _getOuCriarUUID() {
 
 async function registrarVisita() {
   const uuid = _getOuCriarUUID();
+  const INC = JSON.stringify({ '.sv': { increment: 1 } });
+  const H   = { 'Content-Type': 'application/json' };
   try {
+    // Incremento atômico no servidor — nunca sobrescreve com valor desatualizado
+    await fetch(`${RTDB_STATS_BASE}/visitas.json`,      { method: 'PUT', headers: H, body: INC });
+
     const visitaResp = await fetch(`${RTDB_STATS_BASE}/uuids/${uuid}.json`);
     const jafoi = visitaResp.ok && (await visitaResp.json()) === true;
 
-    const totalResp = await fetch(`${RTDB_STATS_BASE}/visitas.json`);
-    const totalAtual = totalResp.ok ? (await totalResp.json() || 0) : 0;
-    await fetch(`${RTDB_STATS_BASE}/visitas.json`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(totalAtual + 1)
-    });
-
     if (!jafoi) {
-      const univResp = await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`);
-      const univAtual = univResp.ok ? (await univResp.json() || 0) : 0;
-      await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(univAtual + 1)
-      });
+      await fetch(`${RTDB_STATS_BASE}/visitantes-unicos.json`, { method: 'PUT', headers: H, body: INC });
       await fetch(`${RTDB_STATS_BASE}/uuids/${uuid}.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(true)
+        method: 'PUT', headers: H, body: JSON.stringify(true)
       });
     }
     await _pingOnline(uuid);
@@ -420,10 +467,19 @@ async function _pingOnline(uuid) {
 
 async function carregarStats() {
   try {
-    const resp = await fetch(`${RTDB_STATS_BASE}.json`);
+    const resp = await fetch(`${RTDB_STATS_BASE}.json`, { cache: 'no-store' });
     if (resp.ok) return (await resp.json()) || {};
   } catch (_) {}
   return {};
+}
+
+// Converte URL Cloudinary para MP4/H.264, garantindo compatibilidade com Chrome/Firefox no desktop.
+// Vídeos gravados no iPhone chegam como .mov, que só funciona em Safari/iOS.
+function cloudinaryVideoUrl(url) {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  return url
+    .replace('/video/upload/', '/video/upload/f_mp4,vc_h264/')
+    .replace(/\.(mov|webm|avi|mkv|3gp|m4v)(\?|$)/i, '.mp4$2');
 }
 
 function detectarTipoMidia(url) {
@@ -521,4 +577,88 @@ function renderNoticiaCard(item) {
         ${corpoHtml}
       </div>
     </div>`;
+}
+
+// ── Galeria de fotos ──────────────────────────────────────────────
+const RTDB_GALERIA_URL     = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/galeria.json";
+const STORAGE_KEY_GALERIA  = "torneio-galeria:v1";
+let _galeriaCache = null;
+
+function lerGaleria() {
+  if (_galeriaCache) return _galeriaCache;
+  try {
+    const s = localStorage.getItem(STORAGE_KEY_GALERIA);
+    return s ? JSON.parse(s) : { itens: [] };
+  } catch { return { itens: [] }; }
+}
+
+async function carregarGaleria() {
+  try {
+    const resp = await fetch(RTDB_GALERIA_URL, { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      const itens = data?.itens;
+      _galeriaCache = { ...data, itens: Array.isArray(itens) ? itens : (itens && typeof itens === 'object' ? Object.values(itens) : []) };
+      try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(_galeriaCache)); } catch (_) {}
+      return _galeriaCache;
+    }
+  } catch (_) {}
+  _galeriaCache = lerGaleria();
+  return _galeriaCache;
+}
+
+async function salvarGaleria(dados) {
+  _galeriaCache = dados;
+  try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(dados)); } catch (_) {}
+  await fetch(RTDB_GALERIA_URL, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  });
+}
+
+// ── Ponte ao vivo — estado / votação / comentário ─────────────────
+const RTDB_PONTE_ESTADO_URL    = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_estado.json";
+const RTDB_PONTE_VOTACAO_URL   = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_votacao.json";
+const RTDB_PONTE_COMENTARIO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_comentario.json";
+
+// ── Shorts ────────────────────────────────────────────────────────
+const RTDB_SHORTS_URL        = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/shorts.json";
+const RTDB_SHT_VIDEOS_BASE   = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/sht-videos";
+const STORAGE_KEY_SHORTS     = "torneio-shorts:v1";
+let _shortsCache = null;
+
+function lerShorts() {
+  if (_shortsCache) return _shortsCache;
+  try {
+    const s = localStorage.getItem(STORAGE_KEY_SHORTS);
+    return s ? JSON.parse(s) : { itens: [] };
+  } catch { return { itens: [] }; }
+}
+
+async function carregarShorts() {
+  try {
+    const resp = await fetch(RTDB_SHORTS_URL, { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      const itens = data?.itens;
+      _shortsCache = { ...data, itens: Array.isArray(itens) ? itens : (itens && typeof itens === 'object' ? Object.values(itens) : []) };
+      try { localStorage.setItem(STORAGE_KEY_SHORTS, JSON.stringify(_shortsCache)); } catch (_) {}
+      return _shortsCache;
+    }
+  } catch (_) {}
+  _shortsCache = lerShorts();
+  return _shortsCache;
+}
+
+async function salvarShorts(dados) {
+  _shortsCache = dados;
+  try { localStorage.setItem(STORAGE_KEY_SHORTS, JSON.stringify(dados)); } catch (_) {}
+  await fetch(RTDB_SHORTS_URL, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dados)
+  });
+}
+
+async function deletarVideoStorage(_videoUrl) {
+  // Cloudinary: exclusão não suportada por upload não assinado
 }

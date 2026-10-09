@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { safeGet, safeSet, safeDelete, isLocalMode, kahootGet, kahootSet, kahootDelete } from "./firebase.js";
+import { safeGet, safeSet, safeDelete, isLocalMode, kahootGet, kahootSet, kahootDelete, serverNow, serverTimestamp } from "./firebase.js";
 import { QRCodeSVG } from "qrcode.react";
 
 const TEAMS = [
@@ -14,6 +14,25 @@ const TEAMS_1ANO = [
   { id: "1C", label: "1º C", color: "#2E9E4F" },
   { id: "1D", label: "1º D", color: "#F0B800", dark: true },
 ];
+const TEAMS_3ANO = [
+  { id: "vermelho", label: "Vermelho", color: "#D92B2B" },
+  { id: "azul",     label: "Azul",     color: "#004B8D" },
+  { id: "verde",    label: "Verde",    color: "#2E9E4F" },
+  { id: "amarelo",  label: "Amarelo",  color: "#F0B800", dark: true },
+];
+const SCORES_ANO = [10, 7, 5, 3];
+const RTDB_3ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_3ano.json";
+const RTDB_4ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_4ano.json";
+const RTDB_5ANO = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/prova_5ano.json";
+
+const COLOR_TEAMS_GERAL = [
+  { id: "vermelho", label: "Vermelho", color: "#D92B2B", ponteId: "1A", spinnerId: "2A" },
+  { id: "azul",     label: "Azul",     color: "#004B8D", ponteId: "1B", spinnerId: "2B" },
+  { id: "verde",    label: "Verde",    color: "#2E9E4F", ponteId: "1C", spinnerId: "2C" },
+  { id: "amarelo",  label: "Amarelo",  color: "#F0B800", ponteId: "1D", spinnerId: "2D", dark: true },
+];
+
+
 const TEAMS_KAHOOT = [
   { id: "A", label: "Equipe A", color: "#E5484D" },
   { id: "B", label: "Equipe B", color: "#2F8FE0" },
@@ -81,6 +100,123 @@ function countGiroFirsts(roundResults, teamId) {
   return count;
 }
 
+// ── Resultado Final — overlay compartilhado ───────────────────────
+function ResultadoFinalOverlay({ ranking, onClose, titulo }) {
+  // ranking: [{ team, pts }, ...]  sorted 1º→4º
+  const [phase, setPhase] = useState(0); // 0=intro, 1=podio, 2=campeao
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 300);
+    const t2 = setTimeout(() => setPhase(2), 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  if (!ranking.length) return null;
+  const [first, ...rest] = ranking;
+  const tc = first.team.dark ? "#3A3000" : "#fff";
+  const medals = ["🥇", "🥈", "🥉", "🏅"];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 gap-5"
+      style={{ background: "rgba(0,10,30,0.96)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <style>{`
+        @keyframes rfChampIn { 0%{transform:scale(0.5) translateY(60px);opacity:0} 60%{transform:scale(1.08) translateY(-6px)} 100%{transform:scale(1) translateY(0);opacity:1} }
+        @keyframes rfPodioIn { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes rfGlow { 0%,100%{box-shadow:0 0 40px var(--gc),0 0 80px var(--gc)} 50%{box-shadow:0 0 70px var(--gc),0 0 140px var(--gc)} }
+        @keyframes rfPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+        @keyframes rfStar { 0%{opacity:0;transform:scale(0) rotate(-30deg)} 60%{opacity:1;transform:scale(1.2) rotate(5deg)} 100%{opacity:1;transform:scale(1) rotate(0)} }
+        @keyframes rfConfetti { 0%{transform:translateY(-40px) rotate(0deg);opacity:1} 100%{transform:translateY(120vh) rotate(720deg);opacity:0} }
+      `}</style>
+
+      {/* Confetti decorativo */}
+      {phase >= 2 && Array.from({ length: 16 }).map((_, i) => (
+        <div key={i} style={{
+          position: "fixed",
+          left: `${(i * 6.5) % 100}%`,
+          top: "-20px",
+          width: 10,
+          height: 10,
+          borderRadius: i % 3 === 0 ? "50%" : 2,
+          background: ["#FFD700","#F5821F","#D92B2B","#004B8D","#2E9E4F","#fff"][i % 6],
+          animation: `rfConfetti ${1.8 + (i % 4) * 0.4}s ${(i % 5) * 0.15}s linear forwards`,
+          pointerEvents: "none",
+          zIndex: 60,
+        }} />
+      ))}
+
+      {/* Header */}
+      <div className="text-center" style={{ animation: phase >= 1 ? "rfPodioIn .5s ease-out both" : "none" }}>
+        <div className="text-xs font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
+          {titulo ?? "RESULTADO FINAL"}
+        </div>
+        <div className="font-black text-white" style={{ fontSize: "clamp(20px,4vw,32px)", letterSpacing: ".06em" }}>
+          🏆 RESULTADO FINAL
+        </div>
+      </div>
+
+      {/* Campeão */}
+      {phase >= 2 && (
+        <div
+          className="w-full max-w-md rounded-3xl p-6 flex flex-col items-center gap-2 relative overflow-hidden"
+          style={{
+            background: first.team.color,
+            "--gc": first.team.color + "88",
+            animation: "rfChampIn .7s cubic-bezier(.22,1,.36,1) both, rfGlow 2s ease-in-out 0.7s infinite",
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div style={{ fontSize: "clamp(36px,7vw,60px)", animation: "rfStar .5s ease-out .5s both", opacity: 0 }}>🥇</div>
+          <div className="font-black tracking-widest" style={{ color: tc + "99", fontSize: "clamp(11px,1.5vw,14px)", letterSpacing: ".15em" }}>
+            1º LUGAR
+          </div>
+          <div className="font-black text-center" style={{
+            color: tc, fontSize: "clamp(32px,6vw,56px)", lineHeight: 1.1,
+            animation: "rfPulse 1.5s ease-in-out infinite",
+            textShadow: `0 4px 24px rgba(0,0,0,0.4)`,
+          }}>
+            {first.team.label}
+          </div>
+          <div className="font-bold tabular-nums" style={{ color: tc + "cc", fontSize: "clamp(16px,2.5vw,22px)" }}>
+            {first.pts} pontos
+          </div>
+        </div>
+      )}
+
+      {/* Podio 2º–4º */}
+      {phase >= 1 && (
+        <div className="flex gap-3 w-full max-w-md" style={{ animation: "rfPodioIn .5s ease-out .1s both" }}
+          onClick={e => e.stopPropagation()}>
+          {rest.map((r, i) => {
+            const rtc = r.team.dark ? "#3A3000" : "#fff";
+            return (
+              <div key={r.team.id} className="flex-1 rounded-2xl p-3 flex flex-col items-center gap-1"
+                style={{ background: r.team.color, animation: `rfPodioIn .4s ease-out ${0.15 + i * 0.1}s both`, opacity: 0 }}>
+                <div style={{ fontSize: "clamp(18px,3vw,28px)" }}>{medals[i + 1]}</div>
+                <div className="font-black text-center" style={{ color: rtc, fontSize: "clamp(13px,2vw,18px)" }}>
+                  {r.team.label}
+                </div>
+                <div className="font-bold tabular-nums" style={{ color: rtc + "aa", fontSize: "clamp(10px,1.4vw,13px)" }}>
+                  {r.pts} pts
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={onClose}
+        className="mt-2 px-8 py-3 rounded-full font-bold text-white text-sm"
+        style={{ background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.3)" }}>
+        Fechar
+      </button>
+    </div>
+  );
+}
+
 function Timer({ label, icon, running, elapsed, onStart, onStop, disabled, accent, warn }) {
   return (
     <div
@@ -142,14 +278,27 @@ function MonitorView() {
   const [saveError, setSaveError] = useState(false);
   const [existing, setExisting] = useState(null);
   const [allRounds, setAllRounds] = useState({});
+  const [spinnerPublicLiberado, setSpinnerPublicLiberado] = useState(false);
+  const [showFinalSpinner, setShowFinalSpinner] = useState(false);
+  const [finalRankingSpinner, setFinalRankingSpinner] = useState([]);
+  const [loadingFinalSpinner, setLoadingFinalSpinner] = useState(false);
+  const [votacaoSpinner, setVotacaoSpinner] = useState({});
+  const [spinnerEstado, setSpinnerEstado] = useState("aguardando");
+  const [comentarioSpinnerInput, setComentarioSpinnerInput] = useState("");
 
   const montagemTickRef = useRef(null);
   const giroTickRef = useRef(null);
+  const votacaoSpinnerIntervalRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const data = await safeGet(keyFor(round, teamId));
+      const [data, lib, est, comt] = await Promise.all([
+        safeGet(keyFor(round, teamId)),
+        safeGet("spinner_liberado"),
+        safeGet("spinner_estado"),
+        safeGet("spinner_comentario"),
+      ]);
       if (!cancelled) {
         setExisting(data);
         setMontagemFinal(data?.montagem ?? null);
@@ -158,6 +307,9 @@ function MonitorView() {
         setGiroElapsed(data?.giro ?? 0);
         setSaved(false);
         setSaveError(false);
+        setSpinnerPublicLiberado(lib === true);
+        setSpinnerEstado(est ?? "aguardando");
+        setComentarioSpinnerInput(comt ?? "");
       }
 
       const hist = {};
@@ -175,11 +327,25 @@ function MonitorView() {
   useEffect(() => {
     const isLive = montagemRunning || giroRunning;
     if (isLive) {
-      safeSet(liveKeyFor(round, teamId), { montagemRunning, giroRunning });
+      safeSet(liveKeyFor(round, teamId), {
+        montagemRunning, giroRunning,
+        startTs_montagem: montagemRunning ? montagemStart : null,
+        startTs_giro: giroRunning ? giroStart : null,
+      });
     } else {
       safeDelete(liveKeyFor(round, teamId));
     }
-  }, [montagemRunning, giroRunning, round, teamId]);
+  }, [montagemRunning, giroRunning, montagemStart, giroStart, round, teamId]);
+
+  useEffect(() => {
+    const fetchVotacao = async () => {
+      const v = await safeGet("spinner_votacao");
+      setVotacaoSpinner(v ?? {});
+    };
+    fetchVotacao();
+    votacaoSpinnerIntervalRef.current = setInterval(fetchVotacao, 6000);
+    return () => clearInterval(votacaoSpinnerIntervalRef.current);
+  }, []);
 
   useEffect(() => {
     if (montagemRunning) {
@@ -248,6 +414,11 @@ function MonitorView() {
       const newData = { montagem: montagemFinal, giro: giroFinal };
       setExisting(newData);
       setAllRounds((prev) => ({ ...prev, [round]: newData }));
+      // Auto-libera o ranking público na primeira gravação
+      if (!spinnerPublicLiberado) {
+        await safeSet("spinner_liberado", true);
+        setSpinnerPublicLiberado(true);
+      }
     } else {
       setSaveError(true);
     }
@@ -268,6 +439,51 @@ function MonitorView() {
     setSaved(false);
     setSaveError(false);
     setAllRounds((prev) => ({ ...prev, [round]: null }));
+  };
+
+  const handleResultadoFinalSpinner = async () => {
+    setLoadingFinalSpinner(true);
+    const totals = {};
+    const firstCounts = {};
+    TEAMS.forEach(t => { totals[t.id] = 0; firstCounts[t.id] = 0; });
+    for (const r of ROUNDS) {
+      const items = [];
+      for (const t of TEAMS) {
+        const v = await safeGet(keyFor(r, t.id));
+        items.push({ team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null });
+      }
+      const comMont = items.filter(it => it.montagem !== null);
+      const comGiro = items.filter(it => it.giro !== null);
+      if (comMont.length || comGiro.length) {
+        const montPts = rankPoints(comMont.map(it => ({ team: it.team, value: it.montagem })), false);
+        const giroPts = rankPoints(comGiro.map(it => ({ team: it.team, value: it.giro })), true);
+        TEAMS.forEach(t => { totals[t.id] += (montPts[t.id] || 0) + (giroPts[t.id] || 0); });
+        TEAMS.forEach(t => { firstCounts[t.id] += countGiroFirsts([{ team: t.id, giro: items.find(i => i.team === t.id)?.giro ?? null }], t.id); });
+      }
+    }
+    const sorted = [...TEAMS].sort((a, b) => {
+      if (totals[b.id] !== totals[a.id]) return totals[b.id] - totals[a.id];
+      return firstCounts[b.id] - firstCounts[a.id];
+    });
+    const rankingData = sorted.map(t => ({ id: t.id, pts: totals[t.id] }));
+    setFinalRankingSpinner(sorted.map(t => ({ team: t, pts: totals[t.id] })));
+    setLoadingFinalSpinner(false);
+    setShowFinalSpinner(true);
+    await safeSet("spinner_resultado_final", { ts: Date.now(), ranking: rankingData });
+  };
+
+  const handleSetSpinnerEstado = async (estado) => {
+    await safeSet("spinner_estado", estado);
+    setSpinnerEstado(estado);
+  };
+
+  const handlePublicarComentarioSpinner = async () => {
+    await safeSet("spinner_comentario", comentarioSpinnerInput || null);
+  };
+
+  const handleLimparComentarioSpinner = async () => {
+    setComentarioSpinnerInput("");
+    await safeSet("spinner_comentario", null);
   };
 
   const handleResetTournament = async () => {
@@ -296,6 +512,27 @@ function MonitorView() {
   const hasHistory = Object.values(allRounds).some((v) => v !== null && v !== undefined);
 
   return (
+    <>
+    {/* Votação — painel ao vivo no monitor */}
+    {Object.keys(votacaoSpinner).length > 0 && spinnerEstado !== "revelado" && spinnerPublicLiberado && (
+      <div className="fixed top-4 right-4 z-30 bg-white rounded-2xl shadow-lg p-3 min-w-[160px]"
+        style={{ border: `2px solid ${AZUL}` }}>
+        <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar o Lançador de Spinner?</div>
+        {TEAMS.map(t => {
+          const v = votacaoSpinner[t.id] || 0;
+          const total = Object.values(votacaoSpinner).reduce((a,b) => a + b, 0) || 1;
+          return (
+            <div key={t.id} className="flex items-center gap-2 mb-1">
+              <div className="text-xs font-semibold w-12 shrink-0" style={{ color: t.color }}>{t.label}</div>
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "#F3F4F6" }}>
+                <div className="h-full rounded-full" style={{ width: `${(v/total)*100}%`, background: t.color, transition: "width 0.5s ease" }} />
+              </div>
+              <div className="text-xs font-bold w-6 text-right" style={{ color: t.color }}>{v}</div>
+            </div>
+          );
+        })}
+      </div>
+    )}
     <div className="flex flex-col gap-5 p-4 max-w-xl mx-auto">
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="text-xs font-bold uppercase tracking-wide mb-2 text-gray-500">
@@ -360,6 +597,38 @@ function MonitorView() {
           warn={false}
         />
       </div>
+
+      {(montagemFinal !== null || giroFinal !== null) && !montagemRunning && !giroRunning && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+          <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">✏️ Corrigir tempos</div>
+          <div className="grid grid-cols-2 gap-3">
+            {montagemFinal !== null && (
+              <div>
+                <div className="text-xs text-gray-500 mb-1">⏱️ Montagem (s)</div>
+                <input
+                  type="number" step="0.1" min="0"
+                  value={montagemFinal.toFixed(1)}
+                  onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { setMontagemFinal(v); setMontagemElapsed(v); } }}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none text-center font-bold tabular-nums"
+                  style={{ color: AZUL }}
+                />
+              </div>
+            )}
+            {giroFinal !== null && (
+              <div>
+                <div className="text-xs text-gray-500 mb-1">🌀 Giro (s)</div>
+                <input
+                  type="number" step="0.1" min="0"
+                  value={giroFinal.toFixed(1)}
+                  onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { setGiroFinal(v); setGiroElapsed(v); } }}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none text-center font-bold tabular-nums"
+                  style={{ color: LARANJA }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <button
         disabled={!canSave || saving}
@@ -434,7 +703,62 @@ function MonitorView() {
         automaticamente após salvar.
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      {/* Controles do Telão */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🎬 Controles do Telão</div>
+        <div className="text-xs font-semibold text-gray-600 mb-2">Estado da tela</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { id: "aguardando", label: "⏳ Aguardando" },
+            { id: "suspense",   label: "🎭 Suspense"   },
+            { id: "revelado",   label: "🎉 Revelar"     },
+          ].map(e => (
+            <button key={e.id} onClick={() => handleSetSpinnerEstado(e.id)}
+              className="py-2 rounded-xl text-xs font-bold"
+              style={{ backgroundColor: spinnerEstado === e.id ? AZUL : "#F3F4F6", color: spinnerEstado === e.id ? "#fff" : "#374151" }}>
+              {e.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs font-semibold text-gray-600 mb-1">Comentário no telão</div>
+        <div className="flex gap-2 mb-2">
+          <input value={comentarioSpinnerInput} onChange={ev => setComentarioSpinnerInput(ev.target.value)}
+            onKeyDown={ev => { if (ev.key === "Enter") handlePublicarComentarioSpinner(); }}
+            placeholder="Mensagem para aparecer no telão..."
+            className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none" />
+          <button onClick={handlePublicarComentarioSpinner}
+            className="px-3 py-2 rounded-xl text-white text-xs font-bold shrink-0"
+            style={{ backgroundColor: AZUL }}>Publicar</button>
+          <button onClick={handleLimparComentarioSpinner}
+            className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500 shrink-0">✕</button>
+        </div>
+      </div>
+
+      {/* Acesso público */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🌐 Acesso público</div>
+        <div className={`w-full py-2 rounded-xl text-sm font-bold text-center mb-2 ${spinnerPublicLiberado ? "text-green-700 bg-green-50" : "text-gray-400 bg-gray-50"}`}>
+          {spinnerPublicLiberado ? "🔓 Ranking visível — liberado automaticamente ao salvar" : "🔒 Será liberado automaticamente ao salvar o primeiro resultado"}
+        </div>
+        <button
+          onClick={async () => {
+            const novo = !spinnerPublicLiberado;
+            await safeSet("spinner_liberado", novo);
+            setSpinnerPublicLiberado(novo);
+          }}
+          className="w-full py-1 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500">
+          {spinnerPublicLiberado ? "Clique para bloquear manualmente" : "Clique para liberar agora manualmente"}
+        </button>
+      </div>
+
+      <div className="border-t border-gray-200 pt-3 pb-2">
+        <button
+          onClick={handleResultadoFinalSpinner}
+          disabled={loadingFinalSpinner}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white mb-3"
+          style={{ backgroundColor: LARANJA, opacity: loadingFinalSpinner ? 0.7 : 1 }}>
+          {loadingFinalSpinner ? "⏳ Calculando…" : "🏆 Resultado Final"}
+        </button>
         <button
           onClick={handleResetTournament}
           className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50"
@@ -442,7 +766,16 @@ function MonitorView() {
           ⚠️ Zerar torneio inteiro
         </button>
       </div>
+
+      {showFinalSpinner && (
+        <ResultadoFinalOverlay
+          ranking={finalRankingSpinner}
+          onClose={() => setShowFinalSpinner(false)}
+          titulo="Lançador de Spinner — 2º Ano"
+        />
+      )}
     </div>
+    </>
   );
 }
 
@@ -450,6 +783,10 @@ function TelaoView() {
   const [data, setData] = useState({});
   const [liveKeys, setLiveKeys] = useState({});
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [spinnerEstado, setSpinnerEstado] = useState("aguardando");
+  const [spinnerComentario, setSpinnerComentario] = useState("");
+  const [liveNow, setLiveNow] = useState(() => Date.now());
+  const liveTickRef = useRef(null);
 
   const fetchAll = useCallback(async () => {
     const entries = {};
@@ -467,6 +804,12 @@ function TelaoView() {
     setData(entries);
     setLiveKeys(live);
     setLastUpdate(new Date());
+    const [est, comt] = await Promise.all([
+      safeGet("spinner_estado"),
+      safeGet("spinner_comentario"),
+    ]);
+    setSpinnerEstado(est ?? "aguardando");
+    setSpinnerComentario(comt ?? "");
   }, []);
 
   useEffect(() => {
@@ -474,6 +817,16 @@ function TelaoView() {
     const id = setInterval(fetchAll, 4000);
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  useEffect(() => {
+    const hasLive = Object.values(liveKeys).some(v => v?.montagemRunning || v?.giroRunning);
+    if (hasLive) {
+      liveTickRef.current = setInterval(() => setLiveNow(Date.now()), 100);
+    } else {
+      clearInterval(liveTickRef.current);
+    }
+    return () => clearInterval(liveTickRef.current);
+  }, [liveKeys]);
 
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS.map((t) => {
@@ -511,7 +864,34 @@ function TelaoView() {
   const maxTotal = Math.max(1, ...TEAMS.map((t) => totals[t.id]));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
+    <>
+    <style>{`
+      @keyframes suspensePulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.7} }
+      @keyframes slideUp { 0%{transform:translateY(100%)}100%{transform:translateY(0)} }
+    `}</style>
+
+    {/* Suspense overlay */}
+    {spinnerEstado === "suspense" && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+        style={{ background: "linear-gradient(135deg,#001830 0%,#003580 100%)" }}>
+        <div style={{ fontSize: 88, animation: "suspensePulse 1.8s ease-in-out infinite" }}>⏳</div>
+        <div className="font-extrabold text-white mt-6 tracking-widest text-center"
+          style={{ fontSize: "clamp(28px,6vw,64px)" }}>CALCULANDO...</div>
+        <div className="mt-3 font-semibold tracking-wide" style={{ color: "#93C5FD", fontSize: "clamp(14px,3vw,24px)" }}>
+          resultado em breve
+        </div>
+      </div>
+    )}
+
+    {/* Comment bar */}
+    {spinnerComentario && (
+      <div className="fixed bottom-0 left-0 right-0 z-40 py-4 px-6 text-center font-bold text-white"
+        style={{ background: "rgba(0,40,100,0.92)", animation: "slideUp 0.35s ease-out", fontSize: "clamp(14px,2.5vw,22px)", backdropFilter: "blur(4px)" }}>
+        💬 {spinnerComentario}
+      </div>
+    )}
+
+    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8" style={{ paddingBottom: spinnerComentario ? "80px" : undefined }}>
       <div>
         <div
           className="text-center text-sm font-bold tracking-widest mb-1"
@@ -529,7 +909,18 @@ function TelaoView() {
 
       <div className="flex flex-col gap-3">
         {ranking.map((t, idx) => {
-          const isLiveAny = ROUNDS.some((r) => liveKeys[`${r}_${t.id}`]);
+          const activeLiveKey = ROUNDS.reduce((found, r) => found || liveKeys[`${r}_${t.id}`], null);
+          const isLiveAny = !!activeLiveKey;
+          let liveBadge = null;
+          if (isLiveAny) {
+            if (activeLiveKey.montagemRunning && activeLiveKey.startTs_montagem) {
+              liveBadge = `🔴 montagem ${((liveNow - activeLiveKey.startTs_montagem) / 1000).toFixed(1)}s`;
+            } else if (activeLiveKey.giroRunning && activeLiveKey.startTs_giro) {
+              liveBadge = `🔴 giro ${((liveNow - activeLiveKey.startTs_giro) / 1000).toFixed(1)}s`;
+            } else {
+              liveBadge = "🔴 ao vivo";
+            }
+          }
           return (
             <div
               key={t.id}
@@ -550,12 +941,12 @@ function TelaoView() {
                 style={{ color: t.dark ? "#3A3000" : "#fff", flex: "1" }}
               >
                 {t.label}
-                {isLiveAny && (
+                {liveBadge && (
                   <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full"
+                    className="text-xs font-bold px-2 py-0.5 rounded-full tabular-nums"
                     style={{ backgroundColor: "#D92B2B", color: "#fff" }}
                   >
-                    🔴 ao vivo
+                    {liveBadge}
                   </span>
                 )}
               </div>
@@ -662,7 +1053,10 @@ function TelaoView() {
                   const pts = rr.complete
                     ? (rr.montPts[it.team] || 0) + (rr.giroPts[it.team] || 0)
                     : null;
-                  const isLive = !!liveKeys[`${rr.round}_${it.team}`];
+                  const lv = liveKeys[`${rr.round}_${it.team}`];
+                  const isLive = !!lv;
+                  const montagemLive = isLive && lv.montagemRunning && lv.startTs_montagem;
+                  const giroLive = isLive && lv.giroRunning && lv.startTs_giro;
                   return (
                     <tr key={it.team} className="border-t border-gray-100">
                       <td className="px-3 py-2 font-semibold" style={{ color: t.color }}>
@@ -673,8 +1067,16 @@ function TelaoView() {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-center">{formatTime(it.montagem)}</td>
-                      <td className="px-3 py-2 text-center">{formatTime(it.giro)}</td>
+                      <td className="px-3 py-2 text-center tabular-nums">
+                        {montagemLive
+                          ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>🔴 {((liveNow - lv.startTs_montagem) / 1000).toFixed(1)}s</span>
+                          : formatTime(it.montagem)}
+                      </td>
+                      <td className="px-3 py-2 text-center tabular-nums">
+                        {giroLive
+                          ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>🔴 {((liveNow - lv.startTs_giro) / 1000).toFixed(1)}s</span>
+                          : formatTime(it.giro)}
+                      </td>
                       <td className="px-3 py-2 text-center font-bold">
                         {pts !== null ? pts : "--"}
                       </td>
@@ -718,6 +1120,7 @@ function TelaoView() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -738,8 +1141,31 @@ function PonteMonitorView() {
   const [saveError, setSaveError] = useState(false);
   const [existing, setExisting] = useState(null);
   const [allRounds, setAllRounds] = useState({});
+  const [monitorEstado, setMonitorEstado] = useState("aguardando");
+  const [comentarioInput, setComentarioInput] = useState("");
+  const [pontePublicLiberado, setPontePublicLiberado] = useState(false);
+  const [showFinalPonte, setShowFinalPonte] = useState(false);
+  const [finalRankingPonte, setFinalRankingPonte] = useState([]);
+  const [loadingFinalPonte, setLoadingFinalPonte] = useState(false);
 
   const tickRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [est, comt, lib] = await Promise.all([
+        safeGet("ponte_estado"),
+        safeGet("ponte_comentario"),
+        safeGet("ponte_liberado"),
+      ]);
+      if (!cancelled) {
+        setMonitorEstado(est ?? "aguardando");
+        setComentarioInput(comt ?? "");
+        setPontePublicLiberado(lib === true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -766,7 +1192,7 @@ function PonteMonitorView() {
 
   useEffect(() => {
     if (running) {
-      safeSet(ponteLiveKeyFor(round, teamId), { running: true });
+      safeSet(ponteLiveKeyFor(round, teamId), { running: true, startTs });
       tickRef.current = setInterval(() => {
         setElapsed((Date.now() - startTs) / 1000);
       }, 100);
@@ -784,6 +1210,11 @@ function PonteMonitorView() {
     setTempoFinal(null);
     setSaved(false);
     setSaveError(false);
+    // Auto-estado: sinaliza "aguardando" no telão ao iniciar o cronômetro
+    if (monitorEstado !== "aguardando") {
+      safeSet("ponte_estado", "aguardando");
+      setMonitorEstado("aguardando");
+    }
   };
 
   const stop = () => {
@@ -802,6 +1233,11 @@ function PonteMonitorView() {
       setSaved(true);
       setExisting({ tempo: tempoFinal, carga: cargaOk });
       setAllRounds((prev) => ({ ...prev, [round]: { tempo: tempoFinal, carga: cargaOk } }));
+      // Auto-libera o ranking público na primeira gravação
+      if (!pontePublicLiberado) {
+        await safeSet("ponte_liberado", true);
+        setPontePublicLiberado(true);
+      }
     } else {
       setSaveError(true);
     }
@@ -820,6 +1256,34 @@ function PonteMonitorView() {
     setAllRounds((prev) => ({ ...prev, [round]: null }));
   };
 
+  const handleResultadoFinalPonte = async () => {
+    setLoadingFinalPonte(true);
+    const totals = {};
+    TEAMS_1ANO.forEach(t => { totals[t.id] = 0; });
+    for (const r of ROUNDS) {
+      const items = [];
+      for (const t of TEAMS_1ANO) {
+        const v = await safeGet(ponteKeyFor(r, t.id));
+        items.push({ team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null });
+      }
+      const comTempo = items.filter(it => it.tempo !== null);
+      if (comTempo.length) {
+        const tempoPts = rankPoints(comTempo.map(it => ({ team: it.team, value: it.tempo })), false);
+        TEAMS_1ANO.forEach(t => {
+          totals[t.id] += (tempoPts[t.id] || 0);
+          const item = items.find(i => i.team === t.id);
+          if (item?.carga === true) totals[t.id] += 4;
+        });
+      }
+    }
+    const sorted = [...TEAMS_1ANO].sort((a, b) => totals[b.id] - totals[a.id]);
+    const rankingData = sorted.map(t => ({ id: t.id, pts: totals[t.id] }));
+    setFinalRankingPonte(sorted.map(t => ({ team: t, pts: totals[t.id] })));
+    setLoadingFinalPonte(false);
+    setShowFinalPonte(true);
+    await safeSet("ponte_resultado_final", { ts: Date.now(), ranking: rankingData });
+  };
+
   const handleResetAll = async () => {
     if (!window.confirm("⚠️ ZERAR TORNEIO INTEIRO — PONTE?\n\nTodos os resultados serão apagados.\n\nOK para confirmar.")) return;
     for (const r of ROUNDS) {
@@ -835,6 +1299,25 @@ function PonteMonitorView() {
     setSaved(false);
     setSaveError(false);
     setAllRounds({});
+  };
+
+  const handleSetEstado = async (estado) => {
+    await safeSet("ponte_estado", estado);
+    setMonitorEstado(estado);
+  };
+
+  const handlePublicarComentario = async () => {
+    await safeSet("ponte_comentario", comentarioInput || null);
+  };
+
+  const handleLimparComentario = async () => {
+    setComentarioInput("");
+    await safeSet("ponte_comentario", null);
+  };
+
+  const handleMarcarRecorde = async () => {
+    if (!tempoFinal || !team) return;
+    await safeSet("ponte_recorde", { ts: Date.now(), texto: `${team.label} — ${formatTime(tempoFinal)}` });
   };
 
   const team = TEAMS_1ANO.find((t) => t.id === teamId);
@@ -883,6 +1366,22 @@ function PonteMonitorView() {
           </button>
         )}
       </div>
+
+      {tempoFinal !== null && !running && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+          <div className="text-xs font-bold uppercase tracking-wide mb-2 text-gray-500">✏️ Corrigir tempo</div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-gray-500 shrink-0">⏱️ Tempo (s)</div>
+            <input
+              type="number" step="0.1" min="0"
+              value={tempoFinal.toFixed(1)}
+              onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { setTempoFinal(v); setElapsed(v); } }}
+              className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none text-center font-bold tabular-nums"
+              style={{ color: AZUL }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Carga */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
@@ -974,12 +1473,82 @@ function PonteMonitorView() {
         Mesa: {team.label} · Rodada {round} — tempo enviado ao telão após salvar.
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      {/* Controles do Telão */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🎬 Controles do Telão</div>
+        <div className="text-xs font-semibold text-gray-600 mb-2">Estado da tela</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { id: "aguardando", label: "⏳ Aguardando" },
+            { id: "suspense",   label: "🎭 Suspense"   },
+            { id: "revelado",   label: "🎉 Revelar"     },
+          ].map(e => (
+            <button key={e.id} onClick={() => handleSetEstado(e.id)}
+              className="py-2 rounded-xl text-xs font-bold"
+              style={{ backgroundColor: monitorEstado === e.id ? AZUL : "#F3F4F6", color: monitorEstado === e.id ? "#fff" : "#374151" }}>
+              {e.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs font-semibold text-gray-600 mb-1">Comentário no telão</div>
+        <div className="flex gap-2 mb-2">
+          <input value={comentarioInput} onChange={ev => setComentarioInput(ev.target.value)}
+            onKeyDown={ev => { if (ev.key === "Enter") handlePublicarComentario(); }}
+            placeholder="Mensagem para aparecer no telão..."
+            className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none" />
+          <button onClick={handlePublicarComentario}
+            className="px-3 py-2 rounded-xl text-white text-xs font-bold shrink-0"
+            style={{ backgroundColor: AZUL }}>Publicar</button>
+          <button onClick={handleLimparComentario}
+            className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500 shrink-0">✕</button>
+        </div>
+        {tempoFinal !== null && !running && (
+          <button onClick={handleMarcarRecorde}
+            className="w-full py-2 rounded-xl text-sm font-bold text-white"
+            style={{ backgroundColor: LARANJA }}>
+            🏆 "Novo Recorde!" — {team.label} {formatTime(tempoFinal)}
+          </button>
+        )}
+      </div>
+
+      {/* Acesso público */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="text-xs font-bold uppercase tracking-wide mb-3 text-gray-500">🌐 Acesso público</div>
+        <div className={`w-full py-2 rounded-xl text-sm font-bold text-center mb-2 ${pontePublicLiberado ? "text-green-700 bg-green-50" : "text-gray-400 bg-gray-50"}`}>
+          {pontePublicLiberado ? "🔓 Ranking visível — liberado automaticamente ao salvar" : "🔒 Será liberado automaticamente ao salvar o primeiro resultado"}
+        </div>
+        <button
+          onClick={async () => {
+            const novo = !pontePublicLiberado;
+            await safeSet("ponte_liberado", novo);
+            setPontePublicLiberado(novo);
+          }}
+          className="w-full py-1 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500">
+          {pontePublicLiberado ? "Clique para bloquear manualmente" : "Clique para liberar agora manualmente"}
+        </button>
+      </div>
+
+      <div className="border-t border-gray-200 pt-3 pb-2">
+        <button
+          onClick={handleResultadoFinalPonte}
+          disabled={loadingFinalPonte}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white mb-3"
+          style={{ backgroundColor: LARANJA, opacity: loadingFinalPonte ? 0.7 : 1 }}>
+          {loadingFinalPonte ? "⏳ Calculando…" : "🏆 Resultado Final"}
+        </button>
         <button onClick={handleResetAll}
           className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
           ⚠️ Zerar torneio inteiro (Ponte)
         </button>
       </div>
+
+      {showFinalPonte && (
+        <ResultadoFinalOverlay
+          ranking={finalRankingPonte}
+          onClose={() => setShowFinalPonte(false)}
+          titulo="Ponte de Da Vinci — 1º Ano"
+        />
+      )}
     </div>
   );
 }
@@ -989,6 +1558,14 @@ function PonteTelaoView() {
   const [data, setData] = useState({});
   const [liveKeys, setLiveKeys] = useState({});
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [provaEstado, setProvaEstado] = useState("aguardando");
+  const [comentario, setComentario] = useState("");
+  const [recorde, setRecorde] = useState(null);
+  const [votacao, setVotacao] = useState({});
+  const [celebrando, setCelebrando] = useState(false);
+  const prevRecordeTsRef = useRef(undefined);
+  const [liveNow, setLiveNow] = useState(() => Date.now());
+  const liveTickRef = useRef(null);
 
   const fetchAll = useCallback(async () => {
     const entries = {};
@@ -1004,6 +1581,23 @@ function PonteTelaoView() {
     setData(entries);
     setLiveKeys(live);
     setLastUpdate(new Date());
+    const [est, comt, rec, vot] = await Promise.all([
+      safeGet("ponte_estado"),
+      safeGet("ponte_comentario"),
+      safeGet("ponte_recorde"),
+      safeGet("ponte_votacao"),
+    ]);
+    setProvaEstado(est ?? "aguardando");
+    setComentario(comt ?? "");
+    setVotacao(vot ?? {});
+    if (rec?.ts && rec.ts !== prevRecordeTsRef.current) {
+      if (prevRecordeTsRef.current !== undefined) {
+        setCelebrando(true);
+        setTimeout(() => setCelebrando(false), 5000);
+      }
+      prevRecordeTsRef.current = rec.ts;
+    }
+    setRecorde(rec ?? null);
   }, []);
 
   useEffect(() => {
@@ -1011,6 +1605,16 @@ function PonteTelaoView() {
     const id = setInterval(fetchAll, 4000);
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  useEffect(() => {
+    const hasLive = Object.values(liveKeys).some(v => v?.running);
+    if (hasLive) {
+      liveTickRef.current = setInterval(() => setLiveNow(Date.now()), 100);
+    } else {
+      clearInterval(liveTickRef.current);
+    }
+    return () => clearInterval(liveTickRef.current);
+  }, [liveKeys]);
 
   const roundResults = ROUNDS.map((r) => {
     const items = TEAMS_1ANO.map((t) => {
@@ -1043,7 +1647,79 @@ function PonteTelaoView() {
   const maxTotal = Math.max(1, ...TEAMS_1ANO.map((t) => totals[t.id]));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
+    <>
+    <style>{`
+      @keyframes suspensePulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.7} }
+      @keyframes recordeBoom { 0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)} }
+      @keyframes recordeText { 0%{transform:translateY(24px);opacity:0}100%{transform:translateY(0);opacity:1} }
+      @keyframes slideUp { 0%{transform:translateY(100%)}100%{transform:translateY(0)} }
+      @keyframes rankEnter { from{opacity:0.4;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)} }
+      .rank-row { animation: rankEnter 0.5s ease-out; }
+      @keyframes votaFlash { 0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)} }
+    `}</style>
+
+    {/* Suspense overlay */}
+    {provaEstado === "suspense" && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+        style={{ background: "linear-gradient(135deg,#001830 0%,#003580 100%)" }}>
+        <div style={{ fontSize: 88, animation: "suspensePulse 1.8s ease-in-out infinite" }}>⏳</div>
+        <div className="font-extrabold text-white mt-6 tracking-widest text-center"
+          style={{ fontSize: "clamp(28px,6vw,64px)" }}>CALCULANDO...</div>
+        <div className="mt-3 font-semibold tracking-wide" style={{ color: "#93C5FD", fontSize: "clamp(14px,3vw,24px)" }}>
+          resultado em breve
+        </div>
+      </div>
+    )}
+
+    {/* Novo Recorde! celebration overlay */}
+    {celebrando && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center pointer-events-none"
+        style={{ background: "rgba(0,0,0,0.65)" }}>
+        <div style={{ animation: "recordeBoom 0.6s cubic-bezier(.22,1,.36,1)", fontSize: "clamp(64px,12vw,128px)" }}>🏆</div>
+        <div className="font-extrabold text-center mt-4" style={{
+          color: LARANJA, fontSize: "clamp(32px,7vw,96px)",
+          animation: "recordeText 0.5s ease-out 0.2s both",
+          textShadow: "0 4px 24px rgba(0,0,0,0.8)",
+        }}>NOVO RECORDE!</div>
+        {recorde?.texto && (
+          <div className="font-bold text-white text-center mt-3"
+            style={{ fontSize: "clamp(16px,3vw,32px)", textShadow: "0 2px 12px rgba(0,0,0,0.7)", animation: "recordeText 0.5s ease-out 0.4s both" }}>
+            {recorde.texto}
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Comment bar */}
+    {comentario && (
+      <div className="fixed bottom-0 left-0 right-0 z-40 py-4 px-6 text-center font-bold text-white"
+        style={{ background: "rgba(0,40,100,0.92)", animation: "slideUp 0.35s ease-out", fontSize: "clamp(14px,2.5vw,22px)", backdropFilter: "blur(4px)" }}>
+        💬 {comentario}
+      </div>
+    )}
+
+    {/* Votação — audience votes */}
+    {Object.keys(votacao).length > 0 && provaEstado === "aguardando" && (
+      <div className="fixed top-4 right-4 z-30 bg-white rounded-2xl shadow-lg p-3 min-w-[160px]"
+        style={{ border: `2px solid ${AZUL}` }}>
+        <div className="text-xs font-bold text-center mb-2" style={{ color: AZUL }}>🗳️ Quem vai ganhar a prova da Ponte?</div>
+        {TEAMS_1ANO.map(t => {
+          const v = votacao[t.id] || 0;
+          const total = Object.values(votacao).reduce((a,b) => a + b, 0) || 1;
+          return (
+            <div key={t.id} className="flex items-center gap-2 mb-1">
+              <div className="text-xs font-semibold w-12 shrink-0" style={{ color: t.color }}>{t.label}</div>
+              <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "#F3F4F6" }}>
+                <div className="h-full rounded-full" style={{ width: `${(v/total)*100}%`, background: t.color, transition: "width 0.5s ease" }} />
+              </div>
+              <div className="text-xs font-bold w-6 text-right" style={{ color: t.color }}>{v}</div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8" style={{ paddingBottom: comentario ? "80px" : undefined }}>
       <div>
         <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
           SESI — TORNEIO INFANTIL
@@ -1057,9 +1733,18 @@ function PonteTelaoView() {
       {/* Ranking geral */}
       <div className="flex flex-col gap-3">
         {ranking.map((t, idx) => {
-          const isLive = ROUNDS.some((r) => liveKeys[`${r}_${t.id}`]);
+          const activeLv = ROUNDS.reduce((found, r) => found || liveKeys[`${r}_${t.id}`], null);
+          const isLive = !!activeLv;
+          let liveBadge = null;
+          if (isLive) {
+            if (activeLv.running && activeLv.startTs) {
+              liveBadge = `🔴 ${((liveNow - activeLv.startTs) / 1000).toFixed(1)}s`;
+            } else {
+              liveBadge = "🔴 ao vivo";
+            }
+          }
           return (
-            <div key={t.id} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
+            <div key={`${t.id}-${idx}`} className="rank-row flex items-center gap-4 rounded-2xl p-4 shadow-sm"
               style={{ backgroundColor: t.color }}>
               <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
                 style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
@@ -1068,9 +1753,9 @@ function PonteTelaoView() {
               <div className="font-bold text-xl md:text-2xl flex items-center gap-2"
                 style={{ color: t.dark ? "#3A3000" : "#fff", flex: "1" }}>
                 {t.label}
-                {isLive && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#D92B2B", color: "#fff" }}>
-                    🔴 ao vivo
+                {liveBadge && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full tabular-nums" style={{ backgroundColor: "#D92B2B", color: "#fff" }}>
+                    {liveBadge}
                   </span>
                 )}
               </div>
@@ -1163,14 +1848,20 @@ function PonteTelaoView() {
                 }).map((it) => {
                   const t = TEAMS_1ANO.find((x) => x.id === it.team);
                   const pts = rr.hasAny ? (rr.tempoPts[it.team] || 0) + (rr.cargaPts[it.team] || 0) : null;
-                  const isLive = !!liveKeys[`${rr.round}_${it.team}`];
+                  const lv = liveKeys[`${rr.round}_${it.team}`];
+                  const isLive = !!lv;
+                  const tempoLive = isLive && lv.running && lv.startTs;
                   return (
                     <tr key={it.team} className="border-t border-gray-100">
                       <td className="px-3 py-2 font-semibold" style={{ color: t.color }}>
                         {t.label}
                         {isLive && <span className="ml-1 text-xs font-bold" style={{ color: "#D92B2B" }}>🔴</span>}
                       </td>
-                      <td className="px-3 py-2 text-center tabular-nums">{formatTime(it.tempo)}</td>
+                      <td className="px-3 py-2 text-center tabular-nums">
+                        {tempoLive
+                          ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>🔴 {((liveNow - lv.startTs) / 1000).toFixed(1)}s</span>
+                          : formatTime(it.tempo)}
+                      </td>
                       <td className="px-3 py-2 text-center">
                         {it.carga === true ? <span style={{ color: "#2E9E4F", fontWeight: 700 }}>✓ 4pts</span>
                           : it.carga === false ? <span style={{ color: "#D92B2B", fontWeight: 700 }}>✗ 0pts</span>
@@ -1192,6 +1883,7 @@ function PonteTelaoView() {
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -1263,6 +1955,316 @@ function QRPrintModal({ onClose }) {
     </div>
   );
 }
+
+function ProvaAnoMonitorView({ ano, rtdbUrl, fbKey }) {
+  const [ranking, setRanking] = useState([null, null, null, null]);
+  const [publicado, setPublicado] = useState(null);
+  const [publicando, setPublicando] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const data = await safeGet(fbKey);
+      if (data?.ranking) setPublicado(data);
+    })();
+  }, [fbKey]);
+
+  function selecionarEquipe(posIdx, teamId) {
+    setRanking(prev => {
+      const next = [...prev];
+      for (let i = 0; i < 4; i++) {
+        if (next[i] === teamId) next[i] = null;
+      }
+      next[posIdx] = prev[posIdx] === teamId ? null : teamId;
+      return next;
+    });
+  }
+
+  async function publicarResultado() {
+    if (ranking.some(r => r === null)) return;
+    setPublicando(true);
+    const payload = { ranking, ts: Date.now() };
+    try {
+      await fetch(rtdbUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setPublicado(payload);
+    } catch {
+      alert("Erro ao publicar. Tente novamente.");
+    } finally {
+      setPublicando(false);
+    }
+  }
+
+  async function limparResultado() {
+    if (!window.confirm(`Limpar resultado publicado do ${ano}º Ano?`)) return;
+    await fetch(rtdbUrl, { method: "DELETE" });
+    setPublicado(null);
+    setRanking([null, null, null, null]);
+  }
+
+  const pronto = ranking.every(r => r !== null);
+  const posLabels = ["🥇 1º Lugar", "🥈 2º Lugar", "🥉 3º Lugar", "🏅 4º Lugar"];
+
+  return (
+    <div className="p-4 max-w-lg mx-auto flex flex-col gap-4">
+      <div className="rounded-2xl p-4 flex flex-col gap-3"
+        style={{ background: "#0F2A45", border: "1.5px solid #1E3A5F" }}>
+        <div className="text-base font-extrabold text-white">🏫 Prova do {ano}º Ano</div>
+        <div className="text-xs font-semibold text-blue-300 opacity-70 uppercase tracking-wider">
+          Clique em cada posição para atribuir a equipe
+        </div>
+
+        <div className="flex flex-col gap-2 mt-1">
+          {posLabels.map((label, posIdx) => (
+            <div key={posIdx} className="rounded-xl p-3 flex flex-col gap-2"
+              style={{ background: "#0A1E30", border: "1px solid #1E3550" }}>
+              <div className="text-xs font-bold text-blue-200 opacity-80">{label} · {SCORES_ANO[posIdx]} pts</div>
+              <div className="flex gap-2 flex-wrap">
+                {TEAMS_3ANO.map(team => {
+                  const selecionado = ranking[posIdx] === team.id;
+                  const usadoOutra = !selecionado && ranking.some((r, i) => i !== posIdx && r === team.id);
+                  return (
+                    <button key={team.id}
+                      onClick={() => selecionarEquipe(posIdx, team.id)}
+                      disabled={usadoOutra}
+                      className="flex-1 py-2 rounded-lg font-extrabold text-sm transition-all"
+                      style={{
+                        background: selecionado ? team.color : usadoOutra ? "#1a2a3a" : team.color + "44",
+                        color: selecionado ? (team.dark ? "#3A3000" : "#fff") : usadoOutra ? "#334" : team.color,
+                        border: selecionado ? `2px solid #fff` : `2px solid ${team.color}55`,
+                        opacity: usadoOutra ? 0.35 : 1,
+                        boxShadow: selecionado ? `0 0 12px ${team.color}99` : "none",
+                        minWidth: 70,
+                      }}>
+                      {team.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={publicarResultado} disabled={!pronto || publicando}
+          className="w-full py-3 rounded-xl font-extrabold text-base mt-1 transition-all"
+          style={{
+            background: pronto ? "#F5821F" : "#1a2a3a",
+            color: pronto ? "#fff" : "#445",
+            opacity: pronto ? 1 : 0.5,
+            cursor: pronto ? "pointer" : "not-allowed",
+          }}>
+          {publicando ? "Publicando…" : "📢 Publicar Resultado"}
+        </button>
+      </div>
+
+      {publicado && (
+        <div className="rounded-2xl p-4 flex flex-col gap-2"
+          style={{ background: "#0A1E30", border: "1.5px solid #F5821F55" }}>
+          <div className="text-sm font-extrabold text-orange-400">✅ Resultado Publicado</div>
+          {publicado.ranking.map((teamId, idx) => {
+            const team = TEAMS_3ANO.find(t => t.id === teamId);
+            if (!team) return null;
+            return (
+              <div key={idx} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                style={{ background: team.color + "33" }}>
+                <span className="text-lg">{["🥇","🥈","🥉","🏅"][idx]}</span>
+                <span className="font-extrabold" style={{ color: team.color }}>{team.label}</span>
+                <span className="ml-auto text-xs font-bold text-blue-300 opacity-70">{SCORES_ANO[idx]} pts</span>
+              </div>
+            );
+          })}
+          <button onClick={limparResultado}
+            className="mt-2 text-xs font-bold text-red-400 opacity-60 hover:opacity-100 transition-opacity self-start">
+            🗑 Limpar resultado
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TerceiroAnoMonitorView()  { return <ProvaAnoMonitorView ano={3} rtdbUrl={RTDB_3ANO} fbKey="prova_3ano" />; }
+function QuartoAnoMonitorView()    { return <ProvaAnoMonitorView ano={4} rtdbUrl={RTDB_4ANO} fbKey="prova_4ano" />; }
+function QuintoAnoMonitorView()    { return <ProvaAnoMonitorView ano={5} rtdbUrl={RTDB_5ANO} fbKey="prova_5ano" />; }
+
+// ── Classificação Geral — Monitor ────────────────────────────────
+function GeralMonitorView() {
+  const [ranking, setRanking]     = useState(null);
+  const [avisos,  setAvisos]      = useState([]);
+  const [publicado, setPublicado] = useState(null);
+  const [publicando, setPublicando] = useState(false);
+  const [loading, setLoading]     = useState(true);
+
+  async function calcular() {
+    setLoading(true);
+    const av = [];
+    const [ponteRows, spinnerRows, ano3, ano4, ano5, existente] = await Promise.all([
+      Promise.all(ROUNDS.flatMap(r => TEAMS_1ANO.map(t =>
+        safeGet(`ponte_r${r}_${t.id}`).then(v => ({ r, teamId: t.id, data: v }))
+      ))),
+      Promise.all(ROUNDS.flatMap(r => TEAMS.map(t =>
+        safeGet(`r${r}_${t.id}`).then(v => ({ r, teamId: t.id, data: v }))
+      ))),
+      safeGet("prova_3ano"),
+      safeGet("prova_4ano"),
+      safeGet("prova_5ano"),
+      safeGet("geral_resultado_final"),
+    ]);
+
+    if (existente?.ranking) setPublicado(existente);
+
+    // Ponte totals
+    const ptTotals = Object.fromEntries(TEAMS_1ANO.map(t => [t.id, 0]));
+    for (const r of ROUNDS) {
+      const ri = ponteRows.filter(x => x.r === r);
+      const comTempo = ri.filter(x => x.data?.tempo != null);
+      if (!comTempo.length) { av.push(`Ponte R${r}: sem dados`); continue; }
+      const tPts = rankPoints(comTempo.map(x => ({ team: x.teamId, value: x.data.tempo })), false);
+      ri.forEach(x => {
+        if (x.data?.tempo != null)
+          ptTotals[x.teamId] += (tPts[x.teamId] || 0) + (x.data.carga ? 4 : 0);
+      });
+    }
+
+    // Spinner totals
+    const spTotals = Object.fromEntries(TEAMS.map(t => [t.id, 0]));
+    for (const r of ROUNDS) {
+      const ri = spinnerRows.filter(x => x.r === r);
+      const comM = ri.filter(x => x.data?.montagem != null);
+      const comG = ri.filter(x => x.data?.giro != null);
+      if (!comM.length && !comG.length) { av.push(`Spinner R${r}: sem dados`); continue; }
+      const mPts = rankPoints(comM.map(x => ({ team: x.teamId, value: x.data.montagem })), false);
+      const gPts = rankPoints(comG.map(x => ({ team: x.teamId, value: x.data.giro })), true);
+      ri.forEach(x => {
+        spTotals[x.teamId] += (mPts[x.teamId] || 0) + (gPts[x.teamId] || 0);
+      });
+    }
+
+    // Geral totals
+    const totais = {};
+    COLOR_TEAMS_GERAL.forEach(ct => {
+      totais[ct.id] = (ptTotals[ct.ponteId] || 0) + (spTotals[ct.spinnerId] || 0);
+    });
+    [[ano3, 3], [ano4, 4], [ano5, 5]].forEach(([ano, n]) => {
+      if (!ano?.ranking) { av.push(`${n}º Ano: resultado não publicado`); return; }
+      ano.ranking.forEach((teamId, idx) => {
+        if (totais[teamId] !== undefined) totais[teamId] += SCORES_ANO[idx];
+      });
+    });
+
+    const sorted = [...COLOR_TEAMS_GERAL]
+      .map(ct => ({ ...ct, pts: totais[ct.id] }))
+      .sort((a, b) => b.pts - a.pts);
+
+    setRanking(sorted);
+    setAvisos(av);
+    setLoading(false);
+  }
+
+  useEffect(() => { calcular(); }, []);
+
+  async function publicarResultado() {
+    if (!ranking) return;
+    setPublicando(true);
+    const payload = { ts: Date.now(), ranking: ranking.map(r => ({ id: r.id, pts: r.pts })) };
+    try {
+      await safeSet("geral_resultado_final", payload);
+      setPublicado(payload);
+    } catch { alert("Erro ao publicar. Tente novamente."); }
+    finally { setPublicando(false); }
+  }
+
+  async function limparResultado() {
+    if (!window.confirm("Limpar resultado geral publicado no telão?")) return;
+    await safeDelete("geral_resultado_final");
+    setPublicado(null);
+  }
+
+  const medals = ["🥇","🥈","🥉","🏅"];
+
+  return (
+    <div className="p-4 max-w-lg mx-auto flex flex-col gap-4">
+
+      {/* Ranking calculado */}
+      <div className="rounded-2xl p-4 flex flex-col gap-3"
+        style={{ background: "#0F2A45", border: "1.5px solid #1E3A5F" }}>
+        <div className="flex items-center justify-between">
+          <div className="text-base font-extrabold text-white">🏆 Classificação Geral</div>
+          <button onClick={calcular} className="text-xs font-bold px-3 py-1 rounded-full"
+            style={{ background: "#1E3A5F", color: "#93C5FD" }}>
+            ↺ Recalcular
+          </button>
+        </div>
+        <div className="text-xs text-blue-300 opacity-60">Soma de todas as provas</div>
+
+        {loading ? (
+          <div className="text-center text-blue-300 text-sm py-4">Calculando…</div>
+        ) : (
+          <>
+            {avisos.length > 0 && (
+              <div className="rounded-xl p-2 flex flex-col gap-1"
+                style={{ background: "#2a1500", border: "1px solid #F5821F44" }}>
+                <div className="text-xs font-bold text-orange-400">⚠ Dados incompletos:</div>
+                {avisos.map((a, i) => (
+                  <div key={i} className="text-xs text-orange-300 opacity-80">• {a}</div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {(ranking || []).map((t, idx) => (
+                <div key={t.id} className="flex items-center gap-3 rounded-xl px-3 py-2"
+                  style={{ background: t.color + "33", border: `1.5px solid ${t.color}55` }}>
+                  <span className="text-lg">{medals[idx]}</span>
+                  <span className="font-extrabold flex-1" style={{ color: t.color }}>{t.label}</span>
+                  <span className="font-extrabold text-white tabular-nums">{t.pts} pts</span>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={publicarResultado} disabled={publicando || !ranking}
+              className="w-full py-3 rounded-xl font-extrabold text-base mt-1 transition-all"
+              style={{
+                background: ranking ? "#F5821F" : "#1a2a3a",
+                color: ranking ? "#fff" : "#445",
+                opacity: ranking ? 1 : 0.5,
+                cursor: ranking ? "pointer" : "not-allowed",
+              }}>
+              {publicando ? "Publicando…" : "🏆 Publicar Resultado Geral no Telão"}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Resultado já publicado */}
+      {publicado && (
+        <div className="rounded-2xl p-4 flex flex-col gap-2"
+          style={{ background: "#0A1E30", border: "1.5px solid #F5821F55" }}>
+          <div className="text-sm font-extrabold text-orange-400">✅ Resultado Publicado no Telão</div>
+          {publicado.ranking.map((r, idx) => {
+            const team = COLOR_TEAMS_GERAL.find(t => t.id === r.id);
+            if (!team) return null;
+            return (
+              <div key={idx} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                style={{ background: team.color + "33" }}>
+                <span className="text-lg">{medals[idx]}</span>
+                <span className="font-extrabold" style={{ color: team.color }}>{team.label}</span>
+                <span className="ml-auto text-xs font-bold text-blue-300 opacity-70">{r.pts} pts</span>
+              </div>
+            );
+          })}
+          <button onClick={limparResultado}
+            className="mt-2 text-xs font-bold text-red-400 opacity-60 hover:opacity-100 transition-opacity self-start">
+            🗑 Limpar resultado
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function HomeView() {
   const [open, setOpen] = useState(false);
@@ -1378,16 +2380,20 @@ function playBuzzSound(teamId) {
 function KahootBuzzerView() {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz] = useState(null);
+  const [errou, setErrou] = useState(null); // teamId que errou primeiro
   const [pressed, setPressed] = useState(false);
   const prevBuzzRef = useRef(null);
   const pollRef = useRef(null);
 
   const fetchState = useCallback(async () => {
-    const a = await safeGet("kahoot_active");
-    const b = await safeGet("kahoot_buzz");
+    const [a, b, err] = await Promise.all([
+      safeGet("kahoot_active"),
+      safeGet("kahoot_buzz"),
+      safeGet("kahoot_errou"),
+    ]);
     setActive(!!a);
+    setErrou(err ?? null);
     setBuzz((prev) => {
-      // toca som quando o buzz chega do servidor (outro dispositivo ou confirmação)
       if (!prevBuzzRef.current && b?.teamId) {
         playBuzzSound(b.teamId);
       }
@@ -1403,9 +2409,9 @@ function KahootBuzzerView() {
   }, [fetchState]);
 
   const handlePress = async (teamId) => {
-    if (!active || buzz) return;
+    if (!active || buzz || errou === teamId) return;
     setPressed(true);
-    playBuzzSound(teamId); // feedback imediato local
+    playBuzzSound(teamId);
     const existing = await safeGet("kahoot_buzz");
     if (!existing) {
       await safeSet("kahoot_buzz", { teamId, ts: Date.now() });
@@ -1421,30 +2427,57 @@ function KahootBuzzerView() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#0d1018" }}>
       <div className="text-center py-6 px-4">
         <div className="text-white font-extrabold text-2xl mb-1">🎓 Kahoot English</div>
-        {!active && !buzz && (
+        {!active && !buzz && !errou && (
           <div className="text-gray-400 text-sm">Aguardando a próxima pergunta…</div>
+        )}
+        {errou && !buzz && !active && (
+          <div className="text-orange-400 font-bold text-base">
+            ⏳ Segunda chance — aguardando mediador…
+          </div>
         )}
         {active && !buzz && (
           <div className="text-yellow-400 font-bold text-lg animate-pulse">
-            ⚡ Aperte o botão da sua equipe!
+            ⚡ {errou ? "Segunda chance! Aperte!" : "Aperte o botão da sua equipe!"}
           </div>
         )}
         {buzz && winner && (
-          <div className="text-white font-extrabold text-xl mt-2">
-            🏆 <span style={{ color: winner.color }}>{winner.label}</span> foi primeiro!
+          <div className="mt-2">
+            <div className="text-white font-extrabold text-xl mb-3">
+              🏆 <span style={{ color: winner.color }}>{winner.label}</span> foi primeiro!
+            </div>
+            <button
+              onClick={async () => {
+                if (!window.confirm("Contestar resultado e reiniciar as botoeiras?")) return;
+                await safeDelete("kahoot_buzz");
+                setBuzz(null);
+                setPressed(false);
+                prevBuzzRef.current = null;
+              }}
+              style={{
+                background: "rgba(255,255,255,0.10)",
+                border: "1.5px solid rgba(255,255,255,0.25)",
+                borderRadius: 12, padding: "8px 20px",
+                color: "rgba(255,255,255,0.65)", fontSize: 13,
+                fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              ↺ Contestar / Reiniciar botoeiras
+            </button>
           </div>
         )}
       </div>
 
       <div className="flex-1 grid grid-cols-2 gap-3 p-4 pb-8">
         {TEAMS_KAHOOT.map((t) => {
-          const isWinner = buzz?.teamId === t.id;
-          const isLoser = buzz && !isWinner;
+          const isWinner   = buzz?.teamId === t.id;
+          const isErrou    = errou === t.id;
+          const isDisabled = isErrou || (!active && !isWinner) || !!buzz;
+          const isLoser    = (buzz && !isWinner) || (isErrou && !buzz);
           return (
             <button
               key={t.id}
               onClick={() => handlePress(t.id)}
-              disabled={!active || !!buzz}
+              disabled={isDisabled}
               className="rounded-3xl font-extrabold text-3xl flex items-center justify-center transition-all"
               style={{
                 backgroundColor: isLoser ? "#333" : t.color,
@@ -1453,67 +2486,184 @@ function KahootBuzzerView() {
                 transform: isWinner ? "scale(1.04)" : "scale(1)",
                 boxShadow: isWinner ? `0 0 32px ${t.color}88` : "none",
                 minHeight: "120px",
-                border: isWinner ? `3px solid #fff` : "3px solid transparent",
+                border: isWinner ? `3px solid #fff` : isErrou ? "3px solid #ef4444" : "3px solid transparent",
               }}
             >
-              {isWinner ? "✓ " : ""}{t.label}
+              {isWinner ? "✓ " : isErrou ? "✗ " : ""}{t.label}
+              {isErrou && <span style={{ fontSize: 14, display: "block", opacity: 0.6 }}>errou</span>}
             </button>
           );
         })}
       </div>
 
-      {!active && !buzz && (
+      {!active && !buzz && !errou && (
         <div className="text-center text-gray-600 text-xs pb-6">
           {pressed ? "Registrado — aguarde a próxima pergunta" : "Botoeira bloqueada"}
         </div>
       )}
+
     </div>
   );
 }
 
 // ── Kahoot English — Monitor (admin) ─────────────────────────────
-function playBuzzerSound() {
+
+// AudioContext singleton — reutilizado entre perguntas para evitar limite do browser
+let _kahootAudioCtx = null;
+function _getKahootCtx() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // dois beeps curtos em sequência
-    [0, 0.2].forEach((delay) => {
+    if (!_kahootAudioCtx || _kahootAudioCtx.state === 'closed') {
+      _kahootAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_kahootAudioCtx.state === 'suspended') _kahootAudioCtx.resume();
+    return _kahootAudioCtx;
+  } catch (_) { return null; }
+}
+
+// Sirene intermitente: 6 pulsos alternando 880 Hz ↔ 660 Hz (sawtooth)
+function playBuzzerSound() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
+    const freqs = [880, 660, 880, 660, 880, 660];
+    freqs.forEach((freq, i) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(300, ctx.currentTime + delay);
-      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + delay + 0.18);
-      gain.gain.setValueAtTime(0.55, ctx.currentTime + delay);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 0.19);
+      const t = ctx.currentTime + i * 0.15;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
+      gain.gain.setValueAtTime(0.5, t + 0.10);
+      gain.gain.linearRampToValueAtTime(0, t + 0.14);
+      osc.start(t);
+      osc.stop(t + 0.15);
     });
   } catch (_) {}
 }
+
+// Fanfarra de vitória: arpejo C5-E5-G5-C6 seguido de acorde sustentado
+function playSoundCorreto() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
+    const notas = [
+      { f: 523, t: 0.00, dur: 0.14 },
+      { f: 659, t: 0.13, dur: 0.14 },
+      { f: 784, t: 0.26, dur: 0.14 },
+      { f: 1047, t: 0.39, dur: 0.40 },
+    ];
+    notas.forEach(({ f, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(f, ctx.currentTime + t);
+      gain.gain.setValueAtTime(0, ctx.currentTime + t);
+      gain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + t + 0.02);
+      gain.gain.setValueAtTime(0.55, ctx.currentTime + t + dur - 0.04);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + t + dur);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + dur + 0.02);
+    });
+  } catch (_) {}
+}
+
+// Som de derrota: descida wah-wah (sawtooth desce de 440 → 150)
+function playSoundErrado() {
+  const ctx = _getKahootCtx(); if (!ctx) return;
+  try {
+    const notas = [
+      { f1: 440, f2: 330, t: 0.00, dur: 0.22 },
+      { f1: 330, f2: 220, t: 0.20, dur: 0.30 },
+      { f1: 220, f2: 150, t: 0.48, dur: 0.36 },
+    ];
+    notas.forEach(({ f1, f2, t, dur }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sawtooth";
+      const at = ctx.currentTime + t;
+      osc.frequency.setValueAtTime(f1, at);
+      osc.frequency.exponentialRampToValueAtTime(f2, at + dur);
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(0.50, at + 0.02);
+      gain.gain.setValueAtTime(0.50, at + dur - 0.05);
+      gain.gain.linearRampToValueAtTime(0, at + dur);
+      osc.start(at);
+      osc.stop(at + dur + 0.02);
+    });
+  } catch (_) {}
+}
+
+const ALT_CORES  = { a: '#ef4444', b: '#3b82f6', c: '#22c55e', d: '#f59e0b' };
+const ALT_LABELS = { a: 'A', b: 'B', c: 'C', d: 'D' };
+const FORM_VAZIO = { texto: '', a: '', b: '', c: '', d: '', correta: 'a' };
+const TIMER_MS   = 30000;
+
+const QUESTOES_DEFAULT = [
+  { texto: '1º ANO — HOW MANY LETTERS ARE THERE IN THE WORD S-W-A-N?', a: '4', b: '3', c: '6', d: '5', correta: 'a' },
+  { texto: '1º ANO — THE DUCKLINGS ARE:', a: 'Green', b: 'Yellow', c: 'Blue', d: 'Pink', correta: 'b' },
+  { texto: '1º ANO — WHAT DID THE UGLY DUCKLING SEE?', a: 'Many Frogs', b: 'Many Dogs', c: 'Beautiful Swans', d: 'Many Hens', correta: 'c' },
+  { texto: '1º ANO — WHAT CAME OUT FROM THE LAST EGG?', a: 'A little butterfly', b: 'A big and gray duckling', c: 'A goose', d: 'An alligator', correta: 'b' },
+  { texto: '2º ANO — WHICH WORD BEGINS WITH THE SAME SOUND AS "SWAN"?', a: 'Swim', b: 'Tree', c: 'Cat', d: 'Pond', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD IS HIDDEN INSIDE "DUCKLING"?', a: 'Duck', b: 'Lake', c: 'Wing', d: 'Nest', correta: 'a' },
+  { texto: '2º ANO — WHICH WORD ENDS WITH THE SAME SOUND AS "NEST"?', a: 'Best', b: 'Duck', c: 'Swan', d: 'Pond', correta: 'a' },
+  { texto: '2º ANO — HOW MANY LETTERS ARE THERE IN THE WORD "SWAN"?', a: '3', b: '4', c: '5', d: '6', correta: 'b' },
+  { texto: '3º ANO — UNSCRAMBLE THE LETTERS: K - C - U - D', a: 'Duck', b: 'Luck', c: 'Desk', d: 'Swan', correta: 'a' },
+  { texto: '3º ANO — WHICH WORD DOES NOT BELONG TO THE GROUP?', a: 'Duck', b: 'Swan', c: 'Goose', d: 'Carrot', correta: 'd' },
+  { texto: '3º ANO — WHICH WORD BELONGS TO THE GROUP "ANIMALS"?', a: 'Flower', b: 'Swan', c: 'Winter', d: 'Water', correta: 'b' },
+  { texto: '3º ANO — UNSCRAMBLE THE LETTERS: N - A - W - S', a: 'Swan', b: 'Snow', c: 'Wans', d: 'Wing', correta: 'a' },
+  { texto: '4º ANO — WHICH WORD MEANS THE OPPOSITE OF "BIG"?', a: 'Tall', b: 'Fast', c: 'Small', d: 'Strong', correta: 'c' },
+  { texto: '4º ANO — WHICH WORD HAS THREE VOWELS?', a: 'Duck', b: 'Swan', c: 'Nest', d: 'Animal', correta: 'd' },
+  { texto: '4º ANO — WHICH WORD MEANS THE OPPOSITE OF "COLD"?', a: 'Hot', b: 'Slow', c: 'Small', d: 'Dark', correta: 'a' },
+  { texto: '4º ANO — WHICH WORD HAS THREE SYLLABLES?', a: 'Swan', b: 'Winter', c: 'Animal', d: 'Pond', correta: 'c' },
+  { texto: '5º ANO — PUT IN ORDER: BEAUTIFUL • BECOMES • THE • SWAN • DUCKLING • A', a: 'THE BEAUTIFUL DUCKLING BECOMES A SWAN.', b: 'THE DUCKLING BECOMES A BEAUTIFUL SWAN.', c: 'A SWAN BECOMES THE BEAUTIFUL DUCKLING.', d: 'THE DUCKLING A BEAUTIFUL SWAN BECOMES.', correta: 'b' },
+  { texto: '5º ANO — COMPLETE: B E A U T I _ U L — WHICH LETTER IS MISSING?', a: 'P', b: 'F', c: 'V', d: 'T', correta: 'b' },
+  { texto: '5º ANO — PUT IN ORDER: IS • THE • WATER • LOOKING • DUCKLING • INTO • THE', a: 'THE DUCKLING IS LOOKING INTO THE WATER.', b: 'THE WATER IS LOOKING INTO THE DUCKLING.', c: 'THE DUCKLING LOOKING IS INTO THE WATER.', d: 'IS THE DUCKLING THE WATER LOOKING INTO.', correta: 'a' },
+  { texto: '5º ANO — COMPLETE: R E F L E C T I _ N — WHICH LETTER IS MISSING?', a: 'A', b: 'E', c: 'O', d: 'U', correta: 'c' },
+];
 
 function KahootMonitorView({ forceLocal = false }) {
   const [active, setActive] = useState(false);
   const [buzz, setBuzz]   = useState(null);
   const [pts, setPts]     = useState({});
   const [flash, setFlash] = useState(false);
-  const pollRef    = useRef(null);
-  const prevBuzzId = useRef(null);
+  const [questoes, setQuestoes]     = useState([]);
+  const [questaoIdx, setQuestaoIdx] = useState(-1);
+  const [timerStart, setTimerStart] = useState(null);
+  const [timeLeft, setTimeLeft]     = useState(0);
+  const [answer, setAnswer]         = useState(null);
+  const [errou, setErrou]           = useState(null); // teamId da equipe que errou primeiro
+  const [showQuestoes, setShowQuestoes] = useState(false);
+  const [editIdx, setEditIdx]   = useState(undefined);
+  const [editForm, setEditForm] = useState(FORM_VAZIO);
+  const pollRef      = useRef(null);
+  const prevBuzzId   = useRef(null);
+  const timerRef     = useRef(null);
+  const activatedRef = useRef(false);
 
   const kGet = useCallback((k) => kahootGet(k, forceLocal), [forceLocal]);
   const kSet = useCallback((k, v) => kahootSet(k, v, forceLocal), [forceLocal]);
   const kDel = useCallback((k) => kahootDelete(k, forceLocal), [forceLocal]);
 
   const fetchState = useCallback(async () => {
-    const a = await kGet("kahoot_active");
-    const b = await kGet("kahoot_buzz");
-    const p = await kGet("kahoot_pts");
+    const [a, b, p, q, qi, ts, ans, err] = await Promise.all([
+      kGet("kahoot_active"),
+      kGet("kahoot_buzz"),
+      kGet("kahoot_pts"),
+      kGet("kahoot_questoes"),
+      kGet("kahoot_questao_idx"),
+      kGet("kahoot_timer_start"),
+      kGet("kahoot_answer"),
+      kGet("kahoot_errou"),
+    ]);
     const newBuzz = b ?? null;
-    // dispara som + flash somente quando buzz aparece pela primeira vez
     const newId = newBuzz ? (newBuzz.teamId + (newBuzz.ts || "")) : null;
     if (newId && newId !== prevBuzzId.current) {
       prevBuzzId.current = newId;
-      playBuzzerSound();
       setFlash(true);
       setTimeout(() => setFlash(false), 700);
     }
@@ -1521,6 +2671,11 @@ function KahootMonitorView({ forceLocal = false }) {
     setActive(!!a);
     setBuzz(newBuzz);
     setPts(p ?? {});
+    setQuestoes(Array.isArray(q) ? q : []);
+    setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
+    setTimerStart(ts ? Number(ts) : null);
+    setAnswer(ans ?? null);
+    setErrou(err ?? null);
   }, [kGet]);
 
   useEffect(() => {
@@ -1529,12 +2684,64 @@ function KahootMonitorView({ forceLocal = false }) {
     return () => clearInterval(pollRef.current);
   }, [fetchState]);
 
-  const novaPergunta = async () => {
-    await kDel("kahoot_buzz");
-    await kSet("kahoot_active", true);
-    setBuzz(null);
+  // ── Cronômetro local seeded pelo Firebase ──────────────────────
+  const activarBotoeiras = useCallback(async () => {
+    await Promise.all([kSet("kahoot_active", true), kDel("kahoot_timer_start")]);
     setActive(true);
+    setTimerStart(null);
+    setTimeLeft(0);
+  }, [kSet, kDel]);
+
+  const reativarOutrasBotoeiras = useCallback(async () => {
+    await Promise.all([kSet("kahoot_active", true), kDel("kahoot_buzz")]);
+    setActive(true);
+    setBuzz(null);
     prevBuzzId.current = null;
+  }, [kSet, kDel]);
+
+  useEffect(() => {
+    clearInterval(timerRef.current);
+    activatedRef.current = false;
+    if (!timerStart) { setTimeLeft(0); return; }
+    const tick = () => {
+      const left = Math.max(0, TIMER_MS - (serverNow() - timerStart));
+      setTimeLeft(left);
+      if (left <= 0 && !activatedRef.current) {
+        activatedRef.current = true;
+        clearInterval(timerRef.current);
+        activarBotoeiras();
+      }
+    };
+    tick();
+    timerRef.current = setInterval(tick, 100);
+    return () => clearInterval(timerRef.current);
+  }, [timerStart, activarBotoeiras]);
+
+  const novaPergunta = async () => {
+    const len = questoes.length;
+    const nextIdx = len > 0 ? (questaoIdx < 0 ? 0 : Math.min(questaoIdx + 1, len - 1)) : -1;
+    const now = serverNow();
+    await Promise.all([
+      kDel("kahoot_buzz"),
+      kDel("kahoot_active"),
+      kDel("kahoot_answer"),
+      kDel("kahoot_errou"),
+      kSet("kahoot_timer_start", serverTimestamp()),
+      ...(len > 0 ? [kSet("kahoot_questao_idx", nextIdx)] : []),
+    ]);
+    if (len > 0) setQuestaoIdx(nextIdx);
+    setBuzz(null);
+    setActive(false);
+    setAnswer(null);
+    setErrou(null);
+    setTimerStart(now);
+    prevBuzzId.current = null;
+  };
+
+  const irParaQuestao = async (idx) => {
+    if (idx < 0 || idx >= questoes.length) return;
+    await kSet("kahoot_questao_idx", idx);
+    setQuestaoIdx(idx);
   };
 
   const pressVirtual = async (teamId) => {
@@ -1542,53 +2749,176 @@ function KahootMonitorView({ forceLocal = false }) {
     const existing = await kGet("kahoot_buzz");
     if (!existing) {
       await kSet("kahoot_buzz", { teamId, ts: Date.now() });
-      playBuzzerSound();
     }
     await fetchState();
   };
 
-  const awarPoint = async (teamId) => {
-    const newPts = { ...pts, [teamId]: (pts[teamId] || 0) + 1 };
-    await kSet("kahoot_pts", newPts);
-    await kDel("kahoot_active");
-    await kDel("kahoot_buzz");
-    setPts(newPts);
+  const darResposta = async (alt) => {
+    if (!buzz || !questaoAtualRef.current) return;
+    const correto = alt === questaoAtualRef.current.correta;
+
+    if (correto) {
+      // Resposta correta: dá ponto, mostra gabarito, encerra rodada
+      const ansObj = { alt, correto: true, teamId: buzz.teamId };
+      const newPts = { ...pts, [buzz.teamId]: (pts[buzz.teamId] || 0) + 1 };
+      await Promise.all([
+        kSet("kahoot_answer", ansObj),
+        kSet("kahoot_pts", newPts),
+        kDel("kahoot_active"),
+        kDel("kahoot_buzz"),
+        kDel("kahoot_timer_start"),
+        kDel("kahoot_errou"),
+      ]);
+      setPts(newPts);
+      setAnswer(ansObj);
+    } else if (!errou) {
+      // Primeiro erro: salva equipe que errou, NÃO mostra gabarito
+      const firstWrong = buzz.teamId;
+      await Promise.all([
+        kSet("kahoot_errou", firstWrong),
+        kDel("kahoot_active"),
+        kDel("kahoot_buzz"),
+        kDel("kahoot_timer_start"),
+      ]);
+      setErrou(firstWrong);
+    } else {
+      // Segundo erro: encerra rodada, agora mostra gabarito
+      const ansObj = { alt, correto: false, teamId: buzz.teamId, final: true };
+      await Promise.all([
+        kSet("kahoot_answer", ansObj),
+        kDel("kahoot_active"),
+        kDel("kahoot_buzz"),
+        kDel("kahoot_timer_start"),
+        kDel("kahoot_errou"),
+      ]);
+      setAnswer(ansObj);
+    }
     setActive(false);
     setBuzz(null);
+    setTimerStart(null);
     prevBuzzId.current = null;
   };
 
-  const errado = async () => {
-    await kDel("kahoot_active");
-    await kDel("kahoot_buzz");
+  const pular = async () => {
+    await Promise.all([kDel("kahoot_active"), kDel("kahoot_buzz"), kDel("kahoot_timer_start"), kDel("kahoot_answer"), kDel("kahoot_errou")]);
     setActive(false);
     setBuzz(null);
+    setTimerStart(null);
+    setAnswer(null);
+    setErrou(null);
     prevBuzzId.current = null;
   };
 
   const resetAll = async () => {
     if (!window.confirm("Zerar toda a pontuação do Kahoot English?")) return;
-    await kDel("kahoot_pts");
-    await kDel("kahoot_buzz");
-    await kDel("kahoot_active");
+    await Promise.all([
+      kDel("kahoot_pts"), kDel("kahoot_buzz"), kDel("kahoot_active"),
+      kDel("kahoot_timer_start"), kDel("kahoot_answer"), kDel("kahoot_errou"),
+      kSet("kahoot_questao_idx", -1),
+    ]);
     setPts({});
     setBuzz(null);
     setActive(false);
+    setQuestaoIdx(-1);
+    setTimerStart(null);
+    setAnswer(null);
+    setErrou(null);
     prevBuzzId.current = null;
   };
 
-  const winner  = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
-  const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const salvarQuestao = async () => {
+    if (!editForm.texto.trim()) return;
+    const novas = [...questoes];
+    if (editIdx === null) {
+      if (novas.length >= 20) { alert("Máximo de 20 questões atingido."); return; }
+      novas.push({ ...editForm });
+    } else {
+      novas[editIdx] = { ...editForm };
+    }
+    await kSet("kahoot_questoes", novas);
+    setQuestoes(novas);
+    setEditIdx(undefined);
+    setEditForm(FORM_VAZIO);
+  };
+
+  const excluirQuestao = async (idx) => {
+    if (!window.confirm(`Excluir questão ${idx + 1}?`)) return;
+    const novas = questoes.filter((_, i) => i !== idx);
+    await kSet("kahoot_questoes", novas);
+    setQuestoes(novas);
+    if (editIdx === idx) { setEditIdx(undefined); setEditForm(FORM_VAZIO); }
+  };
+
+  const abrirEdicao = (idx) => {
+    if (idx === null) { setEditIdx(null); setEditForm(FORM_VAZIO); }
+    else { setEditIdx(idx); setEditForm({ ...questoes[idx] }); }
+  };
+
+  const winner      = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const ranking     = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
+  const questaoAtualRef = useRef(questaoAtual);
+  useEffect(() => { questaoAtualRef.current = questaoAtual; }, [questaoAtual]);
+
+  const contando = timerStart !== null && timeLeft > 0;
+  const secsLeft = Math.ceil(timeLeft / 1000);
+  const pct      = timerStart ? Math.min(100, ((serverNow() - timerStart) / TIMER_MS) * 100) : 0;
 
   /* ── cores de fundo do cabeçalho ── */
+  const errouTeam = errou ? TEAMS_KAHOOT.find(t => t.id === errou) : null;
   const headerBg = winner
     ? winner.color
+    : contando
+    ? AZUL_ESCURO
     : active
     ? LARANJA
+    : answer
+    ? (answer.correto ? "#15803d" : "#dc2626")
+    : errou
+    ? "#92400e"
     : "#1e293b";
 
   return (
     <div className="flex flex-col gap-4 p-4 max-w-lg mx-auto">
+
+      {/* ── Questão atual ── */}
+      {questaoAtual && (
+        <div className="rounded-2xl p-4 border-2" style={{ backgroundColor: AZUL + "0f", borderColor: AZUL + "44" }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: AZUL }}>
+              Questão {questaoIdx + 1} / {questoes.length}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => irParaQuestao(questaoIdx - 1)} disabled={questaoIdx <= 0}
+                className="w-7 h-7 rounded-lg text-xs font-bold disabled:opacity-30"
+                style={{ background: AZUL + "22", color: AZUL }}>◀</button>
+              <button onClick={() => irParaQuestao(questaoIdx + 1)} disabled={questaoIdx >= questoes.length - 1}
+                className="w-7 h-7 rounded-lg text-xs font-bold disabled:opacity-30"
+                style={{ background: AZUL + "22", color: AZUL }}>▶</button>
+            </div>
+          </div>
+          <div className="font-bold text-gray-800 text-sm mb-3 leading-snug">{questaoAtual.texto}</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['a','b','c','d']).map((alt) => (
+              <div key={alt} className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-semibold"
+                style={{
+                  background: questaoAtual.correta === alt ? ALT_CORES[alt] + "22" : "#f1f5f9",
+                  border: `1.5px solid ${questaoAtual.correta === alt ? ALT_CORES[alt] : "transparent"}`,
+                  color: questaoAtual.correta === alt ? ALT_CORES[alt] : "#475569",
+                }}>
+                <span className="font-extrabold">{ALT_LABELS[alt]})</span>
+                <span>{questaoAtual[alt]}</span>
+                {questaoAtual.correta === alt && <span className="ml-auto">✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {questoes.length === 0 && (
+        <div className="text-center text-xs text-gray-400 py-1">
+          Nenhuma questão cadastrada — use "📋 Questões" abaixo.
+        </div>
+      )}
 
       {/* ── Cabeçalho de status ── */}
       <div
@@ -1599,53 +2929,113 @@ function KahootMonitorView({ forceLocal = false }) {
           transition: "background 0.3s, outline 0.1s",
         }}
       >
+        {/* barra de progresso do timer */}
+        {contando && (
+          <div className="h-2 w-full" style={{ background: "rgba(255,255,255,0.15)" }}>
+            <div className="h-full transition-all" style={{
+              width: `${pct}%`,
+              background: pct > 70 ? "#ef4444" : pct > 40 ? "#f59e0b" : "#22c55e",
+              transition: "width 0.1s linear, background 0.3s",
+            }} />
+          </div>
+        )}
         <div className="px-5 py-5">
-          {!active && !winner && (
-            <div className="text-white/60 font-semibold text-sm tracking-wide">
-              Pronto — pressione "Nova Pergunta"
+          {/* Contando */}
+          {contando && (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="font-black text-white" style={{ fontSize: 56, lineHeight: 1, textShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
+                  {secsLeft}
+                </div>
+                <div className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">
+                  Leia a questão…
+                </div>
+              </div>
+              <button onClick={activarBotoeiras}
+                className="px-4 py-2 rounded-xl text-xs font-bold"
+                style={{ background: "rgba(255,255,255,0.18)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.4)" }}>
+                ⚡ Ativar já
+              </button>
             </div>
           )}
-          {active && !winner && (
+          {/* Botoeiras ativas */}
+          {!contando && active && !winner && (
             <div className="font-extrabold text-xl text-white animate-pulse tracking-wide"
               style={{ textShadow: "0 2px 10px rgba(0,0,0,0.4)" }}>
-              ⚡ Botoeiras ativas — aguardando...
+              ⚡ Primeira equipe a apertar!
             </div>
           )}
+          {/* Vencedor — selecionar alternativa */}
           {winner && (
             <div>
-              <div
-                className="font-black text-white tracking-tight"
-                style={{ fontSize: 32, textShadow: "0 3px 16px rgba(0,0,0,0.5)" }}
-              >
-                🏆 {winner.label}
+              <div className="font-black text-white tracking-tight" style={{ fontSize: 28, textShadow: "0 3px 16px rgba(0,0,0,0.5)" }}>
+                🔔 {winner.label}
               </div>
-              <div className="text-white/80 text-sm font-semibold mt-0.5 mb-4">
-                foi a primeira!
+              <div className="text-white/80 text-sm font-semibold mt-0.5 mb-3">
+                foi a primeira! Qual alternativa respondeu?
               </div>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => awarPoint(winner.id)}
-                  className="px-5 py-2.5 rounded-xl font-bold text-sm"
-                  style={{
-                    background: "rgba(255,255,255,0.22)",
-                    color: "#fff",
-                    border: "2px solid rgba(255,255,255,0.55)",
-                  }}
-                >
-                  ✓ Correto +1 pt
+              <div className="grid grid-cols-2 gap-2">
+                {(['a','b','c','d']).map((alt) => (
+                  <button key={alt} onClick={() => darResposta(alt)}
+                    className="py-2.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2"
+                    style={{ background: ALT_CORES[alt], color: '#fff', boxShadow: `0 4px 12px ${ALT_CORES[alt]}88` }}>
+                    <span className="text-base">{ALT_LABELS[alt]}</span>
+                    <span className="font-semibold text-xs opacity-90 truncate max-w-[80px]">
+                      {questaoAtual?.[alt] || ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button onClick={pular} className="flex-1 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.7)" }}>
+                  Pular / equipe não respondeu
                 </button>
-                <button
-                  onClick={errado}
-                  className="px-5 py-2.5 rounded-xl font-bold text-sm"
-                  style={{
-                    background: "rgba(0,0,0,0.22)",
-                    color: "#fff",
-                    border: "2px solid rgba(255,255,255,0.3)",
-                  }}
-                >
-                  ✗ Errado
+                <button onClick={async () => {
+                  await Promise.all([kDel("kahoot_buzz"), kSet("kahoot_active", true)]);
+                  setBuzz(null);
+                  setActive(true);
+                  prevBuzzId.current = null;
+                }} className="flex-1 py-1.5 rounded-xl text-xs font-semibold"
+                  style={{ background: "rgba(255,165,0,0.3)", color: "#ffd580", border: "1px solid rgba(255,165,0,0.4)" }}>
+                  ↺ Contestar — reiniciar
                 </button>
               </div>
+            </div>
+          )}
+          {/* Resultado da resposta */}
+          {answer && !winner && !contando && !active && (
+            <div>
+              <div className="font-black text-white text-2xl">
+                {answer.correto ? "✅ Correto! +1 pt" : "❌ Errado! Encerrado."}
+              </div>
+              <div className="text-white/80 text-sm mt-1">
+                {TEAMS_KAHOOT.find(t => t.id === answer.teamId)?.label} respondeu {ALT_LABELS[answer.alt]}
+                {questaoAtual && ` — correto era ${ALT_LABELS[questaoAtual.correta]}`}
+              </div>
+            </div>
+          )}
+          {/* Primeiro erro — aguardando mediador reativar */}
+          {errou && !winner && !active && !answer && !contando && (
+            <div>
+              <div className="font-black text-white text-xl mb-1">
+                ❌ {errouTeam?.label} errou
+              </div>
+              <div className="text-white/70 text-sm mb-3">
+                Reative as outras 3 botoeiras para segunda chance
+              </div>
+              <button
+                onClick={reativarOutrasBotoeiras}
+                className="w-full py-2.5 rounded-xl font-bold text-sm"
+                style={{ background: LARANJA, color: "#fff", boxShadow: `0 4px 14px ${LARANJA}88` }}>
+                ⚡ Reativar outras 3 botoeiras
+              </button>
+            </div>
+          )}
+          {/* Aguardando */}
+          {!contando && !active && !winner && !answer && !errou && (
+            <div className="text-white/60 font-semibold text-sm tracking-wide">
+              Pronto — pressione "Nova Pergunta"
             </div>
           )}
         </div>
@@ -1654,9 +3044,10 @@ function KahootMonitorView({ forceLocal = false }) {
       {/* ── Botoeiras virtuais 2×2 ── */}
       <div className="grid grid-cols-2 gap-3">
         {TEAMS_KAHOOT.map((t) => {
-          const isWinner = winner?.id === t.id;
-          const isLoser  = !!winner && !isWinner;
-          const canPress = active && !buzz;
+          const isWinner  = winner?.id === t.id;
+          const isErrou   = errou === t.id;
+          const isLoser   = (!!winner && !isWinner) || (!!errou && !buzz && isErrou);
+          const canPress  = active && !buzz && !isErrou;
           return (
             <button
               key={t.id}
@@ -1698,13 +3089,15 @@ function KahootMonitorView({ forceLocal = false }) {
       </div>
 
       {/* ── Nova Pergunta ── */}
-      {!active && (
+      {!contando && !active && !winner && !errou && (
         <button
           onClick={novaPergunta}
           className="w-full py-3 rounded-2xl font-bold text-lg text-white"
           style={{ backgroundColor: AZUL }}
         >
-          ▶ Nova Pergunta — Ativar Botoeiras
+          {questoes.length > 0
+            ? `▶ Q${Math.min(questaoIdx + 2, questoes.length)} — Nova Pergunta`
+            : "▶ Nova Pergunta — Iniciar Cronômetro"}
         </button>
       )}
 
@@ -1725,12 +3118,133 @@ function KahootMonitorView({ forceLocal = false }) {
         </div>
       </div>
 
-      <div className="border-t border-gray-200 pt-3 pb-4">
+      <div className="border-t border-gray-200 pt-3 pb-2 flex gap-2">
         <button onClick={resetAll}
-          className="w-full py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
-          ⚠️ Zerar pontuação do Kahoot
+          className="flex-1 py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 bg-red-50">
+          ⚠️ Zerar pontuação
+        </button>
+        <button onClick={() => setShowQuestoes((v) => !v)}
+          className="flex-1 py-2 rounded-xl text-sm font-semibold border"
+          style={{
+            background: showQuestoes ? AZUL : "transparent",
+            color: showQuestoes ? "#fff" : AZUL,
+            borderColor: AZUL,
+          }}>
+          📋 Questões ({questoes.length}/20)
         </button>
       </div>
+
+      {/* ── Gerenciar Questões ── */}
+      {showQuestoes && (
+        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: AZUL }}>
+            <span className="font-bold text-white text-sm">Banco de Questões</span>
+            <div className="flex gap-2">
+              <button onClick={async () => {
+                if (questoes.length > 0 && !window.confirm("Substituir todas as questões pelo banco padrão?")) return;
+                await kSet("kahoot_questoes", QUESTOES_DEFAULT);
+                setQuestoes(QUESTOES_DEFAULT);
+              }}
+                className="px-3 py-1 rounded-xl text-xs font-bold bg-yellow-400" style={{ color: '#1e3a5f' }}>
+                ⬇ {questoes.length === 0 ? "Importar 20 questões" : "Restaurar padrão"}
+              </button>
+              <button onClick={() => abrirEdicao(null)}
+                className="px-3 py-1 rounded-xl text-xs font-bold bg-white" style={{ color: AZUL }}>
+                + Nova
+              </button>
+            </div>
+          </div>
+
+          {/* Formulário de edição */}
+          {editIdx !== undefined && (
+            <div className="p-4 border-b border-gray-100 bg-blue-50">
+              <div className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: AZUL }}>
+                {editIdx === null ? "Nova Questão" : `Editando Questão ${editIdx + 1}`}
+              </div>
+              <textarea
+                className="w-full rounded-xl border border-gray-300 p-2 text-sm mb-2 resize-none"
+                rows={2}
+                placeholder="Texto da pergunta…"
+                value={editForm.texto}
+                onChange={(e) => setEditForm((f) => ({ ...f, texto: e.target.value }))}
+              />
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {(['a','b','c','d']).map((alt) => (
+                  <div key={alt} className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-xs w-5 text-center"
+                      style={{ color: ALT_CORES[alt] }}>{ALT_LABELS[alt]})</span>
+                    <input
+                      className="flex-1 rounded-lg border border-gray-300 p-1.5 text-xs"
+                      placeholder={`Alternativa ${ALT_LABELS[alt]}`}
+                      value={editForm[alt]}
+                      onChange={(e) => setEditForm((f) => ({ ...f, [alt]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold text-gray-600">Correta:</span>
+                {(['a','b','c','d']).map((alt) => (
+                  <label key={alt} className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="correta" value={alt}
+                      checked={editForm.correta === alt}
+                      onChange={() => setEditForm((f) => ({ ...f, correta: alt }))} />
+                    <span className="text-xs font-bold" style={{ color: ALT_CORES[alt] }}>{ALT_LABELS[alt]}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={salvarQuestao}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold text-white"
+                  style={{ background: AZUL }}>
+                  💾 Salvar
+                </button>
+                <button onClick={() => { setEditIdx(undefined); setEditForm(FORM_VAZIO); }}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold border border-gray-300 text-gray-600">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de questões */}
+          <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+            {questoes.length === 0 && (
+              <div className="text-center text-xs text-gray-400 py-6">
+                Nenhuma questão ainda
+              </div>
+            )}
+            {questoes.map((q, idx) => (
+              <div key={idx}
+                className="flex items-start gap-2 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                style={{ borderLeft: questaoIdx === idx ? `4px solid ${LARANJA}` : "4px solid transparent" }}>
+                <span className="font-bold text-xs w-5 shrink-0 mt-0.5" style={{ color: AZUL }}>{idx + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-gray-700 truncate">{q.texto}</div>
+                  <div className="text-xs text-gray-400">
+                    ✓ {ALT_LABELS[q.correta]}: {q[q.correta]}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => irParaQuestao(idx)}
+                    className="w-6 h-6 rounded text-xs" title="Exibir esta questão"
+                    style={{ background: questaoIdx === idx ? LARANJA : "#e2e8f0", color: questaoIdx === idx ? "#fff" : "#64748b" }}>
+                    ▶
+                  </button>
+                  <button onClick={() => abrirEdicao(idx)}
+                    className="w-6 h-6 rounded text-xs" style={{ background: "#e2e8f0", color: "#64748b" }}>
+                    ✏
+                  </button>
+                  <button onClick={() => excluirQuestao(idx)}
+                    className="w-6 h-6 rounded text-xs" style={{ background: "#fee2e2", color: "#dc2626" }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1744,83 +3258,396 @@ function KahootTelaoView({ forceLocal = false }) {
   const [pts, setPts] = useState({});
   const [buzz, setBuzz] = useState(null);
   const [active, setActive] = useState(false);
+  const [questoes, setQuestoes] = useState([]);
+  const [questaoIdx, setQuestaoIdx] = useState(-1);
+  const [timerStart, setTimerStart] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [answer, setAnswer] = useState(null);
+  const [errou, setErrou] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+  const timerRefT = useRef(null);
+  const prevBuzzIdT = useRef(null);
+  const prevAnswerKeyT = useRef(null);
 
   const fetchAll = useCallback(async () => {
-    const p = await kahootGet("kahoot_pts", forceLocal);
-    const b = await kahootGet("kahoot_buzz", forceLocal);
-    const a = await kahootGet("kahoot_active", forceLocal);
+    const [p, b, a, q, qi, ts, ans, err] = await Promise.all([
+      kahootGet("kahoot_pts", forceLocal),
+      kahootGet("kahoot_buzz", forceLocal),
+      kahootGet("kahoot_active", forceLocal),
+      kahootGet("kahoot_questoes", forceLocal),
+      kahootGet("kahoot_questao_idx", forceLocal),
+      kahootGet("kahoot_timer_start", forceLocal),
+      kahootGet("kahoot_answer", forceLocal),
+      kahootGet("kahoot_errou", forceLocal),
+    ]);
+    // Sons: detecta mudanças de estado
+    const newBuzzId = b ? (b.teamId + (b.ts || "")) : null;
+    if (newBuzzId && newBuzzId !== prevBuzzIdT.current) {
+      prevBuzzIdT.current = newBuzzId;
+      playBuzzerSound();
+    }
+    if (!b) prevBuzzIdT.current = null;
+    const newAnswerKey = ans ? (ans.alt + (ans.teamId || "") + (ans.correto ? "1" : "0")) : null;
+    if (newAnswerKey && newAnswerKey !== prevAnswerKeyT.current) {
+      prevAnswerKeyT.current = newAnswerKey;
+      if (ans.correto) playSoundCorreto(); else playSoundErrado();
+    }
+    if (!ans) prevAnswerKeyT.current = null;
+
     setPts(p ?? {});
     setBuzz(b ?? null);
     setActive(!!a);
+    setQuestoes(Array.isArray(q) ? q : []);
+    setQuestaoIdx(qi !== null && qi !== undefined ? Number(qi) : -1);
+    setTimerStart(ts ? Number(ts) : null);
+    setAnswer(ans ?? null);
+    setErrou(err ?? null);
     setLastUpdate(new Date());
   }, [forceLocal]);
 
+  // Countdown local no telão (só visual, não escreve no Firebase)
+  useEffect(() => {
+    clearInterval(timerRefT.current);
+    if (!timerStart) { setTimeLeft(0); return; }
+    const tick = () => setTimeLeft(Math.max(0, TIMER_MS - (serverNow() - timerStart)));
+    tick();
+    timerRefT.current = setInterval(tick, 100);
+    return () => clearInterval(timerRefT.current);
+  }, [timerStart]);
+
   useEffect(() => {
     fetchAll();
-    const id = setInterval(fetchAll, 1500);
+    const id = setInterval(fetchAll, 500);
     return () => clearInterval(id);
   }, [fetchAll]);
 
-  const ranking = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
-  const maxPts = Math.max(1, ...TEAMS_KAHOOT.map((t) => pts[t.id] || 0));
-  const winner = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const ranking  = [...TEAMS_KAHOOT].sort((a, b) => (pts[b.id] || 0) - (pts[a.id] || 0));
+  const maxPts   = Math.max(1, ...TEAMS_KAHOOT.map((t) => pts[t.id] || 0));
+  const winner   = buzz ? TEAMS_KAHOOT.find((t) => t.id === buzz.teamId) : null;
+  const questaoAtual = questoes.length > 0 && questaoIdx >= 0 ? questoes[questaoIdx] : null;
+  const contandoT = timerStart !== null && timeLeft > 0;
+  const secsLeftT = Math.ceil(timeLeft / 1000);
+  const pctT      = timerStart ? Math.min(100, ((serverNow() - timerStart) / TIMER_MS) * 100) : 0;
+
+  const errouTeamT = errou ? TEAMS_KAHOOT.find(t => t.id === errou) : null;
+
+  // Fase atual do telão
+  const fase = buzz ? 'buzz'
+    : answer ? 'resposta'
+    : active && errou ? 'ativo_segunda'
+    : contandoT ? 'countdown'
+    : active ? 'ativo'
+    : errou ? 'errou'
+    : 'idle';
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto flex flex-col gap-8">
-      <div>
-        <div className="text-center text-sm font-bold tracking-widest mb-1" style={{ color: LARANJA }}>
-          SESI — TORNEIO INFANTIL
+    <div className="min-h-screen flex flex-col" style={{
+      background: AZUL_ESCURO,
+      ...(expanded ? { position: "fixed", inset: 0, zIndex: 9999, overflow: "auto" } : {}),
+    }}>
+
+      {/* ── Botão expandir/recolher ── */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        title={expanded ? "Recolher" : "Expandir tela cheia"}
+        style={{
+          position: "absolute", top: 10, right: 10, zIndex: 10000,
+          background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+          borderRadius: 8, padding: "4px 9px", color: "#fff", cursor: "pointer",
+          fontSize: 18, lineHeight: 1,
+        }}
+      >
+        {expanded ? "⤡" : "⛶"}
+      </button>
+
+      {/* ── Cabeçalho fixo ── */}
+      <div className="flex items-center justify-between px-6 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div>
+          <div className="text-xs font-bold tracking-widest" style={{ color: LARANJA }}>SESI — TORNEIO INFANTIL</div>
+          <div className="font-extrabold text-white text-lg">🎓 Kahoot English</div>
         </div>
-        <h1 className="text-center text-3xl md:text-4xl font-extrabold" style={{ color: AZUL }}>
-          🎓 Kahoot English
-        </h1>
-        {active && !buzz && (
-          <div className="text-center font-bold text-lg mt-2 animate-pulse" style={{ color: LARANJA }}>
-            ⚡ Botoeira ativa — primeira equipe a responder ganha!
-          </div>
-        )}
-        {buzz && winner && (
-          <div className="text-center font-extrabold text-2xl mt-2" style={{ color: winner.color }}>
-            🏆 {winner.label} foi primeiro!
+        {questoes.length > 0 && questaoIdx >= 0 && (
+          <div className="flex items-center gap-2">
+            {questoes.map((_, i) => (
+              <div key={i} className="rounded-full transition-all"
+                style={{
+                  width: i === questaoIdx ? 18 : 8,
+                  height: 8,
+                  background: i === questaoIdx ? LARANJA : i < questaoIdx ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)",
+                  transition: "all 0.3s",
+                }} />
+            ))}
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        {ranking.map((t, idx) => (
-          <div key={t.id} className="flex items-center gap-4 rounded-2xl p-4 shadow-sm"
-            style={{ backgroundColor: t.color }}>
-            <div className="flex items-center justify-center rounded-full font-extrabold text-xl w-10 h-10 shrink-0"
-              style={{ backgroundColor: "rgba(255,255,255,0.25)", color: t.dark ? "#3A3000" : "#fff" }}>
-              {idx + 1}º
+      {/* ── Conteúdo principal ── */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-4 gap-5 max-w-3xl mx-auto w-full">
+
+        {/* FASE: idle */}
+        {fase === 'idle' && (
+          <div className="text-center py-12">
+            <div className="font-black text-white text-opacity-30 text-4xl" style={{ color: "rgba(255,255,255,0.2)" }}>
+              🎓
             </div>
-            <div className="font-bold text-xl md:text-2xl flex items-center gap-2 flex-1"
-              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
-              {t.label}
-              {buzz?.teamId === t.id && <span className="text-sm font-bold px-2 py-0.5 rounded-full bg-white" style={{ color: t.color }}>🔔 BUZZ!</span>}
-            </div>
-            <div className="h-4 rounded-full overflow-hidden hidden md:block"
-              style={{ flex: "1", backgroundColor: "rgba(255,255,255,0.3)" }}>
-              <div className="h-full rounded-full" style={{
-                width: `${((pts[t.id] || 0) / maxPts) * 100}%`,
-                backgroundColor: "rgba(255,255,255,0.85)",
-                transition: "width 0.7s ease",
-              }} />
-            </div>
-            <div className="font-extrabold text-2xl md:text-3xl tabular-nums"
-              style={{ color: t.dark ? "#3A3000" : "#fff" }}>
-              {pts[t.id] || 0} pts
-            </div>
+            <div className="text-white/40 font-semibold mt-3">Aguardando próxima pergunta…</div>
           </div>
-        ))}
+        )}
+
+        {/* FASE: countdown — questão + botões travados */}
+        {fase === 'countdown' && questaoAtual && (
+          <>
+            {/* Cronômetro */}
+            <div className="flex items-center gap-4">
+              <div className="font-black text-white shrink-0"
+                style={{ fontSize: 72, lineHeight: 1, textShadow: "0 6px 30px rgba(0,0,0,0.5)",
+                  animation: secsLeftT <= 3 ? "pulseScale 0.5s ease-in-out infinite" : "none" }}>
+                {secsLeftT}
+              </div>
+              <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
+                <div className="h-full rounded-full" style={{
+                  width: `${pctT}%`,
+                  background: pctT > 70 ? "#ef4444" : pctT > 40 ? "#f59e0b" : "#22c55e",
+                  transition: "width 0.1s linear, background 0.3s",
+                }} />
+              </div>
+            </div>
+            {/* Texto da questão (sem alternativas) */}
+            <div className="rounded-3xl px-7 py-6" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: LARANJA }}>
+                Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.3rem, 3vw, 2rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Botões das equipes — travados */}
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => (
+                <div key={t.id}
+                  className="rounded-2xl flex items-center justify-center gap-3 font-extrabold"
+                  style={{
+                    background: t.color,
+                    height: 72,
+                    fontSize: 18,
+                    color: t.dark ? "#1a1a1a" : "#fff",
+                    opacity: 0.45,
+                    filter: "grayscale(30%)",
+                  }}>
+                  🔒 {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: ativo — questão + alternativas + botões pulsando */}
+        {fase === 'ativo' && questaoAtual && (
+          <>
+            {/* Texto da questão */}
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: LARANJA }}>
+                Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Alternativas */}
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => (
+                <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4"
+                  style={{ background: ALT_CORES[alt] }}>
+                  <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                  <span className="font-bold text-white text-base leading-tight">{questaoAtual[alt]}</span>
+                </div>
+              ))}
+            </div>
+            {/* Botões equipes — pulsando */}
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => (
+                <div key={t.id}
+                  className="rounded-2xl flex items-center justify-center gap-3 font-extrabold"
+                  style={{
+                    background: t.color,
+                    height: 68,
+                    fontSize: 18,
+                    color: t.dark ? "#1a1a1a" : "#fff",
+                    animation: "pulseScale 1s ease-in-out infinite",
+                    boxShadow: `0 0 28px ${t.color}99`,
+                  }}>
+                  🔔 {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: buzz — vencedor em destaque + questão grande */}
+        {fase === 'buzz' && winner && questaoAtual && (
+          <>
+            {/* Vencedor em destaque */}
+            <div className="rounded-3xl flex flex-col items-center justify-center py-8"
+              style={{ background: winner.color, boxShadow: `0 0 60px ${winner.color}88` }}>
+              <div className="font-black" style={{ fontSize: 56, color: winner.dark ? "#1a1a1a" : "#fff",
+                textShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "pulseScale 0.8s ease-in-out infinite" }}>
+                🔔 {winner.label}
+              </div>
+              <div className="font-bold mt-1 text-lg" style={{ color: winner.dark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)" }}>
+                foi a primeira!
+              </div>
+            </div>
+            {/* Apenas texto da questão — sem alternativas */}
+            <div className="rounded-3xl px-7 py-6 text-center" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.4rem, 3vw, 2.2rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Outras equipes — somem (só vencedor visível acima) */}
+            <div className="grid grid-cols-3 gap-2">
+              {TEAMS_KAHOOT.filter(t => t.id !== winner.id).map(t => (
+                <div key={t.id} className="rounded-xl flex items-center justify-center font-bold text-sm"
+                  style={{ background: t.color, height: 44, color: t.dark ? "#1a1a1a" : "#fff", opacity: 0.25 }}>
+                  {t.label}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* FASE: errou — primeira equipe errou, aguardando mediador */}
+        {fase === 'errou' && errouTeamT && questaoAtual && (
+          <>
+            <div className="rounded-3xl flex flex-col items-center justify-center py-8"
+              style={{ background: "#7f1d1d", boxShadow: "0 0 40px #ef444488" }}>
+              <div className="font-black text-white text-4xl mb-2">
+                ❌ {errouTeamT.label} errou!
+              </div>
+              <div className="text-white/70 font-semibold text-lg">
+                Aguardando segunda chance…
+              </div>
+            </div>
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug text-center" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* FASE: ativo_segunda — segunda chance, equipe que errou bloqueada */}
+        {fase === 'ativo_segunda' && questaoAtual && (
+          <>
+            <div className="rounded-3xl px-7 py-5" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: LARANJA }}>
+                Segunda chance — Questão {questaoIdx + 1} / {questoes.length}
+              </div>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.2rem, 2.8vw, 1.8rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => (
+                <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4"
+                  style={{ background: ALT_CORES[alt] }}>
+                  <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                  <span className="font-bold text-white text-base leading-tight">{questaoAtual[alt]}</span>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {TEAMS_KAHOOT.map(t => {
+                const isBlocked = t.id === errou;
+                return (
+                  <div key={t.id}
+                    className="rounded-2xl flex items-center justify-center gap-2 font-extrabold"
+                    style={{
+                      background: isBlocked ? "#333" : t.color,
+                      height: 68,
+                      fontSize: 17,
+                      color: isBlocked ? "#555" : (t.dark ? "#1a1a1a" : "#fff"),
+                      opacity: isBlocked ? 0.3 : 1,
+                      animation: isBlocked ? "none" : "pulseScale 1s ease-in-out infinite",
+                      boxShadow: isBlocked ? "none" : `0 0 28px ${t.color}99`,
+                    }}>
+                    {isBlocked ? "✗" : "🔔"} {t.label}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* FASE: resposta — revela gabarito */}
+        {fase === 'resposta' && questaoAtual && (
+          <>
+            {/* Banner resultado */}
+            <div className="rounded-3xl py-5 px-7 text-center"
+              style={{ background: answer.correto ? "#15803d" : "#dc2626",
+                boxShadow: answer.correto ? "0 0 40px #15803d88" : "0 0 40px #dc262688" }}>
+              <div className="font-black text-white text-3xl">
+                {answer.correto ? "✅ CORRETO! +1 pt" : "❌ ERRADO!"}
+              </div>
+              <div className="text-white/80 font-semibold mt-1">
+                {TEAMS_KAHOOT.find(t => t.id === answer.teamId)?.label} respondeu {ALT_LABELS[answer.alt]}
+                {!answer.correto && ` — correto era ${ALT_LABELS[questaoAtual.correta]}`}
+              </div>
+            </div>
+            {/* Texto da questão */}
+            <div className="rounded-3xl px-7 py-4" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="font-extrabold text-white leading-snug" style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.6rem)" }}>
+                {questaoAtual.texto}
+              </div>
+            </div>
+            {/* Alternativas reveladas */}
+            <div className="grid grid-cols-2 gap-3">
+              {(['a','b','c','d']).map(alt => {
+                const isResposta = answer.alt === alt;
+                const isCorreta  = questaoAtual.correta === alt;
+                return (
+                  <div key={alt} className="rounded-2xl flex items-center gap-3 px-5 py-4 transition-all"
+                    style={{
+                      background: isCorreta ? "#15803d" : isResposta ? "#dc2626" : ALT_CORES[alt],
+                      opacity: !isResposta && !isCorreta ? 0.4 : 1,
+                      transform: isCorreta ? "scale(1.04)" : "scale(1)",
+                      boxShadow: isCorreta ? "0 0 30px #15803d99" : isResposta ? "0 0 20px #dc262688" : "none",
+                    }}>
+                    <span className="font-black text-white text-2xl w-9 shrink-0 text-center">{ALT_LABELS[alt]}</span>
+                    <span className="font-bold text-white text-base leading-tight flex-1">{questaoAtual[alt]}</span>
+                    {isCorreta && <span className="text-white text-xl font-black">✓</span>}
+                    {isResposta && !isCorreta && <span className="text-white text-xl font-black">✗</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
-      {lastUpdate && (
-        <div className="text-center text-xs text-gray-400">
-          Atualizado às {lastUpdate.toLocaleTimeString("pt-BR")}
+      {/* ── Placar compacto (sempre visível no rodapé) ── */}
+      <div className="px-6 pb-4 pt-3 max-w-3xl mx-auto w-full" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex gap-2 items-center">
+          {ranking.map((t, idx) => (
+            <div key={t.id} className="flex-1 rounded-xl px-3 py-2 flex items-center gap-2 transition-all"
+              style={{
+                background: t.color + (buzz?.teamId === t.id ? "ff" : "55"),
+                transform: answer?.teamId === t.id && answer.correto ? "scale(1.06)" : "scale(1)",
+              }}>
+              <span className="text-xs font-bold" style={{ color: t.dark ? "#1a1a1a" : "rgba(255,255,255,0.7)" }}>{idx + 1}º</span>
+              <span className="font-bold text-xs flex-1 truncate" style={{ color: t.dark ? "#1a1a1a" : "#fff" }}>{t.label}</span>
+              <span className="font-extrabold tabular-nums" style={{ fontSize: 18, color: t.dark ? "#1a1a1a" : "#fff" }}>{pts[t.id] || 0}</span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
+
+      <style>{`
+        @keyframes pulseScale {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -1829,19 +3656,6 @@ export default function App() {
   const [page, setPage] = useState("home");  // "home" | "propulsao" | "ponte" | "kahoot"
   const [mode, setMode] = useState("monitor"); // "monitor" | "telao"
 
-  // Modo offline do Kahoot English (servidor local, ginásio sem internet)
-  const [kahootOffline, setKahootOffline] = useState(() => {
-    if (isLocalMode) return true;
-    try { return localStorage.getItem("kahoot-mode") === "offline"; } catch { return false; }
-  });
-
-  const toggleKahootMode = () => {
-    setKahootOffline((prev) => {
-      const next = !prev;
-      try { localStorage.setItem("kahoot-mode", next ? "offline" : "online"); } catch {}
-      return next;
-    });
-  };
 
   const pageLabel = page === "home"      ? "🏠 Início"
     : page === "propulsao" ? "🌀 Lançador de Spinner"
@@ -1886,16 +3700,27 @@ export default function App() {
                   style={{ backgroundColor: mode === "telao" ? LARANJA : "transparent" }}>
                   Telão
                 </button>
+                {(page === "propulsao" || page === "ponte") && (
+                  <a href="/telao.html" target="_blank" rel="noopener"
+                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white no-underline"
+                    style={{ backgroundColor: "rgba(255,255,255,0.12)", textDecoration: "none" }}>
+                    📺 Duplo ↗
+                  </a>
+                )}
               </div>
             )}
           </div>
           {/* Linha 2: navegação entre páginas */}
           <div className="flex gap-2">
             {[
-              { id: "home",      label: "🏠 Início" },
-              { id: "propulsao", label: "🌀 Spinner" },
-              { id: "ponte",     label: "🌉 Ponte" },
-              { id: "kahoot",    label: "🎓 Kahoot" },
+              { id: "home",        label: "🏠 Início" },
+              { id: "propulsao",   label: "🌀 Spinner" },
+              { id: "ponte",       label: "🌉 Ponte" },
+              { id: "terceiroano", label: "🏫 3º Ano" },
+              { id: "quartoano",   label: "🏫 4º Ano" },
+              { id: "quintoano",   label: "🏫 5º Ano" },
+              { id: "geral",       label: "🏆 Geral" },
+              { id: "kahoot",      label: "🎓 Kahoot" },
             ].map(({ id, label }) => (
               <button key={id} onClick={() => handleSetPage(id)}
                 className="flex-1 py-1.5 rounded-xl text-sm font-bold transition-colors"
@@ -1908,39 +3733,20 @@ export default function App() {
               </button>
             ))}
           </div>
-          {/* Linha 3: toggle online/offline — só na aba Kahoot */}
-          {page === "kahoot" && !isLocalMode && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-white text-opacity-60" style={{ color: "rgba(255,255,255,0.55)" }}>
-                Kahoot:
-              </span>
-              <button
-                onClick={toggleKahootMode}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all"
-                style={{
-                  backgroundColor: kahootOffline ? "#16a34a" : "rgba(255,255,255,0.15)",
-                  color: "#fff",
-                  border: kahootOffline ? "1.5px solid #4ade80" : "1.5px solid rgba(255,255,255,0.25)",
-                }}>
-                {kahootOffline ? "📴 Offline — servidor local" : "📶 Online — Firebase"}
-              </button>
-              {kahootOffline && (
-                <span className="text-xs font-semibold" style={{ color: "#4ade80" }}>
-                  ← ginásio sem internet
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
       {isHome && <HomeView />}
       {page === "propulsao" && (mode === "monitor" ? <MonitorView /> : <TelaoView />)}
       {page === "ponte"     && (mode === "monitor" ? <PonteMonitorView /> : <PonteTelaoView />)}
+      {page === "terceiroano" && <TerceiroAnoMonitorView />}
+      {page === "quartoano"   && <QuartoAnoMonitorView />}
+      {page === "quintoano"   && <QuintoAnoMonitorView />}
+      {page === "geral"       && <GeralMonitorView />}
       {page === "kahoot"    && (
         mode === "monitor"
-          ? <KahootMonitorView forceLocal={kahootOffline} />
-          : <KahootTelaoView  forceLocal={kahootOffline} />
+          ? <KahootMonitorView />
+          : <KahootTelaoView  />
       )}
     </div>
   );

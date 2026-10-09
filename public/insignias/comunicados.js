@@ -2,7 +2,15 @@
 // Sem token, acessível a todos. Dados do Firebase RTDB.
 
 const TORNEIO_INICIO = new Date('2026-10-02T14:50:00-03:00');
-const MEET_LINK = 'COLE_O_LINK_DO_TEAMS_AQUI';
+const MEET_LINK = 'https://youtu.be/lRHbkba_tOQ';
+
+// Modo de teste:
+//   ?teste=65  → contador termina em 65 s (bip começa em ~5 s)
+//   ?teste=bip → atalho: começa em 65 s, mesma coisa
+//   ?teste=10  → vai direto para os últimos 10 s (já no modo bip)
+const _testeParam = (() => { try { return new URLSearchParams(location.search).get('teste') || ''; } catch(_) { return ''; } })();
+const _testeSecs = _testeParam === 'bip' ? 65 : (parseInt(_testeParam) || 0);
+const _CONTADOR_TARGET = _testeSecs > 0 ? new Date(Date.now() + _testeSecs * 1000) : TORNEIO_INICIO;
 
 // ── Idioma ────────────────────────────────────────────────────────
 const STRINGS_COM = {
@@ -24,18 +32,32 @@ const STRINGS_COM = {
     data_evento:      '📅 02 de outubro de 2026 · 14h50',
     dias: 'dias', horas: 'horas', min: 'min', seg: 'seg',
     ao_vivo:          '📺 Assistir abertura ao vivo',
-    ao_vivo_btn:      '📺 Abertura ao vivo — Teams',
+    ao_vivo_btn:      '📺 Abertura ao vivo — YouTube',
     aba_inicio:    'Início',
     aba_insignias: 'Insígnias',
     aba_recados:   'Recados',
     aba_boletim:   'Boletim',
     aba_dicas:     'Dicas',
+    aba_noticias:  'Notícias',
+    noticias_titulo: '📰 Notícias do torneio',
+    noticias_vazio:  'Nenhuma notícia por enquanto.',
+    aba_fotos:     'Fotos',
+    aba_shorts:    'Shorts',
+    aba_provas:    'Provas',
+    fotos_vazio:   'Nenhuma foto ainda.',
+    shorts_vazio:  'Nenhum short ainda.',
+    provas_bloqueado: 'Os rankings serão divulgados durante as provas.',
+    boletim_item:  'item',
+    boletim_itens: 'itens',
+    boletim_vazio: 'Nenhum item no boletim por enquanto.',
     inicio_boas_vindas: 'Bem-vindo ao Torneio!',
     inicio_nav:         'Navegue pelas abas para ver tudo',
     inicio_ultimo_recado: 'Último recado',
     inicio_ver_recados:   'Ver todos os recados →',
     inicio_no_boletim:    'No boletim',
     inicio_ver_boletim:   'Ver boletim →',
+    inicio_noticias:      'Últimas notícias',
+    inicio_ver_noticias:  'Ver todas as notícias →',
   },
   en: {
     titulo_pagina:    'Updates',
@@ -55,18 +77,32 @@ const STRINGS_COM = {
     data_evento:      '📅 October 2, 2026 · 2:50 PM',
     dias: 'days', horas: 'hours', min: 'min', seg: 'sec',
     ao_vivo:          '📺 Watch opening ceremony live',
-    ao_vivo_btn:      '📺 Live opening — Teams',
+    ao_vivo_btn:      '📺 Live opening — YouTube',
     aba_inicio:    'Home',
     aba_insignias: 'Badges',
     aba_recados:   'Messages',
     aba_boletim:   'Bulletin',
     aba_dicas:     'Tips',
+    aba_noticias:  'News',
+    noticias_titulo: '📰 Tournament News',
+    noticias_vazio:  'No news yet.',
+    aba_fotos:     'Photos',
+    aba_shorts:    'Shorts',
+    aba_provas:    'Competitions',
+    fotos_vazio:   'No photos yet.',
+    shorts_vazio:  'No shorts yet.',
+    provas_bloqueado: 'Rankings will be revealed during the competitions.',
+    boletim_item:  'item',
+    boletim_itens: 'items',
+    boletim_vazio: 'No bulletin items yet.',
     inicio_boas_vindas: 'Welcome to the Tournament!',
     inicio_nav:         'Use the tabs to explore',
     inicio_ultimo_recado: 'Latest message',
     inicio_ver_recados:   'See all messages →',
     inicio_no_boletim:    'In the bulletin',
     inicio_ver_boletim:   'View bulletin →',
+    inicio_noticias:      'Latest news',
+    inicio_ver_noticias:  'See all news →',
   }
 };
 
@@ -82,6 +118,12 @@ function tc(key) {
   return (STRINGS_COM[_langCom] || STRINGS_COM.pt)[key] || key;
 }
 
+// Retorna spinner se ainda aguardando Firebase, ou a mensagem de vazio.
+function _vazioOuSpinner(msg) {
+  if (_carregandoFirebase) return '<div class="com-loading-spinner"></div>';
+  return `<div class="com-vazio">${msg}</div>`;
+}
+
 function alternarIdiomaCom() {
   _langCom = _langCom === 'pt' ? 'en' : 'pt';
   try { localStorage.setItem('torneio-lang', _langCom); } catch (_) {}
@@ -90,17 +132,23 @@ function alternarIdiomaCom() {
 }
 
 let _countdownInterval = null;
+let _provasInterval    = null;
 
 // ── Abas ──────────────────────────────────────────────────────────
 let _abaAtiva  = 'inicio';
-let _dadosCache = null; // { recados, dicas, boletim }
+let _dadosCache = null; // { recados, dicas, boletim, galeria, shorts }
+let _carregandoFirebase = false; // true enquanto a fase 2 (fetch) ainda não terminou
 
 const ABAS_CONFIG = [
   { id: 'inicio',    emoji: '🏠', labelKey: 'aba_inicio'    },
+  { id: 'provas',    emoji: '🏆', labelKey: 'aba_provas'    },
+  { id: 'noticias',  emoji: '📰', labelKey: 'aba_noticias'  },
   { id: 'insignias', emoji: '🏅', labelKey: 'aba_insignias' },
   { id: 'recados',   emoji: '📢', labelKey: 'aba_recados'   },
   { id: 'boletim',   emoji: '🎬', labelKey: 'aba_boletim'   },
   { id: 'dicas',     emoji: '💡', labelKey: 'aba_dicas'     },
+  { id: 'fotos',     emoji: '📷', labelKey: 'aba_fotos'     },
+  { id: 'shorts',    emoji: '▶️', labelKey: 'aba_shorts'    },
 ];
 
 function getMountEl() {
@@ -138,6 +186,12 @@ function trocarAba(id) {
     _countdownInterval = null;
   }
 
+  // Para o polling de provas se sair da aba Provas
+  if (id !== 'provas' && _provasInterval) {
+    clearInterval(_provasInterval);
+    _provasInterval = null;
+  }
+
   // Atualiza estado visual das abas
   document.querySelectorAll('.com-tab-btn').forEach(btn => {
     const ativo = btn.dataset.aba === id;
@@ -145,18 +199,229 @@ function trocarAba(id) {
     btn.setAttribute('aria-selected', ativo);
   });
 
-  // Re-renderiza conteúdo
+  // Re-renderiza conteúdo com animação de transição
   const content = document.getElementById('com-content');
   if (content) {
     content.innerHTML = '';
+    content.classList.remove('com-content-area');
+    void content.offsetWidth; // força reflow para re-disparar animação
+    content.classList.add('com-content-area');
     renderConteudoAba(_dadosCache);
     content.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
+// ── Aba Provas — ranking ao vivo inline ──────────────────────────
+const _PROVAS_TEAMS_SPINNER = [
+  { id: '2A', label: '2º A', cor: '#D92B2B' },
+  { id: '2B', label: '2º B', cor: '#004B8D' },
+  { id: '2C', label: '2º C', cor: '#2E9E4F' },
+  { id: '2D', label: '2º D', cor: '#F0B800', escuro: true },
+];
+const _PROVAS_TEAMS_PONTE = [
+  { id: '1A', label: '1º A', cor: '#D92B2B' },
+  { id: '1B', label: '1º B', cor: '#004B8D' },
+  { id: '1C', label: '1º C', cor: '#2E9E4F' },
+  { id: '1D', label: '1º D', cor: '#F0B800', escuro: true },
+];
+const _PROVAS_ROUNDS = [1, 2, 3, 4];
+const _PROVAS_MEDALS = ['🥇', '🥈', '🥉', '🏅'];
+const _RTDB_BASE = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
+
+function _provasRankPts(itens, higherBetter) {
+  const present = itens.filter(it => it.value !== null && it.value !== undefined);
+  if (!present.length) return {};
+  const sorted = [...present].sort((a, b) => higherBetter ? b.value - a.value : a.value - b.value);
+  const pts = [4, 3, 2, 1];
+  const result = {};
+  let lastVal = null, lastPts = null;
+  sorted.forEach((it, i) => {
+    const p = (lastVal !== null && it.value === lastVal) ? lastPts : (pts[i] !== undefined ? pts[i] : 1);
+    result[it.team] = p;
+    lastVal = it.value;
+    lastPts = p;
+  });
+  return result;
+}
+
+function _provasFmtTempo(s) {
+  if (s === null || s === undefined) return '–';
+  return s.toFixed(1) + 's';
+}
+
+async function _fetchProvasData() {
+  const [libP, libS, ep] = await Promise.all([
+    fetch(`${_RTDB_BASE}/ponte_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/spinner_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    fetch(`${_RTDB_BASE}/ponte_estado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+  ]);
+
+  const ponteData = {};
+  const spinnerData = {};
+
+  await Promise.all([
+    ...( libP ? _PROVAS_ROUNDS.map(r =>
+      Promise.all(_PROVAS_TEAMS_PONTE.map(async t => {
+        try {
+          const v = await fetch(`${_RTDB_BASE}/ponte_r${r}_${t.id}.json`, { cache: 'no-store' }).then(x => x.ok ? x.json() : null);
+          if (v) ponteData[`${r}_${t.id}`] = v;
+        } catch (_) {}
+      }))
+    ) : []),
+    ...( libS ? _PROVAS_ROUNDS.map(r =>
+      Promise.all(_PROVAS_TEAMS_SPINNER.map(async t => {
+        try {
+          const v = await fetch(`${_RTDB_BASE}/r${r}_${t.id}.json`, { cache: 'no-store' }).then(x => x.ok ? x.json() : null);
+          if (v) spinnerData[`${r}_${t.id}`] = v;
+        } catch (_) {}
+      }))
+    ) : []),
+  ]);
+
+  return { libP, libS, ep, ponteData, spinnerData };
+}
+
+function _calcProvasHtml({ libP, libS, ep, ponteData, spinnerData }) {
+  let html = '';
+
+  if (!libP && !libS) {
+    return `<div class="com-secao">
+      <div class="com-secao-titulo">🏆 Provas</div>
+      <div class="com-vazio">${tc('provas_bloqueado')}</div>
+    </div>`;
+  }
+
+  if (libP) {
+    const ponteAoVivo = ep === 'aguardando' || ep === 'suspense';
+    const ponteTotals = {};
+    _PROVAS_TEAMS_PONTE.forEach(t => { ponteTotals[t.id] = 0; });
+    _PROVAS_ROUNDS.forEach(r => {
+      const itens = _PROVAS_TEAMS_PONTE.map(t => {
+        const v = ponteData[`${r}_${t.id}`];
+        return { team: t.id, tempo: v?.tempo ?? null, carga: v?.carga ?? null };
+      });
+      if (!itens.some(it => it.tempo !== null || it.carga !== null)) return;
+      const comTempo = itens.filter(it => it.tempo !== null);
+      const tempoPts = _provasRankPts(comTempo.map(it => ({ team: it.team, value: it.tempo })), false);
+      itens.forEach(it => {
+        ponteTotals[it.team] += (tempoPts[it.team] || 0) + (it.carga === true ? 4 : 0);
+      });
+    });
+    const ponteRanking = [..._PROVAS_TEAMS_PONTE].sort((a, b) => ponteTotals[b.id] - ponteTotals[a.id]);
+    const maxPonte = Math.max(1, ...ponteRanking.map(t => ponteTotals[t.id]));
+
+    html += `<div class="com-secao">
+      <div class="com-secao-titulo">🌉 Ponte de Da Vinci${ponteAoVivo ? ' <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span>' : ''}</div>
+      <div class="provas-ranking-lista">
+        ${ponteRanking.map((t, i) => {
+          const total = ponteTotals[t.id];
+          const pct   = Math.round((total / maxPonte) * 100);
+          const empate = i > 0 && ponteTotals[ponteRanking[i-1].id] === total;
+          return `<div class="provas-rank-card" style="--pc:${t.cor}">
+            <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
+            <div class="provas-rank-body">
+              <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
+              <div class="provas-rank-barra"><div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div></div>
+            </div>
+            <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (libS) {
+    const spinnerTotals = {}, spinnerGiroFirsts = {};
+    _PROVAS_TEAMS_SPINNER.forEach(t => { spinnerTotals[t.id] = 0; spinnerGiroFirsts[t.id] = 0; });
+    _PROVAS_ROUNDS.forEach(r => {
+      const itens = _PROVAS_TEAMS_SPINNER.map(t => {
+        const v = spinnerData[`${r}_${t.id}`];
+        return { team: t.id, montagem: v?.montagem ?? null, giro: v?.giro ?? null };
+      });
+      if (!itens.some(it => it.montagem !== null || it.giro !== null)) return;
+      const montPts = _provasRankPts(itens.filter(it => it.montagem !== null).map(it => ({ team: it.team, value: it.montagem })), false);
+      const giroPts = _provasRankPts(itens.filter(it => it.giro !== null).map(it => ({ team: it.team, value: it.giro })), true);
+      const complete = itens.every(it => it.montagem !== null && it.giro !== null);
+      _PROVAS_TEAMS_SPINNER.forEach(t => {
+        spinnerTotals[t.id] += (montPts[t.id] || 0) + (giroPts[t.id] || 0);
+        if (complete && giroPts[t.id] === 4) spinnerGiroFirsts[t.id]++;
+      });
+    });
+    const spinnerRanking = [..._PROVAS_TEAMS_SPINNER].sort((a, b) => {
+      const diff = spinnerTotals[b.id] - spinnerTotals[a.id];
+      return diff !== 0 ? diff : spinnerGiroFirsts[b.id] - spinnerGiroFirsts[a.id];
+    });
+    const maxSpinner = Math.max(1, ...spinnerRanking.map(t => spinnerTotals[t.id]));
+
+    html += `<div class="com-secao">
+      <div class="com-secao-titulo">🌀 Lançador de Spinner <span style="color:#D92B2B;font-size:12px;font-weight:800;vertical-align:middle">● AO VIVO</span></div>
+      <div class="provas-ranking-lista">
+        ${spinnerRanking.map((t, i) => {
+          const total = spinnerTotals[t.id];
+          const pct   = Math.round((total / maxSpinner) * 100);
+          const empate = i > 0 && spinnerTotals[spinnerRanking[i-1].id] === total;
+          return `<div class="provas-rank-card" style="--pc:${t.cor}">
+            <div class="provas-rank-pos">${empate ? '·' : (_PROVAS_MEDALS[i] || (i+1)+'º')}</div>
+            <div class="provas-rank-body">
+              <div class="provas-rank-nome" style="color:${t.cor}">${t.label}</div>
+              <div class="provas-rank-barra"><div class="provas-rank-fill" style="width:${pct}%;background:${t.cor}"></div></div>
+            </div>
+            <div class="provas-rank-pts">${total}<span class="provas-rank-pts-label">pts</span></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
+
+async function renderAbaProvas() {
+  const mount = getMountEl();
+
+  // Spinner de carregamento apenas na primeira abertura
+  const loading = document.createElement('div');
+  loading.id = 'provas-loading';
+  loading.className = 'com-secao';
+  loading.innerHTML = '<div class="com-loading-spinner"></div>';
+  mount.appendChild(loading);
+
+  // Container para o conteúdo — atualizado in-place no polling
+  const container = document.createElement('div');
+  container.id = 'provas-container';
+  mount.appendChild(container);
+
+  const rodape = document.createElement('div');
+  rodape.className = 'com-rodape';
+  rodape.textContent = tc('rodape');
+  mount.appendChild(rodape);
+
+  async function _atualizar() {
+    if (_abaAtiva !== 'provas') return;
+    try {
+      const dados = await _fetchProvasData();
+      const c = document.getElementById('provas-container');
+      if (!c) return;
+      document.getElementById('provas-loading')?.remove();
+      c.innerHTML = _calcProvasHtml(dados);
+    } catch (_) {
+      document.getElementById('provas-loading')?.remove();
+      const c = document.getElementById('provas-container');
+      if (c && !c.innerHTML) c.innerHTML = `<div class="com-secao"><div class="com-vazio">Não foi possível carregar os resultados.</div></div>`;
+    }
+  }
+
+  await _atualizar();
+
+  clearInterval(_provasInterval);
+  _provasInterval = setInterval(_atualizar, 5000);
+}
+
 function renderConteudoAba(dados) {
   switch (_abaAtiva) {
     case 'inicio':    renderInicio(dados);             break;
+    case 'provas':    renderAbaProvas();               break;
+    case 'noticias':  renderNoticias(dados);           break;
     case 'insignias': renderEstojosSection();           break;
     case 'recados':   renderRecados(dados.recados);    break;
     case 'boletim':
@@ -164,16 +429,230 @@ function renderConteudoAba(dados) {
       document.querySelectorAll('video:not([data-video-id])').forEach(_monitorarVideo);
       carregarVideosPendentes();
       break;
-    case 'dicas':     renderDicas(dados.dicas);        break;
+    case 'dicas':     renderDicas(dados.dicas);            break;
+    case 'fotos':     renderAbaFotos(dados.galeria);       break;
+    case 'shorts':    renderAbaShorts(dados.shorts);       break;
   }
   getMountEl().insertAdjacentHTML('beforeend',
     `<div class="com-rodape">${tc('rodape')}<br><span id="com-stats-visitors" style="font-size:11px;color:var(--muted)"></span></div>`);
+}
+
+// ── Banner de novidades ───────────────────────────────────────────
+const BANNER_NOVIDADES_KEY = 'torneio-banner-ao-vivo:v2';
+
+function _renderBannerNovidades() {
+  try { if (localStorage.getItem(BANNER_NOVIDADES_KEY)) return; } catch (_) {}
+  const div = document.createElement('div');
+  div.className = 'com-banner-novidades';
+  div.innerHTML = `
+    <button class="com-banner-fechar" onclick="_fecharBannerNovidades()" aria-label="Fechar">✕</button>
+    <div class="com-banner-novo-tag">📡 AO VIVO</div>
+    <div class="com-banner-titulo">Acompanhe as provas em tempo real!</div>
+    <div class="com-banner-desc">No dia <strong>09/10 a partir das 9h</strong>, durante a <strong>Prova da Ponte de Da Vinci</strong> e o <strong>Lançador de Spinner</strong>, os resultados aparecerão ao vivo. Use os botões abaixo para acompanhar!</div>`;
+  getMountEl().appendChild(div);
+}
+
+function _fecharBannerNovidades() {
+  try { localStorage.setItem(BANNER_NOVIDADES_KEY, '1'); } catch (_) {}
+  const el = document.querySelector('.com-banner-novidades');
+  if (el) { el.style.transition = 'opacity .25s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 260); }
+}
+
+// ── Ponte ao vivo — votação pública ───────────────────────────────
+const _PONTE_VOTO_KEY = 'torneio-ponte-voto:v1';
+let _ponteEstadoAtual = null;
+let _ponteVotacaoAtual = {};
+let _ponteVotoUsuario = null;
+let _ponteVotacaoInterval = null;
+
+function _lerVotoUsuario() {
+  try { return JSON.parse(localStorage.getItem(_PONTE_VOTO_KEY)) || null; } catch (_) { return null; }
+}
+function _salvarVotoUsuario(v) {
+  try { localStorage.setItem(_PONTE_VOTO_KEY, JSON.stringify(v)); } catch (_) {}
+}
+
+async function _fetchPonteEstado() {
+  try {
+    const [re, rv] = await Promise.all([
+      fetch(RTDB_PONTE_ESTADO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      fetch(RTDB_PONTE_VOTACAO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    ]);
+    _ponteEstadoAtual = re ?? null;
+    _ponteVotacaoAtual = rv ?? {};
+    _renderPonteWidget();
+  } catch (_) {}
+}
+
+async function _votar(teamId) {
+  if (_ponteVotoUsuario) return;
+  _ponteVotoUsuario = teamId;
+  _salvarVotoUsuario(teamId);
+  const url = `https://torneio-sesi-20de0-default-rtdb.firebaseio.com/ponte_votacao/${teamId}.json`;
+  try {
+    const current = await fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : 0).then(v => (typeof v === 'number' ? v : 0));
+    await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current + 1) });
+    await _fetchPonteEstado();
+  } catch (_) {}
+  _renderPonteWidget();
+}
+
+function _renderPonteWidget() {
+  const el = document.getElementById('ponte-voto-widget');
+  if (!el) return;
+  const estado = _ponteEstadoAtual;
+  if (!estado || estado === 'revelado') { el.innerHTML = ''; return; }
+
+  const total = Object.values(_ponteVotacaoAtual).reduce((a, b) => a + (b || 0), 0) || 1;
+  const jaVotou = !!_ponteVotoUsuario;
+
+  const TEAMS_1ANO_CORES = [
+    { id: '1A', label: '1º A', color: '#D92B2B' },
+    { id: '1B', label: '1º B', color: '#004B8D' },
+    { id: '1C', label: '1º C', color: '#2E9E4F' },
+    { id: '1D', label: '1º D', color: '#F0B800' },
+  ];
+
+  el.innerHTML = `
+    <div class="ponte-voto-card">
+      <div class="ponte-voto-titulo">🗳️ Quem vai ganhar a prova da Ponte?</div>
+      <div class="ponte-voto-opcoes">
+        ${TEAMS_1ANO_CORES.map(t => {
+          const votos = _ponteVotacaoAtual[t.id] || 0;
+          const pct   = Math.round((votos / total) * 100);
+          const eu    = _ponteVotoUsuario === t.id;
+          return `
+            <button class="ponte-voto-btn${jaVotou ? ' votado' : ''}${eu ? ' meu-voto' : ''}"
+              onclick="_votar('${t.id}')"
+              ${jaVotou ? 'disabled' : ''}
+              style="--vc:${t.color}">
+              <span class="ponte-voto-label">${t.label}${eu ? ' ✓' : ''}</span>
+              ${jaVotou ? `<div class="ponte-voto-barra-wrap"><div class="ponte-voto-barra" style="width:${pct}%;background:${t.color}"></div></div><span class="ponte-voto-pct">${pct}%</span>` : ''}
+            </button>`;
+        }).join('')}
+      </div>
+      ${jaVotou ? `<div class="ponte-voto-total">${total} voto${total !== 1 ? 's' : ''}</div>` : ''}
+    </div>`;
+}
+
+function _iniciarPonteVotacao() {
+  _ponteVotoUsuario = _lerVotoUsuario();
+  _fetchPonteEstado();
+  clearInterval(_ponteVotacaoInterval);
+  _ponteVotacaoInterval = setInterval(_fetchPonteEstado, 6000);
+}
+
+// ── Spinner ao vivo — votação pública ─────────────────────────────
+const _SPINNER_VOTO_KEY = 'torneio-spinner-voto:v1';
+const RTDB_SPINNER_VOTACAO_URL = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_votacao.json";
+const RTDB_SPINNER_ESTADO_URL  = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_estado.json";
+let _spinnerEstadoAtual = null;
+let _spinnerVotacaoAtual = {};
+let _spinnerVotoUsuario = null;
+let _spinnerVotacaoInterval = null;
+
+const TEAMS_2ANO_CORES = [
+  { id: '2A', label: '2º A', color: '#D92B2B' },
+  { id: '2B', label: '2º B', color: '#004B8D' },
+  { id: '2C', label: '2º C', color: '#2E9E4F' },
+  { id: '2D', label: '2º D', color: '#F0B800' },
+];
+
+function _lerVotoSpinner() {
+  try { return JSON.parse(localStorage.getItem(_SPINNER_VOTO_KEY)) || null; } catch (_) { return null; }
+}
+function _salvarVotoSpinner(v) {
+  try { localStorage.setItem(_SPINNER_VOTO_KEY, JSON.stringify(v)); } catch (_) {}
+}
+
+async function _fetchSpinnerEstado() {
+  try {
+    const [est, rv] = await Promise.all([
+      fetch(RTDB_SPINNER_ESTADO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      fetch(RTDB_SPINNER_VOTACAO_URL, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+    ]);
+    _spinnerEstadoAtual = est ?? null;
+    _spinnerVotacaoAtual = rv ?? {};
+    _renderSpinnerWidget();
+  } catch (_) {}
+}
+
+async function _votarSpinner(teamId) {
+  if (_spinnerVotoUsuario) return;
+  _spinnerVotoUsuario = teamId;
+  _salvarVotoSpinner(teamId);
+  const url = `https://torneio-sesi-20de0-default-rtdb.firebaseio.com/spinner_votacao/${teamId}.json`;
+  try {
+    const current = await fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : 0).then(v => (typeof v === 'number' ? v : 0));
+    await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current + 1) });
+    await _fetchSpinnerEstado();
+  } catch (_) {}
+  _renderSpinnerWidget();
+}
+
+function _renderSpinnerWidget() {
+  const el = document.getElementById('spinner-voto-widget');
+  if (!el) return;
+  if (!_spinnerEstadoAtual || _spinnerEstadoAtual === 'revelado') { el.innerHTML = ''; return; }
+
+  const total = Object.values(_spinnerVotacaoAtual).reduce((a, b) => a + (b || 0), 0) || 1;
+  const jaVotou = !!_spinnerVotoUsuario;
+
+  el.innerHTML = `
+    <div class="ponte-voto-card">
+      <div class="ponte-voto-titulo">🗳️ Qual equipe vai ganhar a prova do Lançador de Spinner?</div>
+      <div class="ponte-voto-opcoes">
+        ${TEAMS_2ANO_CORES.map(t => {
+          const votos = _spinnerVotacaoAtual[t.id] || 0;
+          const pct   = Math.round((votos / total) * 100);
+          const eu    = _spinnerVotoUsuario === t.id;
+          return `
+            <button class="ponte-voto-btn${jaVotou ? ' votado' : ''}${eu ? ' meu-voto' : ''}"
+              onclick="_votarSpinner('${t.id}')"
+              ${jaVotou ? 'disabled' : ''}
+              style="--vc:${t.color}">
+              <span class="ponte-voto-label">${t.label}${eu ? ' ✓' : ''}</span>
+              ${jaVotou ? `<div class="ponte-voto-barra-wrap"><div class="ponte-voto-barra" style="width:${pct}%;background:${t.color}"></div></div><span class="ponte-voto-pct">${pct}%</span>` : ''}
+            </button>`;
+        }).join('')}
+      </div>
+      ${jaVotou ? `<div class="ponte-voto-total">${total} voto${total !== 1 ? 's' : ''}</div>` : ''}
+    </div>`;
+}
+
+function _iniciarSpinnerVotacao() {
+  _spinnerVotoUsuario = _lerVotoSpinner();
+  _fetchSpinnerEstado();
+  clearInterval(_spinnerVotacaoInterval);
+  _spinnerVotacaoInterval = setInterval(_fetchSpinnerEstado, 6000);
+}
+
+function _atualizarBannerRanking(id, liberado, url, subLiberado, aoVivo) {
+  const el = document.getElementById(`pr-banner-${id}`);
+  if (!el) return;
+  const sub = document.getElementById(`pr-banner-${id}-sub`);
+  const seta = el.querySelector('.pr-live-banner-seta');
+  if (liberado) {
+    el.className = 'pr-live-banner' + (aoVivo ? ' pr-live-banner-ao-vivo' : '');
+    el.style.cursor = 'pointer';
+    el.onclick = () => { location.href = url; };
+    if (sub) sub.textContent = aoVivo ? '🔴 Competindo agora · toque para ver ao vivo' : subLiberado;
+    if (seta) seta.textContent = '›';
+  } else {
+    el.className = 'pr-live-banner pr-live-banner-locked';
+    el.style.cursor = 'default';
+    el.onclick = null;
+    if (seta) seta.textContent = '🔒';
+  }
 }
 
 // ── Aba Início ────────────────────────────────────────────────────
 function renderInicio(dados) {
   // Countdown sempre no topo
   renderContadorCom();
+
+  // Banner de novidades: Fotos + Shorts
+  _renderBannerNovidades();
 
   const recados = (dados.recados && dados.recados.itens) || [];
   const boletim = (dados.boletim && dados.boletim.itens) || [];
@@ -187,11 +666,105 @@ function renderInicio(dados) {
     } catch (_) { return 0; }
   })();
 
+  // Widget de votação da ponte
+  const divVoto = document.createElement('div');
+  divVoto.id = 'ponte-voto-widget';
+  getMountEl().appendChild(divVoto);
+  _iniciarPonteVotacao();
+
+  // Widget de votação do spinner
+  const divVotoSpinner = document.createElement('div');
+  divVotoSpinner.id = 'spinner-voto-widget';
+  getMountEl().appendChild(divVotoSpinner);
+  _iniciarSpinnerVotacao();
+
+  // Banners "Ranking ao vivo" — Ponte e Spinner
+  const divRankingBanners = document.createElement('div');
+  divRankingBanners.id = 'pr-live-banners';
+  divRankingBanners.className = 'com-secao';
+  divRankingBanners.innerHTML = `
+    <div id="pr-banner-ponte" class="pr-live-banner pr-live-banner-locked" aria-disabled="true">
+      <div class="pr-live-banner-dot"></div>
+      <div class="pr-live-banner-body">
+        <div class="pr-live-banner-titulo">🌉 Ponte de Da Vinci</div>
+        <div id="pr-banner-ponte-sub" class="pr-live-banner-sub">09/10 às 9h · Ranking ao vivo durante a prova</div>
+      </div>
+      <div class="pr-live-banner-seta">🔒</div>
+    </div>
+    <div style="height:8px"></div>
+    <div id="pr-banner-spinner" class="pr-live-banner pr-live-banner-locked" aria-disabled="true">
+      <div class="pr-live-banner-dot"></div>
+      <div class="pr-live-banner-body">
+        <div class="pr-live-banner-titulo">🌀 Lançador de Spinner</div>
+        <div id="pr-banner-spinner-sub" class="pr-live-banner-sub">09/10 às 9h · Ranking ao vivo durante a prova</div>
+      </div>
+      <div class="pr-live-banner-seta">🔒</div>
+    </div>
+    <div id="pr-banner-telao-wrap" hidden>
+      <div style="height:8px"></div>
+      <div id="pr-banner-telao" class="pr-live-banner pr-live-banner-telao" style="cursor:pointer" onclick="location.href='/telao.html'">
+        <div class="pr-live-banner-dot"></div>
+        <div class="pr-live-banner-body">
+          <div class="pr-live-banner-titulo">📺 Telão — As duas provas</div>
+          <div id="pr-banner-telao-sub" class="pr-live-banner-sub">Ponte + Spinner lado a lado · acompanhe os dois rankings</div>
+        </div>
+        <div class="pr-live-banner-seta">›</div>
+      </div>
+    </div>`;
+  getMountEl().appendChild(divRankingBanners);
+
+  // Atualiza banners com base no Firebase (async — não bloqueia render)
+  (async () => {
+    try {
+      const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
+      const [rp, rs, ep, es, rfp, rfs] = await Promise.all([
+        fetch(`${RTDB}/ponte_liberado.json`,          { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_liberado.json`,        { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_estado.json`,            { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_estado.json`,          { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_resultado_final.json`,   { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_resultado_final.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      ]);
+      const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense') && !rfp?.ts;
+      const spinnerAoVivo = rs === true && (es === 'aguardando' || es === 'suspense') && !rfs?.ts;
+      const ponteEncerrada   = rfp?.ts || (rp === true && !ponteAoVivo);
+      const spinnerEncerrada = rfs?.ts || (rs === true && !spinnerAoVivo);
+      const ponteSub   = ponteAoVivo   ? '🔴 Competindo agora · toque para ver ao vivo'
+                       : rfp?.ts       ? '🏆 Resultado final disponível · toque para ver'
+                       : 'Acompanhe o ranking ao vivo';
+      const spinnerSub = spinnerAoVivo ? '🔴 Competindo agora · toque para ver ao vivo'
+                       : rfs?.ts       ? '🏆 Resultado final disponível · toque para ver'
+                       : 'Acompanhe o ranking ao vivo';
+      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   ponteSub,   ponteAoVivo);
+      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', spinnerSub, spinnerAoVivo);
+      // Banner do telão: só aparece quando pelo menos uma prova estiver liberada
+      const telaoWrap = document.getElementById('pr-banner-telao-wrap');
+      const telaoEl   = document.getElementById('pr-banner-telao');
+      const telaoSub  = document.getElementById('pr-banner-telao-sub');
+      if (telaoWrap && (rp === true || rs === true)) {
+        telaoWrap.hidden = false;
+        if (telaoEl) {
+          if (ponteAoVivo || spinnerAoVivo) {
+            telaoEl.className = 'pr-live-banner pr-live-banner-ao-vivo';
+            if (telaoSub) telaoSub.textContent = '🔴 Competindo agora · toque para ver as duas provas ao vivo';
+          } else if (ponteEncerrada || spinnerEncerrada) {
+            telaoEl.className = 'pr-live-banner';
+            if (telaoSub) telaoSub.textContent = '🏆 Provas encerradas · ver resultados finais';
+          }
+        }
+      }
+    } catch (_) {}
+  })();
+
+  const noticias = _coletarNoticias(dados);
   const cards = [
+    { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: (_carregandoFirebase && noticias.length === 0) ? '…' : `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
     { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
-    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
-    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: `${boletim.length} item${boletim.length !== 1 ? 's' : ''}`,  cor: '#2E9E4F' },
-    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: `${((dados.dicas && dados.dicas.itens) || []).length} dica${((dados.dicas && dados.dicas.itens) || []).length !== 1 ? 's' : ''}`, cor: '#7C3AED' },
+    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: (_carregandoFirebase && recados.length === 0) ? '…' : `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
+    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: (_carregandoFirebase && boletim.length === 0) ? '…' : `${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')}`,  cor: '#2E9E4F' },
+    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: (() => { const n = ((dados.dicas && dados.dicas.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} dica${n !== 1 ? 's' : ''}`; })(), cor: '#7C3AED' },
+    { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: (() => { const n = ((dados.galeria && dados.galeria.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} foto${n !== 1 ? 's' : ''}`; })(), cor: '#D97706' },
+    { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: (() => { const n = ((dados.shorts && dados.shorts.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} short${n !== 1 ? 's' : ''}`; })(), cor: '#DC2626' },
   ];
 
   const divCards = document.createElement('div');
@@ -230,6 +803,28 @@ function renderInicio(dados) {
     getMountEl().appendChild(div);
   }
 
+  // Notícias — preview da mais recente
+  const agora2 = Date.now();
+  const noticiaPreview = noticias.find(n =>
+    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora2 <= n.inicioAte)
+  );
+  if (noticiaPreview) {
+    const titulo  = noticiaPreview.titulo || noticiaPreview.manchete || '';
+    const sub     = noticiaPreview.subtitulo || noticiaPreview.texto || '';
+    const preview = sub.length > 100 ? sub.substring(0, 100) + '…' : sub;
+    const div = document.createElement('div');
+    div.className = 'com-secao';
+    div.innerHTML = `
+      <div class="com-secao-titulo">${tc('inicio_noticias')}</div>
+      <div class="com-noticia-card com-recado-clicavel" onclick="trocarAba('noticias')" role="button" tabindex="0">
+        ${noticiaPreview.imagem ? `<img src="${noticiaPreview.imagem}" class="com-noticia-img">` : ''}
+        ${titulo ? `<div class="com-noticia-titulo">${titulo}</div>` : ''}
+        ${preview ? `<div class="com-noticia-sub">${preview}</div>` : ''}
+        <div class="com-inicio-ver-mais">${tc('inicio_ver_noticias')}</div>
+      </div>`;
+    getMountEl().appendChild(div);
+  }
+
   // Boletim — itens visíveis na Início (sem inicioAte=-1 e dentro do prazo)
   const bolInicio = boletim.filter(b =>
     b.inicioAte !== -1 && (b.inicioAte === null || b.inicioAte === undefined || agora <= b.inicioAte)
@@ -258,7 +853,7 @@ function renderInicio(dados) {
       <button class="com-inicio-boletim-btn" onclick="trocarAba('boletim')">
         <span class="com-inicio-boletim-emoji">🎬</span>
         <div class="com-inicio-boletim-info">
-          <div class="com-inicio-boletim-titulo">${boletim.length} item${boletim.length !== 1 ? 's' : ''} no boletim</div>
+          <div class="com-inicio-boletim-titulo">${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')} — ${tc('inicio_no_boletim')}</div>
           <div class="com-inicio-boletim-sub">${tc('inicio_ver_boletim')}</div>
         </div>
         <span class="com-inicio-boletim-arrow">›</span>
@@ -267,16 +862,73 @@ function renderInicio(dados) {
   }
 }
 
+// ── Contador ──────────────────────────────────────────────────────
+let _fimIniciado  = false;
+
+function _youtubeId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
+    return u.searchParams.get('v') || '';
+  } catch(_) { return ''; }
+}
+
+function _ativarSomYoutube() {
+  const iframe = document.getElementById('yt-iframe-abertura');
+  if (!iframe) return;
+  // postMessage para o player do YouTube: desmutar e volume máximo
+  const cmd = JSON.stringify({ event: 'command', func: 'unMute',      args: [] });
+  const vol  = JSON.stringify({ event: 'command', func: 'setVolume',  args: [100] });
+  try { iframe.contentWindow.postMessage(cmd, '*'); } catch(_) {}
+  try { iframe.contentWindow.postMessage(vol, '*'); } catch(_) {}
+  const btn = document.getElementById('btn-ativar-som');
+  if (btn) btn.style.display = 'none';
+}
+
+function _mostrarAberturaVideo() {
+  const secao = document.getElementById('contador-torneio');
+  if (!secao) return;
+  const temLink = MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI';
+  const videoId = temLink ? _youtubeId(MEET_LINK) : '';
+
+  // autoplay=1 + mute=1 → vídeo inicia automaticamente sem som (browsers sempre permitem)
+  // enablejsapi=1 → habilita postMessage para desmutar via botão
+  secao.innerHTML = `
+    <div class="contador-abertura-overlay">
+      <div class="contador-abertura-titulo">🏆 ABERTURA DO TORNEIO!</div>
+      <div class="contador-abertura-sub">SESI TORNEIO INFANTIL 2026</div>
+      ${videoId
+        ? `<div style="position:relative">
+             <div class="contador-video-wrap">
+               <iframe id="yt-iframe-abertura"
+                 src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&playsinline=1&enablejsapi=1"
+                 class="contador-video-iframe"
+                 frameborder="0"
+                 allow="autoplay; fullscreen; picture-in-picture"
+                 allowfullscreen></iframe>
+             </div>
+             <button id="btn-ativar-som" class="btn-ativar-som" onclick="_ativarSomYoutube()">
+               🔊 Toque para ativar o som
+             </button>
+           </div>`
+        : `<div class="contador-abertura-link-pendente">📺 Transmissão em breve</div>`}
+    </div>`;
+
+}
+
 // ── Contador regressivo ───────────────────────────────────────────
 function renderContadorCom() {
   function calcular() {
-    const diff = TORNEIO_INICIO.getTime() - Date.now();
+    const diff = _CONTADOR_TARGET.getTime() - Date.now();
     if (diff <= 0) return null;
+    const totalSegs = Math.floor(diff / 1000);
     return {
       dias:    Math.floor(diff / 86400000),
       horas:   Math.floor((diff % 86400000) / 3600000),
       minutos: Math.floor((diff % 3600000)  / 60000),
-      segs:    Math.floor((diff % 60000)     / 1000)
+      segs:    Math.floor((diff % 60000)     / 1000),
+      totalSegs,
+      ultimoMinuto: totalSegs <= 60,
     };
   }
 
@@ -292,21 +944,22 @@ function renderContadorCom() {
     if (!inner) return;
 
     if (!tempo) {
-      inner.innerHTML = `
-        <div class="contador-ao-vivo" style="--c:#F5821F">
-          🏆 <span>${tc('andamento')}</span>
-        </div>
-        ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-          ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#F5821F">${tc('ao_vivo')}</a>`
-          : ''}`;
+      if (_fimIniciado) return;
+      _fimIniciado = true;
       clearInterval(_countdownInterval);
       _countdownInterval = null;
+      inner.innerHTML = `<div class="contador-sinal-fim">🔔 Iniciando abertura…</div>`;
+      _mostrarAberturaVideo();
       return;
     }
+
+    const corSegs = tempo.ultimoMinuto ? '#D32F2F' : '#F5821F';
+    const pulsarClass = tempo.ultimoMinuto ? ' contador-bloco-alerta' : '';
 
     inner.innerHTML = `
       <div class="contador-titulo">🏆 SESI TORNEIO INFANTIL</div>
       <div class="contador-subtitulo">${tc('comeca_em')}</div>
+      ${tempo.ultimoMinuto ? `<div class="contador-alerta-faixa">⚠️ Último minuto!</div>` : ''}
       <div class="contador-numeros">
         <div class="contador-bloco" style="--c:#004B8D">
           <span class="contador-num">${String(tempo.dias).padStart(2,'0')}</span>
@@ -323,15 +976,12 @@ function renderContadorCom() {
           <span class="contador-label">${tc('min')}</span>
         </div>
         <span class="contador-sep">:</span>
-        <div class="contador-bloco" style="--c:#F5821F">
+        <div class="contador-bloco${pulsarClass}" style="--c:${corSegs}">
           <span class="contador-num">${String(tempo.segs).padStart(2,'0')}</span>
           <span class="contador-label">${tc('seg')}</span>
         </div>
       </div>
-      <div class="contador-data">${tc('data_evento')}</div>
-      ${MEET_LINK !== 'COLE_O_LINK_DO_TEAMS_AQUI'
-        ? `<a href="${MEET_LINK}" target="_blank" class="contador-meet-btn" style="background:#004B8D">${tc('ao_vivo_btn')}</a>`
-        : ''}`;
+      <div class="contador-data">${tc('data_evento')}</div>`;
   }
 
   atualizar();
@@ -677,7 +1327,7 @@ function renderRecados(recados) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">${tc('recados_vazio')}</div>`
+      ? _vazioOuSpinner(tc('recados_vazio'))
       : itens.map(r => {
           const id = `rec-${r.ts || Math.random().toString(36).slice(2)}`;
           return `
@@ -696,6 +1346,53 @@ function renderRecados(recados) {
   getMountEl().appendChild(secao);
 }
 
+// ── Notícias (dicas com titulo + boletim tipo:noticia) ────────────
+function _coletarNoticias(dados) {
+  const agora = Date.now();
+  const dicasItens = ((dados.dicas && dados.dicas.itens) || [])
+    .filter(d => d.titulo)
+    .map(d => ({ _fonte: 'dica', titulo: d.titulo, texto: d.texto, imagem: d.imagem, icone: d.icone, area: d.area, inicioAte: d.inicioAte, ts: d.ts || d.id || 0 }));
+  const bolItens = ((dados.boletim && dados.boletim.itens) || [])
+    .filter(b => b.tipo === 'noticia')
+    .map(b => ({ _fonte: 'boletim', titulo: b.manchete, texto: b.subtitulo, imagem: undefined, icone: '📰', area: b.area, inicioAte: b.inicioAte, ts: b.ts || b.id || 0 }));
+  return [...dicasItens, ...bolItens].sort((a, b) => (b.ts > a.ts ? 1 : b.ts < a.ts ? -1 : 0));
+}
+
+function renderNoticias(dados) {
+  const todos = _coletarNoticias(dados);
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  const agora = Date.now();
+  const visiveis = todos.filter(n =>
+    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora <= n.inicioAte)
+  );
+
+  secao.innerHTML = `<div class="com-secao-titulo">${tc('noticias_titulo')}</div>`;
+  if (visiveis.length === 0) {
+    secao.innerHTML += _vazioOuSpinner(tc('noticias_vazio'));
+  } else {
+    const lista = document.createElement('div');
+    lista.className = 'com-noticias-lista';
+    lista.innerHTML = visiveis.map((n, i) => {
+      const id = `not-${i}`;
+      return `
+      <article class="com-noticia-card">
+        ${n.imagem ? `<img src="${n.imagem}" class="com-noticia-img">` : ''}
+        <div class="com-noticia-body">
+          <span class="com-noticia-icone">${n.icone || '📰'}</span>
+          ${n.titulo ? `<h3 class="com-noticia-titulo">${n.titulo}</h3>` : ''}
+          ${n.texto  ? `<p class="com-noticia-sub">${n.texto}</p>`     : ''}
+          ${_reacoesBar(id)}
+        </div>
+      </article>`;
+    }).join('');
+    secao.appendChild(lista);
+  }
+
+  getMountEl().appendChild(secao);
+}
+
 // ── Renderização de dicas ─────────────────────────────────────────
 function renderDicas(dicas) {
   const todos = dicas.itens || [];
@@ -711,7 +1408,7 @@ function renderDicas(dicas) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">${tc('dicas_vazio')}</div>`
+      ? _vazioOuSpinner(tc('dicas_vazio'))
       : `<div class="com-dicas-lista">
           ${itens.map(d => {
             const id = `dic-${d.ts || Math.random().toString(36).slice(2)}`;
@@ -719,7 +1416,9 @@ function renderDicas(dicas) {
             <div class="com-dica">
               ${_badgeArea(d)}
               <span class="com-dica-icone">${d.icone || '💡'}</span>
+              ${d.titulo ? `<strong style="display:block;font-size:15px;line-height:1.3;margin-bottom:4px">${d.titulo}</strong>` : ''}
               <span class="com-dica-texto">${d.texto}</span>
+              ${d.imagem ? `<img src="${d.imagem}" style="width:100%;max-height:240px;object-fit:cover;border-radius:12px;margin-top:8px;display:block">` : ''}
               ${_reacoesBar(id)}
             </div>`;
           }).join('')}
@@ -785,7 +1484,7 @@ function renderBoletimCom(boletim) {
     }));
     const lista = document.createElement('div');
     lista.innerHTML = itens.length === 0
-      ? `<div class="com-vazio">Nenhum item no boletim por enquanto.</div>`
+      ? _vazioOuSpinner(tc('boletim_vazio'))
       : `<div class="boletim-galeria">${itens.map(_renderBoletimItem).join('')}</div>`;
     secao.appendChild(lista);
   }
@@ -829,6 +1528,305 @@ async function carregarVideosPendentes() {
   }
 }
 
+async function _carregarVideosShortsLazy() {
+  const videos = document.querySelectorAll('video[data-sht-video-id]');
+  for (const video of videos) {
+    const id = video.dataset.shtVideoId;
+    if (!id) continue;
+    try {
+      const blobUrl = await carregarVideoShorts(id);
+      if (blobUrl) { video.src = blobUrl; video.load(); }
+    } catch (_) {}
+  }
+}
+
+// ── Opção B: banner de novo conteúdo ─────────────────────────────
+const _ULTIMA_VISITA_KEY = 'torneio-com-ultima-visita';
+
+function _maxTs(dados) {
+  const ts = [];
+  const recados = (dados.recados && dados.recados.itens) || [];
+  const dicas   = (dados.dicas   && dados.dicas.itens)   || [];
+  const boletim = (dados.boletim && dados.boletim.itens) || [];
+  recados.forEach(r => r.ts && ts.push(r.ts));
+  dicas.forEach(d => d.ts && ts.push(d.ts));
+  boletim.forEach(b => b.ts && ts.push(b.ts));
+  return ts.length ? Math.max(...ts) : 0;
+}
+
+function _verificarNovosConteudos(dados) {
+  let ultimaVisita = 0;
+  try { ultimaVisita = parseInt(localStorage.getItem(_ULTIMA_VISITA_KEY) || '0', 10); } catch (_) {}
+
+  const maxTs = _maxTs(dados);
+
+  // Atualiza timestamp de última visita sempre que a página é carregada
+  try { localStorage.setItem(_ULTIMA_VISITA_KEY, String(Date.now())); } catch (_) {}
+
+  // Só mostra banner se há conteúdo mais novo que a última visita registrada
+  // e se o usuário já visitou antes (ultimaVisita > 0)
+  if (!maxTs || !ultimaVisita || maxTs <= ultimaVisita) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'com-novo-banner';
+  banner.className = 'com-novo-banner';
+  banner.innerHTML = `
+    <span class="com-novo-banner-icone">📢</span>
+    <span class="com-novo-banner-texto">Novo conteúdo desde sua última visita!</span>
+    <button class="com-novo-banner-fechar" onclick="this.closest('#com-novo-banner').remove()" aria-label="Fechar">✕</button>`;
+  document.getElementById('app').insertBefore(banner, document.getElementById('app').firstChild);
+}
+
+// ── Opção A: notificações Web Push (FCM) ─────────────────────────
+const FCM_VAPID_KEY = 'BOLK-rUbBqUG2BHeCStWaqW9ypJN-r0JIUPA4FvXqEjWJX-4G5ccF8bbf05OjOR_iS6eszp_ZVc5Mr22_3ImXrY';
+const FCM_SENDER_ID  = 'COLE_O_SENDER_ID_AQUI'; // número, ex: 123456789012
+const RTDB_FCM_TOKENS = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com/fcm-tokens';
+
+async function _registrarServiceWorker() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    return reg;
+  } catch (e) {
+    console.warn('[push] SW falhou:', e);
+    return null;
+  }
+}
+
+function _urlBase64ToUint8(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function _obterTokenFCM(reg) {
+  try {
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8(FCM_VAPID_KEY),
+      });
+    }
+    // Salva no RTDB para o admin enviar notificações
+    const uuid = (() => {
+      try {
+        let u = localStorage.getItem('torneio-visitor-uuid');
+        if (!u) { u = crypto.randomUUID(); localStorage.setItem('torneio-visitor-uuid', u); }
+        return u;
+      } catch (_) { return 'anon'; }
+    })();
+    const payload = JSON.stringify({
+      endpoint:   sub.endpoint,
+      p256dh:     btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
+      auth:       btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
+      ts:         Date.now(),
+    });
+    await fetch(`${RTDB_FCM_TOKENS}/${uuid}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+    return sub;
+  } catch (e) {
+    console.warn('[push] token falhou:', e);
+    return null;
+  }
+}
+
+let _pushBtnEl = null;
+
+async function ativarNotificacoes() {
+  const btn = _pushBtnEl;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Ativando…'; }
+
+  if (!('Notification' in window)) {
+    if (btn) { btn.textContent = '⚠ Não suportado'; btn.disabled = false; }
+    return;
+  }
+
+  let perm = Notification.permission;
+  if (perm === 'default') {
+    perm = await Notification.requestPermission();
+  }
+
+  if (perm === 'default') {
+    // Chrome "Reduzir pedidos" silenciou o pedido — mostra dica do ícone na barra
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔔 Receber novidades';
+    }
+    _mostrarDicaChromeQuiet();
+    return;
+  }
+
+  if (perm !== 'granted') {
+    if (btn) { btn.textContent = '🔕 Bloqueado'; btn.disabled = false; }
+    location.reload(); // recarrega para mostrar instruções de desbloqueio
+    return;
+  }
+
+  const reg = await _registrarServiceWorker();
+  if (!reg) {
+    if (btn) { btn.textContent = '⚠ Erro ao registrar SW'; btn.disabled = false; }
+    return;
+  }
+
+  const sub = await _obterTokenFCM(reg);
+  if (sub) {
+    try { localStorage.setItem('torneio-push-ativo', '1'); } catch (_) {}
+    if (btn) {
+      btn.textContent = '🔔 Notificações ativas';
+      btn.classList.add('ativo');
+      btn.disabled = false;
+    }
+  } else {
+    if (btn) { btn.textContent = '⚠ Falhou — tente de novo'; btn.disabled = false; }
+  }
+}
+
+function _mostrarDicaChromeQuiet() {
+  // Remove aviso anterior se houver
+  document.getElementById('push-quiet-dica')?.remove();
+  const wrap = document.getElementById('com-push-wrap');
+  if (!wrap) return;
+  const div = document.createElement('div');
+  div.id = 'push-quiet-dica';
+  div.className = 'com-push-bloqueado-card';
+  div.style.marginTop = '8px';
+  const isMobileQuiet = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  div.innerHTML = `
+    <div class="com-push-bloq-titulo">🔔 Quase lá! O Chrome ocultou o pedido</div>
+    <p style="font-size:13px;margin:0 0 10px;line-height:1.5">
+      O Chrome está configurado para reduzir popups de notificação.
+      ${isMobileQuiet
+        ? 'Toque no ícone <strong>ⓘ</strong> na barra de endereço → <strong>Permissões</strong> → <strong>Notificações → Permitir</strong> e tente novamente.'
+        : 'Procure um <strong>ícone de sino 🔔</strong> no lado direito da barra de endereço e clique em <strong>"Permitir"</strong>.'}
+    </p>
+    ${isMobileQuiet ? '' : `<p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+      Se não aparecer nenhum ícone, cole na barra de endereço:
+      <code style="font-size:11px;color:#60a5fa">chrome://settings/content/notifications</code>
+      → escolha <strong>"Expandir todos os pedidos"</strong> → volte aqui e tente de novo.
+    </p>`}
+    <button class="com-push-btn" onclick="this.closest('#push-quiet-dica').remove();ativarNotificacoes()" style="width:100%">
+      🔔 Tentar novamente
+    </button>`;
+  wrap.appendChild(div);
+}
+
+function _renderBotaoPush(container) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (FCM_VAPID_KEY === 'COLE_A_VAPID_KEY_PUBLICA_AQUI') return; // não configurado ainda
+
+  const jaAtivo = (() => { try { return localStorage.getItem('torneio-push-ativo') === '1'; } catch(_) { return false; }})();
+  const permBloqueado = 'Notification' in window && Notification.permission === 'denied';
+
+  if (permBloqueado) {
+    const ua      = navigator.userAgent;
+    const isIOS   = /iphone|ipad|ipod/i.test(ua);
+    const isAndroid = /android/i.test(ua);
+    const isMobile  = isIOS || isAndroid || ('ontouchstart' in window && screen.width < 768);
+    const isSafari  = /^((?!chrome|android).)*safari/i.test(ua);
+    const isFF      = ua.includes('Firefox');
+
+    // Gera instruções e ação principal por browser
+    let instrucoes, acaoExtra = '';
+
+    if (isIOS) {
+      instrucoes = [
+        'Abra os <strong>Ajustes</strong> do iPhone/iPad',
+        'Role até <strong>Safari</strong> e toque nele',
+        'Toque em <strong>Notificações</strong> → ative para este site',
+        'Volte aqui e toque em "Já desbloqueei"',
+      ];
+    } else if (isAndroid) {
+      instrucoes = [
+        'Toque no ícone <strong>ⓘ</strong> ou <strong>🔒</strong> na barra de endereço',
+        'Toque em <strong>Permissões</strong>',
+        'Em <strong>Notificações</strong>, escolha <strong>Permitir</strong>',
+        'Volte aqui e toque em "Já desbloqueei"',
+      ];
+    } else if (isSafari) {
+      instrucoes = [
+        'No menu superior, clique em <strong>Safari → Preferências para este site…</strong>',
+        'Mude <strong>Notificações</strong> para <strong>Permitir</strong>',
+        'Clique em "Já desbloqueei" abaixo',
+      ];
+    } else if (isFF) {
+      instrucoes = [
+        'Clique no <strong>escudo 🛡 ou cadeado 🔒</strong> à esquerda do endereço',
+        'Clique em <strong>Permissões</strong>',
+        'Em <strong>Receber notificações</strong>, clique em ✕ para remover o bloqueio',
+        'Clique em "Já desbloqueei" abaixo',
+      ];
+    } else {
+      // Chrome / Edge desktop
+      const settingsUrl = 'chrome://settings/content/notifications';
+      instrucoes = [
+        'Copie o endereço abaixo, abra uma <strong>nova aba</strong> e cole:',
+        'Encontre <strong>torneio-sesi-20de0.web.app</strong> em "Bloqueado"',
+        'Clique em <strong>⋮ → Permitir</strong> ao lado do site',
+        'Volte aqui e clique em "Já desbloqueei"',
+      ];
+      acaoExtra = `
+        <div class="com-push-bloq-copiar">
+          <code id="push-settings-url">${settingsUrl}</code>
+          <button class="com-push-bloq-copiar-btn" onclick="
+            navigator.clipboard.writeText('${settingsUrl}').then(() => {
+              this.textContent = '✓ Copiado!';
+              setTimeout(() => this.textContent = '📋 Copiar', 2000);
+            }).catch(() => {
+              const el = document.getElementById('push-settings-url');
+              const r = document.createRange(); r.selectNode(el);
+              window.getSelection().removeAllRanges();
+              window.getSelection().addRange(r);
+            })
+          ">📋 Copiar</button>
+        </div>`;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'com-push-bloqueado-card';
+    div.innerHTML = `
+      <p class="com-push-bloq-convite">Quer ficar atualizado com tudo que rola no torneio? Siga o passo a passo e desbloqueie as notificações 👇</p>
+      <div class="com-push-bloq-titulo">🔕 Notificações bloqueadas</div>
+      <ol class="com-push-bloq-passos">
+        ${instrucoes.map(p => `<li>${p}</li>`).join('')}
+      </ol>
+      ${acaoExtra}
+      <button class="com-push-btn" onclick="location.reload()" style="margin-top:10px;width:100%">
+        ✅ Já desbloqueei — Recarregar
+      </button>`;
+    container.appendChild(div);
+    return;
+  }
+
+  if (jaAtivo) {
+    const btn = document.createElement('button');
+    btn.className = 'com-push-btn ativo';
+    btn.textContent = '🔔 Notificações ativas';
+    btn.onclick = ativarNotificacoes;
+    _pushBtnEl = btn;
+    container.appendChild(btn);
+    return;
+  }
+
+  // Convite para ativar notificações
+  const card = document.createElement('div');
+  card.className = 'com-push-convite';
+  card.innerHTML = `
+    <span class="com-push-convite-icone">🔔</span>
+    <div class="com-push-convite-texto">
+      <strong>Quer ficar por dentro de tudo que rola no torneio?</strong>
+      <span>Ative as notificações e receba recados, fotos e novidades na hora!</span>
+    </div>
+    <button class="com-push-convite-btn" id="btn-push-ativar">Ativar</button>`;
+  card.querySelector('#btn-push-ativar').onclick = ativarNotificacoes;
+  _pushBtnEl = card.querySelector('#btn-push-ativar');
+  container.appendChild(card);
+}
+
 // ── Página principal ──────────────────────────────────────────────
 async function renderComunicados() {
   const app = document.getElementById('app');
@@ -848,29 +1846,71 @@ async function renderComunicados() {
       <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
       <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
     </div>
+    <div id="com-push-wrap"></div>
     ${renderTabBar()}
     <div id="com-content" class="com-content-area"></div>`;
 
-  // Carrega reações e registra visita em paralelo com os dados
-  const [, recados, dicas, boletim] = await Promise.all([
+  _renderBotaoPush(document.getElementById('com-push-wrap'));
+
+  // ── Fase 1: renderiza imediatamente com dados do localStorage ─────
+  // Spinner aparece em abas sem cache; mensagens de vazio só aparecem
+  // após o Firebase responder (_carregandoFirebase = false).
+  _carregandoFirebase = true;
+  const dadosLocal = {
+    recados: lerRecados(),
+    dicas:   lerDicas(),
+    boletim: lerBoletim(),
+    galeria: lerGaleria(),
+    shorts:  lerShorts(),
+  };
+  const _temCacheLocal =
+    dadosLocal.recados.itens.length > 0 ||
+    dadosLocal.dicas.itens.length   > 0 ||
+    dadosLocal.boletim.itens.length > 0 ||
+    dadosLocal.galeria.itens.length > 0 ||
+    dadosLocal.shorts.itens.length  > 0;
+  if (_temCacheLocal) {
+    _dadosCache = dadosLocal;
+    renderConteudoAba(dadosLocal);
+  }
+
+  // ── Fase 2: busca Firebase em segundo plano, atualiza se mudou ────
+  Promise.all([
     carregarInsignias(),
     carregarRecados(),
     carregarDicas(),
     carregarBoletim(),
-    carregarTodasReacoes().catch(() => {})
-  ]);
-  registrarVisita().catch(() => {});
+    carregarTodasReacoes().catch(() => {}),
+    carregarGaleria().catch(() => ({ itens: [] })),
+    carregarShorts().catch(() => ({ itens: [] }))
+  ]).then(([, recados, dicas, boletim,, galeria, shorts]) => {
+    _carregandoFirebase = false;
+    if (!_testeSecs) registrarVisita().catch(() => {});
+    _dadosCache = { recados, dicas, boletim, galeria, shorts };
+    _verificarNovosConteudos(_dadosCache);
 
-  _dadosCache = { recados, dicas, boletim };
-  renderConteudoAba(_dadosCache);
+    // Limpa o conteúdo antes de re-renderizar com dados frescos do Firebase,
+    // evitando que o conteúdo da fase 1 (cache) fique duplicado abaixo.
+    const contentEl = document.getElementById('com-content');
+    if (contentEl) contentEl.innerHTML = '';
 
-  // Atualiza rodapé com visitantes únicos após carregar stats
-  carregarStats().then(stats => {
-    const el = document.getElementById('com-stats-visitors');
-    if (el && stats['visitantes-unicos']) {
-      el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
+    renderConteudoAba(_dadosCache);
+
+    carregarStats().then(stats => {
+      const el = document.getElementById('com-stats-visitors');
+      if (el && stats['visitantes-unicos']) {
+        el.textContent = `🏠 ${stats['visitantes-unicos']} famíl${stats['visitantes-unicos'] === 1 ? 'ia visitou' : 'ias visitaram'}`;
+      }
+    }).catch(() => {});
+  }).catch((err) => {
+    console.error('[comunicados] Falha no carregamento Firebase:', err);
+    _carregandoFirebase = false;
+    const contentEl = document.getElementById('com-content');
+    if (contentEl && !contentEl.hasChildNodes()) {
+      // Só re-renderiza do cache se o conteúdo estiver vazio (sem fase 1)
+      if (_dadosCache) try { renderConteudoAba(_dadosCache); } catch(_) {}
     }
-  }).catch(() => {});
+  });
 }
 
 // ── Auto-refresh a cada 3 min ─────────────────────────────────────
@@ -887,6 +1927,8 @@ function agendarRefresh() {
     _recadosCache    = null;
     _dicasCache      = null;
     _boletimCache    = null;
+    _galeriaCache    = null;
+    _shortsCache     = null;
     _estojoAtivoCom  = null;
     await renderComunicados();
     agendarRefresh();
@@ -910,3 +1952,246 @@ window.addEventListener('DOMContentLoaded', async () => {
   await renderComunicados();
   agendarRefresh();
 });
+
+// ── Aba Galeria de Fotos ──────────────────────────────────────────
+function _scoreFoto(f) {
+  const fotoId  = `foto_${f._stableId}`;
+  const reacoes = _totalReacoesItem(fotoId);
+  const idadeH  = f.ts ? (Date.now() - f.ts) / 3_600_000 : _SHORTS_RECENCIA_JANELA;
+  const bonus   = Math.max(0, _SHORTS_RECENCIA_BONUS * (1 - idadeH / _SHORTS_RECENCIA_JANELA));
+  return reacoes + bonus;
+}
+
+function renderAbaFotos(galeria) {
+  const fotosRaw = (galeria && galeria.itens) ? galeria.itens : [];
+  // Ordena por score = reações + bônus de recência (decai em 24 h)
+  const fotos = fotosRaw
+    .map((f, i) => ({ ...f, _origIdx: i, _stableId: f.ts || i }))
+    .sort((a, b) => _scoreFoto(b) - _scoreFoto(a));
+
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  if (fotos.length === 0) {
+    secao.innerHTML = `
+      <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
+      ${_vazioOuSpinner(tc('fotos_vazio'))}`;
+    getMountEl().appendChild(secao);
+    return;
+  }
+
+  secao.innerHTML = `
+    <div class="com-secao-titulo">📷 ${tc('aba_fotos')}</div>
+    <div class="galeria-mosaic">
+      ${fotos.map((f, i) => {
+        const fotoId = `foto_${f._stableId}`;
+        return `
+        <div class="galeria-foto" role="button" tabindex="0">
+          <div class="galeria-foto-img-wrap" onclick="abrirFotoModal(${i})">
+            <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-img" loading="lazy">
+            ${f.legenda ? `<div class="galeria-caption">${f.legenda}</div>` : ''}
+          </div>
+          <div onclick="event.stopPropagation()">${_reacoesBar(fotoId)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  getMountEl().appendChild(secao);
+  window._fotosDataCom = fotos;
+}
+
+function abrirFotoModal(idx) {
+  const fotos = window._fotosDataCom || [];
+  if (!fotos[idx]) return;
+  const existing = document.getElementById('galeria-modal-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'galeria-modal-overlay';
+  overlay.className = 'galeria-modal-overlay';
+  overlay.addEventListener('click', () => overlay.remove());
+
+  function renderModal(i) {
+    const f = fotos[i];
+    if (!f) return;
+    const fotoId = `foto_${f.ts || i}`;
+    overlay.innerHTML = `
+      <div class="galeria-modal-inner" onclick="event.stopPropagation()">
+        <button class="galeria-modal-fechar" onclick="document.getElementById('galeria-modal-overlay').remove()">✕</button>
+        ${fotos.length > 1 ? `
+        <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navFotoModal(${i},-1)">&#8249;</button>
+        <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navFotoModal(${i},1)">&#8250;</button>` : ''}
+        <img src="${f.dataUrl || f.url || ''}" alt="${f.legenda || ''}" class="galeria-modal-img">
+        ${f.legenda  ? `<div class="galeria-modal-caption">${f.legenda}</div>`   : ''}
+        ${f.reporter ? `<div class="galeria-modal-reporter">${f.reporter}</div>` : ''}
+        ${_reacoesBar(fotoId)}
+      </div>`;
+  }
+
+  renderModal(idx);
+  document.body.appendChild(overlay);
+}
+
+function _navFotoModal(currentIdx, delta) {
+  const fotos = window._fotosDataCom || [];
+  const next = (currentIdx + delta + fotos.length) % fotos.length;
+  abrirFotoModal(next);
+}
+
+// ── Aba Shorts ────────────────────────────────────────────────────
+
+function _totalReacoesItem(itemId) {
+  if (!_reacoesCache) return 0;
+  const item = _reacoesCache[itemId];
+  if (!item) return 0;
+  return Object.values(item).reduce((acc, v) => acc + (v || 0), 0);
+}
+
+const _SHORTS_RECENCIA_BONUS  = 3;    // pontos extras para vídeo novo
+const _SHORTS_RECENCIA_JANELA = 96;   // horas até o bônus zerar (4 dias)
+
+function _scoreShort(s) {
+  const reacoes = _totalReacoesItem(`short_${s._stableId}`);
+  const idadeH  = s.ts ? (Date.now() - s.ts) / 3_600_000 : _SHORTS_RECENCIA_JANELA;
+  const bonus   = Math.max(0, _SHORTS_RECENCIA_BONUS * (1 - idadeH / _SHORTS_RECENCIA_JANELA));
+  return reacoes + bonus;
+}
+
+function _cloudinaryThumb(url) {
+  if (!url || !url.includes('cloudinary.com')) return '';
+  return url
+    .replace('/video/upload/', '/video/upload/so_0,w_400,c_fill,ar_9:16/')
+    .replace(/\.(mp4|webm|mov)$/i, '.jpg');
+}
+
+// Alias local — função principal em areas-data.js (carregado antes)
+const _cloudinaryVideoUrl = cloudinaryVideoUrl;
+
+function renderAbaShorts(shorts) {
+  const itensRaw = (shorts && shorts.itens) ? shorts.itens : [];
+  const itens = itensRaw
+    .map((s, i) => ({ ...s, _origIdx: i, _stableId: s.id || s.ts || i }))
+    .sort((a, b) => _scoreShort(b) - _scoreShort(a));
+
+  window._shortsDataCom = itens;
+
+  const secao = document.createElement('div');
+  secao.className = 'com-secao';
+
+  if (itens.length === 0) {
+    secao.innerHTML = `
+      <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
+      ${_vazioOuSpinner(tc('shorts_vazio'))}`;
+    getMountEl().appendChild(secao);
+    return;
+  }
+
+  secao.innerHTML = `
+    <div class="com-secao-titulo">▶️ ${tc('aba_shorts')}</div>
+    <div class="shorts-mosaic">
+      ${itens.map((s, i) => {
+        const thumb = s.url ? _cloudinaryThumb(s.url) : '';
+        const videoSrc = s.url ? _cloudinaryVideoUrl(s.url) : '';
+        return `
+        <div class="short-thumb" onclick="abrirShortModal(${i})">
+          <div class="short-thumb-wrap">
+            ${thumb
+              ? `<img src="${thumb}" class="short-thumb-img" alt="${s.legenda || ''}" loading="lazy">`
+              : videoSrc
+                ? `<video class="short-thumb-img" src="${videoSrc}" preload="metadata" muted playsinline></video>`
+                : `<video class="short-thumb-img" data-sht-video-id="${s.videoId || ''}" preload="metadata" muted playsinline></video>`}
+            <div class="short-thumb-overlay"><span class="short-thumb-play">▶</span></div>
+          </div>
+          ${s.legenda ? `<div class="short-thumb-caption">${s.legenda}</div>` : ''}
+          <div onclick="event.stopPropagation()">${_reacoesBar(`short_${s._stableId}`)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  getMountEl().appendChild(secao);
+  _carregarVideosShortsLazy();
+}
+
+let _shortModalMuted = true; // persiste entre navegações
+
+function _applyShortMuteBtn(muted) {
+  const btn = document.getElementById('short-modal-mute');
+  if (!btn) return;
+  btn.classList.toggle('short-mute-ativo', muted);
+  const label = btn.querySelector('.short-mute-label');
+  btn.childNodes[0].textContent = muted ? '🔇' : '🔊';
+  if (label) label.textContent = muted ? 'som' : '';
+  btn.title = muted ? 'Toque para ativar o som' : 'Silenciar';
+}
+
+function abrirShortModal(idx) {
+  const itens = window._shortsDataCom || [];
+  if (!itens[idx]) return;
+  const existing = document.getElementById('short-modal-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'short-modal-overlay';
+  overlay.className = 'short-modal-overlay';
+  overlay.addEventListener('click', () => { overlay.remove(); _shortModalMuted = true; });
+
+  const s = itens[idx];
+  const muteClass = _shortModalMuted ? 'short-mute-ativo' : '';
+  const muteIcon  = _shortModalMuted ? '🔇' : '🔊';
+  const muteLabel = _shortModalMuted ? 'som' : '';
+  const muteTitle = _shortModalMuted ? 'Toque para ativar o som' : 'Silenciar';
+
+  const initialSrc = s.url ? _cloudinaryVideoUrl(s.url) : '';
+
+  overlay.innerHTML = `
+    <div class="short-modal-inner" onclick="event.stopPropagation()">
+      <button class="galeria-modal-fechar" onclick="document.getElementById('short-modal-overlay').remove();_shortModalMuted=true;">✕</button>
+      <div class="short-modal-video-wrap">
+        <video id="short-modal-vid" class="short-modal-video"
+               src="${initialSrc}" playsinline loop ${_shortModalMuted ? 'muted' : ''} autoplay></video>
+        ${!initialSrc ? '<div id="short-modal-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px">⏳ Carregando…</div>' : ''}
+        ${itens.length > 1 ? `
+        <button class="galeria-modal-nav galeria-modal-prev" onclick="event.stopPropagation();_navShortModal(${idx},-1)">&#8249;</button>
+        <button class="galeria-modal-nav galeria-modal-next" onclick="event.stopPropagation();_navShortModal(${idx},1)">&#8250;</button>` : ''}
+        <button class="short-mute-btn ${muteClass}" id="short-modal-mute"
+                onclick="toggleShortModalMute()" title="${muteTitle}">
+          ${muteIcon}<span class="short-mute-label">${muteLabel}</span>
+        </button>
+      </div>
+      ${s.legenda  ? `<div class="short-modal-caption">${s.legenda}</div>`   : ''}
+      ${s.reporter ? `<div class="short-modal-reporter">${s.reporter}</div>` : ''}
+      ${_reacoesBar(`short_${s._stableId}`)}
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  if (s.videoId && !initialSrc) {
+    carregarVideoShorts(s.videoId).then(blobUrl => {
+      const vid = document.getElementById('short-modal-vid');
+      const loading = document.getElementById('short-modal-loading');
+      if (loading) loading.remove();
+      if (vid && blobUrl) { vid.src = blobUrl; vid.load(); vid.play().catch(() => {}); }
+    }).catch(() => {
+      const loading = document.getElementById('short-modal-loading');
+      if (loading) loading.textContent = '⚠ Vídeo indisponível';
+    });
+  } else {
+    requestAnimationFrame(() => {
+      const vid = document.getElementById('short-modal-vid');
+      if (vid) vid.play().catch(() => {});
+    });
+  }
+}
+
+function _navShortModal(currentIdx, delta) {
+  const itens = window._shortsDataCom || [];
+  const next = (currentIdx + delta + itens.length) % itens.length;
+  abrirShortModal(next);
+}
+
+function toggleShortModalMute() {
+  const vid = document.getElementById('short-modal-vid');
+  if (!vid) return;
+  vid.muted = !vid.muted;
+  _shortModalMuted = vid.muted;
+  _applyShortMuteBtn(vid.muted);
+  if (!vid.muted) vid.play().catch(() => {});
+}
+
