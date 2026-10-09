@@ -717,24 +717,40 @@ function renderInicio(dados) {
   (async () => {
     try {
       const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
-      const [rp, rs, ep] = await Promise.all([
-        fetch(`${RTDB}/ponte_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/spinner_liberado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/ponte_estado.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      const [rp, rs, ep, es, rfp, rfs] = await Promise.all([
+        fetch(`${RTDB}/ponte_liberado.json`,          { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_liberado.json`,        { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_estado.json`,            { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_estado.json`,          { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/ponte_resultado_final.json`,   { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+        fetch(`${RTDB}/spinner_resultado_final.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
       ]);
       const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense');
-      const spinnerAoVivo = rs === true;
-      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   'Acompanhe o ranking ao vivo', ponteAoVivo);
-      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', 'Acompanhe o ranking ao vivo', spinnerAoVivo);
+      const spinnerAoVivo = rs === true && (es === 'aguardando' || es === 'suspense');
+      const ponteEncerrada   = rfp?.ts || (rp === true && !ponteAoVivo);
+      const spinnerEncerrada = rfs?.ts || (rs === true && !spinnerAoVivo);
+      const ponteSub   = ponteAoVivo   ? '🔴 Competindo agora · toque para ver ao vivo'
+                       : rfp?.ts       ? '🏆 Resultado final disponível · toque para ver'
+                       : 'Acompanhe o ranking ao vivo';
+      const spinnerSub = spinnerAoVivo ? '🔴 Competindo agora · toque para ver ao vivo'
+                       : rfs?.ts       ? '🏆 Resultado final disponível · toque para ver'
+                       : 'Acompanhe o ranking ao vivo';
+      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   ponteSub,   ponteAoVivo);
+      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', spinnerSub, spinnerAoVivo);
       // Banner do telão: só aparece quando pelo menos uma prova estiver liberada
       const telaoWrap = document.getElementById('pr-banner-telao-wrap');
       const telaoEl   = document.getElementById('pr-banner-telao');
       const telaoSub  = document.getElementById('pr-banner-telao-sub');
       if (telaoWrap && (rp === true || rs === true)) {
         telaoWrap.hidden = false;
-        if (telaoEl && (ponteAoVivo || spinnerAoVivo)) {
-          telaoEl.className = 'pr-live-banner pr-live-banner-ao-vivo';
-          if (telaoSub) telaoSub.textContent = '🔴 Competindo agora · toque para ver as duas provas ao vivo';
+        if (telaoEl) {
+          if (ponteAoVivo || spinnerAoVivo) {
+            telaoEl.className = 'pr-live-banner pr-live-banner-ao-vivo';
+            if (telaoSub) telaoSub.textContent = '🔴 Competindo agora · toque para ver as duas provas ao vivo';
+          } else if (ponteEncerrada || spinnerEncerrada) {
+            telaoEl.className = 'pr-live-banner';
+            if (telaoSub) telaoSub.textContent = '🏆 Provas encerradas · ver resultados finais';
+          }
         }
       }
     } catch (_) {}
