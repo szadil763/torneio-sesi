@@ -224,9 +224,12 @@ function checkRecorde(st, rec) {
 
 function checkResultado(st, res, scope, titulo, teams) {
   if (res?.ts && res.ts !== st.prevResultadoTs) {
+    const isFirstLoad = st.prevResultadoTs === undefined;
     st.prevResultadoTs = res.ts;
     st.resultado = res;
-    showResultadoOverlay(res, scope, titulo, teams);
+    if (!isFirstLoad) {
+      showResultadoOverlay(res, scope, titulo, teams);
+    }
   }
 }
 
