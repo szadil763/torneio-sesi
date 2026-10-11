@@ -654,9 +654,6 @@ function renderInicio(dados) {
   divCampeoes.innerHTML = `<img src="/insignias/assets/campeoes-2026.jpg" alt="Campeões do Torneio SESI 2026" class="campeoes-banner-img">`;
   getMountEl().appendChild(divCampeoes);
 
-  // Banner de novidades: Fotos + Shorts
-  _renderBannerNovidades();
-
   const recados = (dados.recados && dados.recados.itens) || [];
   const boletim = (dados.boletim && dados.boletim.itens) || [];
 
