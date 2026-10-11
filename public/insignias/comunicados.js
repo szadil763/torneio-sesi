@@ -654,54 +654,7 @@ function renderInicio(dados) {
   divCampeoes.innerHTML = `<img src="/insignias/assets/campeoes-2026.jpg" alt="Campeões do Torneio SESI 2026" class="campeoes-banner-img">`;
   getMountEl().appendChild(divCampeoes);
 
-  const recados  = (dados.recados && dados.recados.itens) || [];
-  const boletim  = (dados.boletim && dados.boletim.itens) || [];
-  const noticias = _coletarNoticias(dados);
-
-  // Preview do último recado visível na Início
-  const agora = Date.now();
-  const recadoInicio = recados.find(r =>
-    r.inicioAte !== -1 && (r.inicioAte === null || r.inicioAte === undefined || agora <= r.inicioAte)
-  );
-  if (recadoInicio) {
-    const ultimo = recadoInicio;
-    const texto  = ultimo.texto || '';
-    const preview = texto.length > 120 ? texto.substring(0, 120) + '…' : texto;
-    const div = document.createElement('div');
-    div.className = 'com-secao';
-    div.innerHTML = `
-      <div class="com-secao-titulo">${tc('inicio_ultimo_recado')}</div>
-      <div class="com-recado${ultimo.destaque ? ' com-recado-destaque' : ''} com-recado-clicavel"
-           onclick="trocarAba('recados')" role="button" tabindex="0">
-        ${ultimo.titulo ? `<div class="com-recado-titulo">${ultimo.titulo}</div>` : ''}
-        <div class="com-recado-texto">${preview}</div>
-        <div class="com-recado-data">${formatarDataCom(ultimo.ts)}</div>
-        <div class="com-inicio-ver-mais">${tc('inicio_ver_recados')}</div>
-      </div>`;
-    getMountEl().appendChild(div);
-  }
-
-  // Notícias — preview da mais recente
-  const agora2 = Date.now();
-  const noticiaPreview = noticias.find(n =>
-    n.inicioAte !== -1 && (n.inicioAte === null || n.inicioAte === undefined || agora2 <= n.inicioAte)
-  );
-  if (noticiaPreview) {
-    const titulo  = noticiaPreview.titulo || noticiaPreview.manchete || '';
-    const sub     = noticiaPreview.subtitulo || noticiaPreview.texto || '';
-    const preview = sub.length > 100 ? sub.substring(0, 100) + '…' : sub;
-    const div = document.createElement('div');
-    div.className = 'com-secao';
-    div.innerHTML = `
-      <div class="com-secao-titulo">${tc('inicio_noticias')}</div>
-      <div class="com-noticia-card com-recado-clicavel" onclick="trocarAba('noticias')" role="button" tabindex="0">
-        ${noticiaPreview.imagem ? `<img src="${noticiaPreview.imagem}" class="com-noticia-img">` : ''}
-        ${titulo ? `<div class="com-noticia-titulo">${titulo}</div>` : ''}
-        ${preview ? `<div class="com-noticia-sub">${preview}</div>` : ''}
-        <div class="com-inicio-ver-mais">${tc('inicio_ver_noticias')}</div>
-      </div>`;
-    getMountEl().appendChild(div);
-  }
+  const boletim = (dados.boletim && dados.boletim.itens) || [];
 
   // Boletim — itens visíveis na Início (sem inicioAte=-1 e dentro do prazo)
   const bolInicio = boletim.filter(b =>
