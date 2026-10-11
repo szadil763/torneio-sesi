@@ -657,6 +657,7 @@ function renderInicio(dados) {
   const boletim = (dados.boletim && dados.boletim.itens) || [];
 
   // Boletim — itens visíveis na Início (sem inicioAte=-1 e dentro do prazo)
+  const agora = Date.now();
   const bolInicio = boletim.filter(b =>
     b.inicioAte !== -1 && (b.inicioAte === null || b.inicioAte === undefined || agora <= b.inicioAte)
   );
