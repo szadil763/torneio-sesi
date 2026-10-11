@@ -648,137 +648,17 @@ function _atualizarBannerRanking(id, liberado, url, subLiberado, aoVivo) {
 
 // ── Aba Início ────────────────────────────────────────────────────
 function renderInicio(dados) {
-  // Countdown sempre no topo
-  renderContadorCom();
+  // Banner Campeões do Torneio 2026
+  const divCampeoes = document.createElement('div');
+  divCampeoes.className = 'campeoes-banner-secao';
+  divCampeoes.innerHTML = `<img src="/insignias/assets/campeoes-2026.jpg" alt="Campeões do Torneio SESI 2026" class="campeoes-banner-img">`;
+  getMountEl().appendChild(divCampeoes);
 
   // Banner de novidades: Fotos + Shorts
   _renderBannerNovidades();
 
   const recados = (dados.recados && dados.recados.itens) || [];
   const boletim = (dados.boletim && dados.boletim.itens) || [];
-
-  // Cards de acesso rápido
-  const totalInsignias = (() => {
-    try {
-      const estado = lerEstadoAreas();
-      return TEAMS.reduce((acc, tm) =>
-        acc + AREAS.filter(a => conquistouArea(estado, a.id, tm.id)).length, 0);
-    } catch (_) { return 0; }
-  })();
-
-  // Widget de votação da ponte
-  const divVoto = document.createElement('div');
-  divVoto.id = 'ponte-voto-widget';
-  getMountEl().appendChild(divVoto);
-  _iniciarPonteVotacao();
-
-  // Widget de votação do spinner
-  const divVotoSpinner = document.createElement('div');
-  divVotoSpinner.id = 'spinner-voto-widget';
-  getMountEl().appendChild(divVotoSpinner);
-  _iniciarSpinnerVotacao();
-
-  // Banners "Ranking ao vivo" — Ponte e Spinner
-  const divRankingBanners = document.createElement('div');
-  divRankingBanners.id = 'pr-live-banners';
-  divRankingBanners.className = 'com-secao';
-  divRankingBanners.innerHTML = `
-    <div id="pr-banner-ponte" class="pr-live-banner pr-live-banner-locked" aria-disabled="true">
-      <div class="pr-live-banner-dot"></div>
-      <div class="pr-live-banner-body">
-        <div class="pr-live-banner-titulo">🌉 Ponte de Da Vinci</div>
-        <div id="pr-banner-ponte-sub" class="pr-live-banner-sub">09/10 às 9h · Ranking ao vivo durante a prova</div>
-      </div>
-      <div class="pr-live-banner-seta">🔒</div>
-    </div>
-    <div style="height:8px"></div>
-    <div id="pr-banner-spinner" class="pr-live-banner pr-live-banner-locked" aria-disabled="true">
-      <div class="pr-live-banner-dot"></div>
-      <div class="pr-live-banner-body">
-        <div class="pr-live-banner-titulo">🌀 Lançador de Spinner</div>
-        <div id="pr-banner-spinner-sub" class="pr-live-banner-sub">09/10 às 9h · Ranking ao vivo durante a prova</div>
-      </div>
-      <div class="pr-live-banner-seta">🔒</div>
-    </div>
-    <div id="pr-banner-telao-wrap" hidden>
-      <div style="height:8px"></div>
-      <div id="pr-banner-telao" class="pr-live-banner pr-live-banner-telao" style="cursor:pointer" onclick="location.href='/telao.html'">
-        <div class="pr-live-banner-dot"></div>
-        <div class="pr-live-banner-body">
-          <div class="pr-live-banner-titulo">📺 Telão — As duas provas</div>
-          <div id="pr-banner-telao-sub" class="pr-live-banner-sub">Ponte + Spinner lado a lado · acompanhe os dois rankings</div>
-        </div>
-        <div class="pr-live-banner-seta">›</div>
-      </div>
-    </div>`;
-  getMountEl().appendChild(divRankingBanners);
-
-  // Atualiza banners com base no Firebase (async — não bloqueia render)
-  (async () => {
-    try {
-      const RTDB = 'https://torneio-sesi-20de0-default-rtdb.firebaseio.com';
-      const [rp, rs, ep, es, rfp, rfs] = await Promise.all([
-        fetch(`${RTDB}/ponte_liberado.json`,          { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/spinner_liberado.json`,        { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/ponte_estado.json`,            { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/spinner_estado.json`,          { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/ponte_resultado_final.json`,   { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        fetch(`${RTDB}/spinner_resultado_final.json`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-      ]);
-      const ponteAoVivo   = rp === true && (ep === 'aguardando' || ep === 'suspense') && !rfp?.ts;
-      const spinnerAoVivo = rs === true && (es === 'aguardando' || es === 'suspense') && !rfs?.ts;
-      const ponteEncerrada   = rfp?.ts || (rp === true && !ponteAoVivo);
-      const spinnerEncerrada = rfs?.ts || (rs === true && !spinnerAoVivo);
-      const ponteSub   = ponteAoVivo   ? '🔴 Competindo agora · toque para ver ao vivo'
-                       : rfp?.ts       ? '🏆 Resultado final disponível · toque para ver'
-                       : 'Acompanhe o ranking ao vivo';
-      const spinnerSub = spinnerAoVivo ? '🔴 Competindo agora · toque para ver ao vivo'
-                       : rfs?.ts       ? '🏆 Resultado final disponível · toque para ver'
-                       : 'Acompanhe o ranking ao vivo';
-      _atualizarBannerRanking('ponte',   rp === true, '/ponte-ranking.html',   ponteSub,   ponteAoVivo);
-      _atualizarBannerRanking('spinner', rs === true, '/spinner-ranking.html', spinnerSub, spinnerAoVivo);
-      // Banner do telão: só aparece quando pelo menos uma prova estiver liberada
-      const telaoWrap = document.getElementById('pr-banner-telao-wrap');
-      const telaoEl   = document.getElementById('pr-banner-telao');
-      const telaoSub  = document.getElementById('pr-banner-telao-sub');
-      if (telaoWrap && (rp === true || rs === true)) {
-        telaoWrap.hidden = false;
-        if (telaoEl) {
-          if (ponteAoVivo || spinnerAoVivo) {
-            telaoEl.className = 'pr-live-banner pr-live-banner-ao-vivo';
-            if (telaoSub) telaoSub.textContent = '🔴 Competindo agora · toque para ver as duas provas ao vivo';
-          } else if (ponteEncerrada || spinnerEncerrada) {
-            telaoEl.className = 'pr-live-banner';
-            if (telaoSub) telaoSub.textContent = '🏆 Provas encerradas · ver resultados finais';
-          }
-        }
-      }
-    } catch (_) {}
-  })();
-
-  const noticias = _coletarNoticias(dados);
-  const cards = [
-    { id: 'noticias',  emoji: '📰', label: tc('aba_noticias'),  count: (_carregandoFirebase && noticias.length === 0) ? '…' : `${noticias.length} notícia${noticias.length !== 1 ? 's' : ''}`, cor: '#C2185B' },
-    { id: 'insignias', emoji: '🏅', label: tc('aba_insignias'), count: `${totalInsignias} / ${TEAMS.length * AREAS.length} ${tc('insignias')}`, cor: '#004B8D' },
-    { id: 'recados',   emoji: '📢', label: tc('aba_recados'),   count: (_carregandoFirebase && recados.length === 0) ? '…' : `${recados.length} recado${recados.length !== 1 ? 's' : ''}`, cor: '#F5821F' },
-    { id: 'boletim',   emoji: '🎬', label: tc('aba_boletim'),   count: (_carregandoFirebase && boletim.length === 0) ? '…' : `${boletim.length} ${tc(boletim.length !== 1 ? 'boletim_itens' : 'boletim_item')}`,  cor: '#2E9E4F' },
-    { id: 'dicas',     emoji: '💡', label: tc('aba_dicas'),     count: (() => { const n = ((dados.dicas && dados.dicas.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} dica${n !== 1 ? 's' : ''}`; })(), cor: '#7C3AED' },
-    { id: 'fotos',     emoji: '📷', label: tc('aba_fotos'),     count: (() => { const n = ((dados.galeria && dados.galeria.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} foto${n !== 1 ? 's' : ''}`; })(), cor: '#D97706' },
-    { id: 'shorts',    emoji: '▶️', label: tc('aba_shorts'),    count: (() => { const n = ((dados.shorts && dados.shorts.itens) || []).length; return (_carregandoFirebase && n === 0) ? '…' : `${n} short${n !== 1 ? 's' : ''}`; })(), cor: '#DC2626' },
-  ];
-
-  const divCards = document.createElement('div');
-  divCards.className = 'com-secao';
-  divCards.innerHTML = `
-    <div class="com-inicio-cards">
-      ${cards.map(c => `
-        <button class="com-inicio-card" onclick="trocarAba('${c.id}')" style="--cc:${c.cor}">
-          <span class="com-inicio-card-emoji">${c.emoji}</span>
-          <span class="com-inicio-card-label">${c.label}</span>
-          <span class="com-inicio-card-count">${c.count}</span>
-        </button>`).join('')}
-    </div>`;
-  getMountEl().appendChild(divCards);
 
   // Preview do último recado visível na Início
   const agora = Date.now();
