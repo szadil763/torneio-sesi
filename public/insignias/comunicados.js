@@ -1723,11 +1723,8 @@ async function renderComunicados() {
       <h1 class="com-titulo">${tc('titulo_pagina')}</h1>
       <p class="com-subtitulo">${tc('subtitulo_pagina')}</p>
     </div>
-    <div id="com-push-wrap"></div>
     ${renderTabBar()}
     <div id="com-content" class="com-content-area"></div>`;
-
-  _renderBotaoPush(document.getElementById('com-push-wrap'));
 
   // ── Fase 1: renderiza imediatamente com dados do localStorage ─────
   // Spinner aparece em abas sem cache; mensagens de vazio só aparecem
