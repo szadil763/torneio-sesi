@@ -610,10 +610,14 @@ async function carregarGaleria() {
 async function salvarGaleria(dados) {
   _galeriaCache = dados;
   try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(dados)); } catch (_) {}
-  await fetch(RTDB_GALERIA_URL, {
+  const resp = await fetch(RTDB_GALERIA_URL, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dados)
   });
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => String(resp.status));
+    throw new Error(`Firebase ${resp.status}: ${txt.slice(0, 120)}`);
+  }
 }
 
 // ── Ponte ao vivo — estado / votação / comentário ─────────────────

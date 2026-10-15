@@ -1523,7 +1523,7 @@ async function galeriaHandleFiles(input) {
   if (preview) preview.innerHTML = '<span style="font-size:12px;color:var(--muted)">⏳ Comprimindo…</span>';
   _galPendingDataUrls = [];
   for (const file of files) {
-    const dataUrl = await comprimirImagem(file, 1200, 0.82);
+    const dataUrl = await comprimirImagem(file, 900, 0.72);
     _galPendingDataUrls.push(dataUrl);
   }
   if (preview) {
@@ -1552,6 +1552,13 @@ async function galeriaAdicionarFotos() {
     for (const dataUrl of _galPendingDataUrls) {
       galeria.itens.unshift({ dataUrl, legenda, reporter, ts: Date.now() });
     }
+    // Verifica tamanho antes de enviar (limite Firebase RTDB: ~10 MB)
+    const payloadSize = new Blob([JSON.stringify(galeria)]).size;
+    if (payloadSize > 9 * 1024 * 1024) {
+      if (err) err.textContent = `Galeria muito grande (${(payloadSize/1024/1024).toFixed(1)} MB). Remova fotos antigas antes de adicionar novas.`;
+      return;
+    }
+    if (err) err.textContent = '⏳ Enviando…';
     await salvarGaleria(galeria);
     _galPendingDataUrls = [];
     trocarAbaCom('fotos');
