@@ -1546,23 +1546,18 @@ async function galeriaAdicionarFotos() {
   }
   const legenda  = (document.getElementById('gal-legenda')?.value  || '').trim();
   const reporter = (document.getElementById('gal-reporter')?.value || '').trim();
+  const btn = document.querySelector('[onclick="galeriaAdicionarFotos()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
   try {
-    const galeria = await carregarGaleria();
-    galeria.itens = galeria.itens || [];
-    for (const dataUrl of _galPendingDataUrls) {
-      galeria.itens.unshift({ dataUrl, legenda, reporter, ts: Date.now() });
+    for (let i = 0; i < _galPendingDataUrls.length; i++) {
+      const foto = { dataUrl: _galPendingDataUrls[i], legenda, reporter, ts: Date.now() };
+      if (err) err.textContent = `⏳ Enviando foto ${i + 1}/${_galPendingDataUrls.length}…`;
+      await salvarFotoGaleria(foto);
     }
-    // Verifica tamanho antes de enviar (limite Firebase RTDB: ~10 MB)
-    const payloadSize = new Blob([JSON.stringify(galeria)]).size;
-    if (payloadSize > 9 * 1024 * 1024) {
-      if (err) err.textContent = `Galeria muito grande (${(payloadSize/1024/1024).toFixed(1)} MB). Remova fotos antigas antes de adicionar novas.`;
-      return;
-    }
-    if (err) err.textContent = '⏳ Enviando…';
-    await salvarGaleria(galeria);
     _galPendingDataUrls = [];
     trocarAbaCom('fotos');
   } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '+ Adicionar foto(s)'; }
     if (err) err.textContent = 'Erro ao salvar: ' + e.message;
   }
 }
@@ -1571,8 +1566,14 @@ async function galeriaRemoverFoto(idx) {
   if (!confirm('Remover esta foto?')) return;
   const galeria = await carregarGaleria();
   galeria.itens = galeria.itens || [];
-  galeria.itens.splice(idx, 1);
-  await salvarGaleria(galeria);
+  const foto = galeria.itens[idx];
+  if (!foto) return;
+  if (foto.id) {
+    await removerFotoGaleria(foto.id);
+  } else {
+    galeria.itens.splice(idx, 1);
+    await salvarGaleria(galeria);
+  }
   trocarAbaCom('fotos');
 }
 

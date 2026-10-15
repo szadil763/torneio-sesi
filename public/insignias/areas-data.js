@@ -580,8 +580,9 @@ function renderNoticiaCard(item) {
 }
 
 // ── Galeria de fotos ──────────────────────────────────────────────
-const RTDB_GALERIA_URL     = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/galeria.json";
-const STORAGE_KEY_GALERIA  = "torneio-galeria:v1";
+const RTDB_GALERIA_URL      = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/galeria.json";
+const RTDB_GALERIA_ITENS    = "https://torneio-sesi-20de0-default-rtdb.firebaseio.com/galeria/itens";
+const STORAGE_KEY_GALERIA   = "torneio-galeria:v1";
 let _galeriaCache = null;
 
 function lerGaleria() {
@@ -599,6 +600,8 @@ async function carregarGaleria() {
       const data = await resp.json();
       const itens = data?.itens;
       _galeriaCache = { ...data, itens: Array.isArray(itens) ? itens : (itens && typeof itens === 'object' ? Object.values(itens) : []) };
+      // Ordena do mais recente para o mais antigo
+      _galeriaCache.itens.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(_galeriaCache)); } catch (_) {}
       return _galeriaCache;
     }
@@ -607,6 +610,34 @@ async function carregarGaleria() {
   return _galeriaCache;
 }
 
+// Salva uma foto individualmente (sem reescrever toda a galeria)
+async function salvarFotoGaleria(foto) {
+  const id = `f${foto.ts || Date.now()}`;
+  const resp = await fetch(`${RTDB_GALERIA_ITENS}/${id}.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...foto, id })
+  });
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => String(resp.status));
+    throw new Error(`Firebase ${resp.status}: ${txt.slice(0, 120)}`);
+  }
+  // Atualiza cache local
+  if (_galeriaCache) {
+    _galeriaCache.itens = _galeriaCache.itens.filter(f => f.id !== id);
+    _galeriaCache.itens.unshift({ ...foto, id });
+  }
+  return id;
+}
+
+// Remove uma foto individualmente
+async function removerFotoGaleria(id) {
+  await fetch(`${RTDB_GALERIA_ITENS}/${id}.json`, { method: 'DELETE' });
+  if (_galeriaCache) {
+    _galeriaCache.itens = _galeriaCache.itens.filter(f => f.id !== id);
+  }
+}
+
+// Mantido para compatibilidade com código existente que ainda usa PUT total
 async function salvarGaleria(dados) {
   _galeriaCache = dados;
   try { localStorage.setItem(STORAGE_KEY_GALERIA, JSON.stringify(dados)); } catch (_) {}
