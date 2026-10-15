@@ -558,15 +558,18 @@ async function apertar() {
     jaApertou = true;
     btn.disabled = true;
     try {
-      const atual = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`).then(r => r.json());
-      if (!atual) {
-        await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId: KAHOOT_ID, ts: { '.sv': 'timestamp' } }),
-        });
-      }
-    } catch(err) { console.warn('Kahoot buzz erro:', err); }
+      // GET com ETag → PUT condicional (if-match) → Firebase aceita só o primeiro, rejeita 412 os demais
+      const getRes = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+      const etag   = getRes.headers.get('ETag');
+      const atual  = await getRes.json();
+      if (atual !== null) { jaApertou = false; btn.disabled = false; return; } // outro chegou antes do GET
+      const putRes = await fetch(`${RTDB_ROOT}/kahoot_buzz.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'if-match': etag },
+        body: JSON.stringify({ teamId: KAHOOT_ID, ts: Date.now() }),
+      });
+      if (putRes.status === 412) { jaApertou = false; btn.disabled = false; } // outro venceu entre o GET e o PUT
+    } catch(err) { console.warn('Kahoot buzz erro:', err); jaApertou = false; btn.disabled = false; }
     return;
   }
 

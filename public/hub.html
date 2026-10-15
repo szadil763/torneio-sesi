@@ -254,6 +254,21 @@
     }
     .mod-provas:hover { border-color: #4ade80; }
 
+    .mod-telao {
+      --grad: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%);
+      --cor-cta: #60a5fa;
+    }
+    .mod-telao:hover { border-color: #60a5fa; }
+    .mod-telao .modulo-topo { background: #0f172a; }
+    .telao-split {
+      display: flex; gap: 8px; align-items: center; margin-top: 4px;
+    }
+    .telao-split-item {
+      flex: 1; background: rgba(255,255,255,.07); border-radius: 10px;
+      padding: 7px 10px; font-size: 12px; font-weight: 700; color: #93c5fd;
+      text-align: center; line-height: 1.3;
+    }
+
     /* ── Pills de provas dentro dos cards ── */
     .modo-prova-row {
       display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;
@@ -411,6 +426,29 @@
         </div>
       </a>
     </div><!-- /card gerenciamento de provas -->
+
+    <!-- ── Card: Telão ao Vivo ── -->
+    <div class="grade grade-full" style="margin-bottom:12px">
+      <a href="/telao.html" class="modulo mod-telao mod-destaque" target="_blank" rel="noopener">
+        <div class="modulo-topo">
+          <span class="modulo-icone">📺</span>
+          <span class="modulo-nome">Telão ao Vivo</span>
+          <span class="modulo-badge">🖥️ Projetor / TV</span>
+        </div>
+        <div class="modulo-corpo">
+          <div class="telao-split">
+            <div class="telao-split-item">🌉 Ponte<br>Da Vinci</div>
+            <div style="color:#475569;font-size:18px;font-weight:900">⟷</div>
+            <div class="telao-split-item">🌀 Lançador<br>de Spinner</div>
+          </div>
+          <p class="modulo-desc" style="margin-top:8px">Os dois rankings em uma só tela. Ideal para projetar no ginásio durante as provas — e compartilhar com o público em casa.</p>
+          <div class="modulo-cta">
+            Abrir telão
+            <div class="modulo-cta-arrow">→</div>
+          </div>
+        </div>
+      </a>
+    </div><!-- /card telão -->
 
     <!-- Linha: Propulsão + Ranking -->
     <div class="grade">

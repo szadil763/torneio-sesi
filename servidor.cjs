@@ -231,7 +231,23 @@ const server = http.createServer(async (req, res) => {
     apiRoute(req, res, () => kahoot_active, v => { kahoot_active = v; }); return;
   }
   if (pathname === '/kahoot_buzz.json') {
-    apiRoute(req, res, () => kahoot_buzz, v => { kahoot_buzz = v; }); return;
+    cors(res);
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    if (req.method === 'GET') { sendJSON(res, 200, kahoot_buzz); return; }
+    if (req.method === 'PUT') {
+      let body = '';
+      req.on('data', d => body += d);
+      req.on('end', () => {
+        if (kahoot_buzz === null) { // primeiro a chegar ganha — ignora os demais
+          try { kahoot_buzz = processVal(JSON.parse(body)); } catch (_) {}
+        }
+        sendJSON(res, 200, kahoot_buzz);
+      });
+      return;
+    }
+    if (req.method === 'DELETE') { kahoot_buzz = null; sendJSON(res, 200, null); return; }
+    res.writeHead(405); res.end();
+    return;
   }
   if (pathname === '/kahoot_pts.json') {
     apiRoute(req, res, () => kahoot_pts, v => {
